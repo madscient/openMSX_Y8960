@@ -97,6 +97,7 @@
 #include "XMLElement.hh"
 #include "YamahaFDC.hh"
 #include "YamahaSKW01.hh"
+#include "MSXTimer.hh"
 
 #include "one_of.hh"
 
