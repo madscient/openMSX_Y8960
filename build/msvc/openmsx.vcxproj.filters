@@ -1134,6 +1134,9 @@
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8950Periphery.cc">
       <Filter>sound</Filter>
     </ClCompile>
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960Mixer.cc">
+      <Filter>sound</Filter>
+    </ClCompile>
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.cc">
       <Filter>sound</Filter>
     </ClCompile>
@@ -2771,6 +2774,9 @@
       <Filter>sound</Filter>
     </None>
     <None Include="$(OpenMSXSrcDir)\sound\Y8950Periphery.hh">
+      <Filter>sound</Filter>
+    </None>
+    <None Include="$(OpenMSXSrcDir)\sound\Y8960Mixer.hh">
       <Filter>sound</Filter>
     </None>
     <None Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.hh">
