@@ -38,7 +38,7 @@ def main(directory):
     if got["right"][1] == 0 or got["right"][0] != 0:
         failures.append("right が右に振り切れていない")
     if got["unit1"][0] == 0 and got["unit1"][1] == 0:
-        failures.append("unit1 が無音。2 系統目が鳴っていない")
+        failures.append("unit1 が無音。SSG 系統 1 が鳴っていない")
 
     if failures:
         for f in failures:

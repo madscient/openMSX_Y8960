@@ -5,7 +5,7 @@
 #include "Ram.hh"
 #include "SCC.hh"
 #include "Y8960OPL2Device.hh"
-#include "Y8960SSGDevice.hh"
+#include "Y8960SSGSDevice.hh"
 #include "Y8960OPLL.hh"
 
 namespace openmsx {
@@ -42,7 +42,7 @@ private:
 	Y8960OPLL *opll_1;
 	Y8960OPL2Device *opl2_0;
 	Y8960OPL2Device *opl2_1;
-	Y8960SSGDevice *ssg;
+	Y8960SSGSDevice *ssg;
 	SCC scc;
 	Ram ram;
 	bool sccEnabled;

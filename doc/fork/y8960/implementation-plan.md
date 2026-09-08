@@ -131,7 +131,7 @@ port 3F:      O Y8960 DCSG 1
 port 7A-7B:   O Y8960 OPLL 1
 port 7C-7D:   O C-BIOS MSX-MUSIC, Y8960 OPLL 0
 port A0-A3: I   PSG
-port A0-A3:   O PSG, Y8960 SSG
+port A0-A3:   O PSG, Y8960 SSGS
 port B0-B3: I/O y8960-timer
 port B6-B7: I/O y8960-mixer
 port C0-C1: I/O Y8960 OPL2 0
@@ -182,7 +182,7 @@ OPLL はリードアクセスが無いので、書き込みを落とせば挙動
 | b0 | C0h-C1h | `Y8960 OPL2 0` | 実装済み |
 | b1 | C2h-C3h | `Y8960 OPL2 1` | 実装済み |
 | b2 / b3 | DCSG | — | 未実装（常時開） |
-| b4 | A0h-A2h | `Y8960 SSG` | 実装済み |
+| b4 | A0h-A2h | `Y8960 SSGS` | 実装済み |
 | b7 | MSX-TIMER | — | 未実装（常時開） |
 
 OPLL (7FF6h) と違い、**こちらはビットの割り当てが RTL と一致している**
@@ -237,7 +237,7 @@ TEST レジスタ 01h の b5 が全体のゲートになる（クリアなら全
 
 ### 3.6 SSGS【実装済み 2026-09-09】
 
-`src/sound/Y8960SSG.{cc,hh}` と `src/sound/Y8960SsgCore.{cc,hh}`。
+`src/sound/Y8960SSGS.{cc,hh}` と `src/sound/Y8960SsgCore.{cc,hh}`。
 レジスタ配置は `hardware-notes.md` の SSG 節にある。
 
 **1 つのステレオ `SoundDevice`（6 チャンネル）にした。**
@@ -248,7 +248,7 @@ TEST レジスタ 01h の b5 が全体のゲートになる（クリアなら全
 
 `Y8960SsgCore` は `AY8910` のフォークで、`SoundDevice` ではない。
 落としたのは periphery（YMZ 系に I/O ポートは無いのでレジスタ 14/15 も無い）、
-Debuggable（`Y8960SSG` が $00-$3F 全体で持つ）、`type` による AY/YM 判定
+Debuggable（`Y8960SSGS` が $00-$3F 全体で持つ）、`type` による AY/YM 判定
 （YM2149 固定）。vibrato/detune の設定は残してある。
 
 パンポットの分配則はデータシートに無いため、EPSGemuEngine と同じく
@@ -280,8 +280,8 @@ Y8960 を **MSX 本体に内蔵して既存デバイスを置き換える**構�
 
 | 要素 | 既定 | 意味 |
 |---|---|---|
-| `<use_io_enabler>` | `true` | `false` で enabler を無視し常時開になる。`Y8960-OPLL` / `Y8960-OPL2` / `Y8960-SSG` の 3 つが持つ |
-| `<readable>` | `false` | `true` で SSGS がリードに応じる。`Y8960-SSG` のみ |
+| `<use_io_enabler>` | `true` | `false` で enabler を無視し常時開になる。`Y8960-OPLL` / `Y8960-OPL2` / `Y8960-SSGS` の 3 つが持つ |
+| `<readable>` | `false` | `true` で SSGS がリードに応じる。`Y8960-SSGS` のみ |
 
 **要素名は暫定**。本体内蔵版の構成を実際に書く段で見直してよい。
 
@@ -295,8 +295,24 @@ Y8960 を **MSX 本体に内蔵して既存デバイスを置き換える**構�
 |---|---|
 | 拡張 XML | `share/extensions/HRA_Y8960.xml` |
 | デバイス型名 | `MSX-TIMER` / `Y8960-OPLL` / `Y8960-MIXER`、マッパー種別 `Y8960` |
-| サウンドデバイス名 | `Y8960 SSG 0/1`、`Y8960 DCSG 0/1`、`Y8960 OPLL 0/1`、`Y8960 SCC` |
+| サウンドデバイス名 | `Y8960 DCSG 0/1`、`Y8960 OPLL 0/1`、`Y8960 SCC` |
 | YM2413 コア名 | `NukeYKT-Banked` |
+
+**SSGS の名前は例外で、2026-09-09 に意図して変更した。**
+本節の方針を破っているので理由を残す。ブロックの実体は SSG ×2 ではなく
+SSGS 1 個（内部に SSG 2 系統）なので、`SSG` を名乗る名前が実体と合っていなかった。
+
+| 項目 | 旧 | 新 |
+|---|---|---|
+| デバイス型名 | `Y8960-SSG` | `Y8960-SSGS` |
+| サウンドデバイス名 / XML の id | `Y8960 SSG` | `Y8960 SSGS` |
+| XML の結線要素 | `<ssg>` | `<ssgs>` |
+| 実装ファイル | `Y8960SSG.{cc,hh}` / `Y8960SSGDevice.{cc,hh}` | `Y8960SSGS.{cc,hh}` / `Y8960SSGSDevice.{cc,hh}` |
+
+**代償**: 型名は `REGISTER_MSXDEVICE` 経由でセーブステートの型名になるため、
+**改名前のセーブステートは読めなくなる**。
+`Y8960SsgCore` は改名していない。これは SSGS 内部の SSG 1 系統
+（YM2149 相当）を表しており、名前が実体と合っているため。
 
 ### 4.2 Phase 1 で追加した分（確定済み）
 
@@ -550,3 +566,33 @@ OPLL 側は同じ規則で xlsx と一致していたので、食い違うのは
   マニュアル §3.1 の「起動直後は無効」とも食い違う。
   FM-PAC と同じ手順（7FF6h に 01h）では 7Ch 側が開かない。
   I/O enabler を実装する段で決める必要がある。確認事項
+
+### 2026-09-09 (4) — SSGS の名前を実体に合わせた
+
+- ユーザーから数え方の訂正。**「SSG が 2 系統」ではなく「SSGS が 1 系統で、
+  その内部に SSG が 2 系統」**。実装（`NUM_UNITS = 2`）はこれで正しく、
+  直したのは文言と外に出る名前だけ
+- **決定: 外に出る名前を `SSG` から `SSGS` に改名した**（§4.1 に一覧と代償）。
+  型名 `Y8960-SSG`→`Y8960-SSGS`、id `Y8960 SSG`→`Y8960 SSGS`、
+  XML の結線要素 `<ssg>`→`<ssgs>`、実装ファイル 4 本。
+  改名前のセーブステートは読めなくなる（型名がセーブステートに入るため）
+- **`Y8960SsgCore` は改名しなかった。** SSGS 内部の SSG 1 系統を表しており、
+  名前が実体と合っているため
+- ついでに `Y8960SsgCore.cc` のコメントを直した。AY8910 からフォークした際の
+  一括置換で、**チップ名 `AY8910` がクラス名に化けていた** 7 か所
+  （「real Y8960SsgCore and YM2149 chips」など）。実チップの挙動を述べた
+  コメントなので、チップ名に戻した
+- **改名後のビルドと検証（確認済み）**
+  - ビルド 0 エラー / 8 警告 / 1 分 38 秒（差分ビルド）
+  - `-testconfig -machine C-BIOS_MSX2+ -ext HRA_Y8960` が終了コード 0
+  - `machine_info device` が `Y8960 SSGS : type Y8960-SSGS` を返す
+  - `tests/ssgs-write-only.tcl` が 4 項目すべて期待値どおり
+    （enabler 閉で reg0=0x00、A2h の読み戻しが 0x5A / 0xA5、
+    enabler 開で SSGS と PSG の両方に 0x5A が届く）
+  - `tests/ssgs-panpot.tcl` + `check-ssgs-panpot.py` が OK。
+    `left` が L=32767/R=0、`right` が L=0/R=32767 で、
+    パンポットが効かなければ 3 本とも center と同じ L=R になる試験である
+- **事故**: XML の編集で、直前の編集による行ずれを見ずに行番号指定の `sed` を
+  当て、`<channel num="4" idref="Y8960 SSGS"/>` を上書きして消した。
+  `git diff` で気づいて復旧した。行番号は編集のたびに変わるので、
+  行番号ではなく文字列で位置を指定すること

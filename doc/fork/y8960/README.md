@@ -16,7 +16,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
-| `tests/ssgs-panpot.tcl` | SSGS のパンポットと 2 系統の分離の回帰テスト |
+| `tests/ssgs-panpot.tcl` | SSGS のパンポットと SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
 
@@ -43,7 +43,7 @@ Y8960_TEST_OUT="$OUT/opll.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -sc
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-waveform.tcl"
 py $T/check-opl2-waveform.py "$OUT"
 
-# 3. SSGS のパンポットと 2 系統の分離
+# 3. SSGS のパンポットと SSG 2 系統の分離
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-panpot.tcl"
 py $T/check-ssgs-panpot.py "$OUT"
 

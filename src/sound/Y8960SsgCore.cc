@@ -245,7 +245,7 @@ inline void Y8960SsgCore::NoiseGenerator::doNextEvent()
 
 	// The Random Number Generator of the 8910 is a 17-bit shift register.
 	// The input to the shift register is bit0 XOR bit3 (bit0 is the
-	// output). Verified on real Y8960SsgCore and YM2149 chips.
+	// output). Verified on real AY8910 and YM2149 chips.
 	//
 	// Fibonacci configuration:
 	//   random ^= ((random & 1) ^ ((random >> 3) & 1)) << 17;
@@ -349,9 +349,9 @@ inline bool Y8960SsgCore::Amplitude::followsEnvelope(unsigned chan) const
 
 // Envelope:
 
-// Y8960SsgCore and YM2149 behave different here:
+// AY8910 and YM2149 behave different here:
 //  YM2149 envelope goes twice as fast and has twice as many levels. Here
-//  we implement the YM2149 behaviour, but to get the Y8960SsgCore behaviour we
+//  we implement the YM2149 behaviour, but to get the AY8910 behaviour we
 //  repeat every level twice in the envVolTable
 
 inline Y8960SsgCore::Envelope::Envelope(std::span<const float, 32> envVolTable_)
@@ -366,7 +366,7 @@ inline void Y8960SsgCore::Envelope::reset()
 
 inline void Y8960SsgCore::Envelope::setPeriod(int value)
 {
-	// twice as fast as Y8960SsgCore
+	// twice as fast as AY8910
 	//  see also Generator::setPeriod()
 	period = std::max(1, 2 * value);
 	count = std::min(count, period - 1);
@@ -379,7 +379,7 @@ inline float Y8960SsgCore::Envelope::getVolume() const
 
 inline void Y8960SsgCore::Envelope::setShape(unsigned shape)
 {
-	// do 32 steps for both Y8960SsgCore and YM2149
+	// do 32 steps for both AY8910 and YM2149
 	/*
 	envelope shapes:
 		C AtAlH
@@ -519,7 +519,7 @@ uint8_t Y8960SsgCore::readRegister(unsigned reg, EmuTime time)
 {
 	if (reg >= 16) return 255;
 
-	// TODO some Y8960SsgCore models have 1F as mask for registers 1, 3, 5
+	// TODO some AY8910 models have 1F as mask for registers 1, 3, 5
 	static constexpr std::array<uint8_t, 16> regMask = {
 		0xff, 0x0f, 0xff, 0x0f, 0xff, 0x0f, 0x1f, 0xff,
 		0x1f, 0x1f ,0x1f, 0xff, 0xff, 0x0f, 0xff, 0xff
@@ -559,7 +559,7 @@ void Y8960SsgCore::wrtReg(unsigned reg, uint8_t value, EmuTime time)
 		//
 		// Verified on turboR GT: value=0 and value=1 sound the same.
 		//
-		// Likely in real Y8960SsgCore this is implemented by driving the
+		// Likely in real AY8910 this is implemented by driving the
 		// noise generator at halve the frequency instead of
 		// multiplying the value by 2 (hence the correction for value=0
 		// here). But the effect is the same(?).
