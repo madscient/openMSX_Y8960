@@ -11,12 +11,42 @@
 namespace openmsx {
 
 class DeviceConfig;
-class Y8950;
+
+/** What Y8950Adpcm needs from the chip that owns it.
+  * The Y8960's OPL2 block has the same status register as the Y8950, so it
+  * can host this same ADPCM implementation without duplicating it.
+  */
+class Y8950Status
+{
+public:
+	// Bitmask for register 0x04
+	static constexpr int R04_ST1          = 0x01; // Timer1 Start
+	static constexpr int R04_ST2          = 0x02; // Timer2 Start
+	static constexpr int R04_MASK_BUF_RDY = 0x08; // Mask 'Buffer Ready'
+	static constexpr int R04_MASK_EOS     = 0x10; // Mask 'End of sequence'
+	static constexpr int R04_MASK_T2      = 0x20; // Mask Timer2 flag
+	static constexpr int R04_MASK_T1      = 0x40; // Mask Timer1 flag
+	static constexpr int R04_IRQ_RESET    = 0x80; // IRQ RESET
+
+	// Bitmask for status register
+	static constexpr int STATUS_PCM_BSY = 0x01;
+	static constexpr int STATUS_EOS     = R04_MASK_EOS;
+	static constexpr int STATUS_BUF_RDY = R04_MASK_BUF_RDY;
+	static constexpr int STATUS_T2      = R04_MASK_T2;
+	static constexpr int STATUS_T1      = R04_MASK_T1;
+
+	virtual void setStatus(uint8_t flags) = 0;
+	virtual void resetStatus(uint8_t flags) = 0;
+	[[nodiscard]] virtual uint8_t peekRawStatus() const = 0;
+
+protected:
+	~Y8950Status() = default;
+};
 
 class Y8950Adpcm final : public Schedulable
 {
 public:
-	Y8950Adpcm(Y8950& y8950, const DeviceConfig& config,
+	Y8950Adpcm(Y8950Status& host, const DeviceConfig& config,
 	           const std::string& name, unsigned sampleRam);
 
 	void clearRam();
@@ -61,7 +91,7 @@ private:
 	[[nodiscard]] int calcSample(bool doEmu);
 
 private:
-	Y8950& y8950;
+	Y8950Status& host;
 	TrackedRam ram;
 
 	// copy/pasted from Y8950.hh
