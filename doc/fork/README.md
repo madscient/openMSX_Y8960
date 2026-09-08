@@ -34,6 +34,5 @@ openMSX は **GPL-2.0-only** である（`meson.build` の `license` 宣言）�
 
 帰属表示が要るものは README に書いてある。特に
 `src/sound/YM2413NukeYKTBanked.cc` の OPLL-X / OPLL-P / VRC7 音色データは
-CC BY-SA として David Viens / Hubert Lamontagne の表示が要る。
-**出所は buppu3 さんに未確認**（音色名とコメント様式からの推定）。
-確認が取れたら README の該当箇所を断定形に直すこと。
+"Copyright free OPLL(x) ROM patches" (David Viens / Hubert Lamontagne) 由来で、
+CC BY-SA なので帰属表示を落とせない。**出所は確認済み**（2026-09-09）。
