@@ -26,8 +26,9 @@
 //  	I/O Enabler2: 0x7FFF
 //					b0: open OPL2-0 I/O ports (0xC0-0xC1)
 //					b1: open OPL2-1 I/O ports (0xC2-0xC3)
-//					b2/b3 (DCSG), b4 (SSG) and b7 (timer) are not wired up:
-//					those blocks have no gate yet and are always reachable.
+//					b4: open the SSGS I/O ports (0xA0-0xA2)
+//					b2/b3 (DCSG) and b7 (timer) are not wired up: those
+//					blocks have no gate yet and are always reachable.
 //
 //  	SCC:		0x9800 - 0x9FFF(bank#63)
 //					SCC sound register
@@ -124,6 +125,16 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 		opl2_1 = dynamic_cast<Y8960OPL2Device*>(getMotherBoard().findDevice(devName4));
 		if (opl2_1 == nullptr) {
 			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName4, "'.");
+		}
+	}
+
+	std::string_view devName5 = config.getChildData("ssg", "");
+	if (devName5 == "") {
+		ssg = nullptr;
+	} else {
+		ssg = dynamic_cast<Y8960SSGDevice*>(getMotherBoard().findDevice(devName5));
+		if (ssg == nullptr) {
+			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName5, "'.");
 		}
 	}
 
@@ -283,6 +294,9 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		}
 		if(opl2_1 != nullptr) {
 			opl2_1->setIoEnabled((value & 0x02) != 0);
+		}
+		if(ssg != nullptr) {
+			ssg->setIoEnabled((value & 0x10) != 0);
 		}
 	}
 

@@ -16,6 +16,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
+| `tests/ssgs-panpot.tcl` | SSGS のパンポットと 2 系統の分離の回帰テスト |
+| `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
