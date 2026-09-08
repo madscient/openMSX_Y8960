@@ -57,7 +57,26 @@ Y8960 なら `doc/fork/y8960/implementation-plan.md`。口頭で終えない。
 主張には確度を併記する。走らせて確かめたなら**確認済み**とその手段を、
 作っただけなら**未検証**、出典を示せないなら**推測**と根拠を一行。
 
-## 5. ビルド
+## 5. openMSX を走らせるとき
+
+**ウィンドウを出さない。** テストやスモークテストで openmsx.exe を起動するときは、
+Tcl スクリプトの**先頭**に必ず次の 2 行を置く。
+
+```tcl
+set renderer none
+set sound_driver null
+```
+
+設定が効く前にウィンドウが作られてしまうので、位置が先頭であることに意味がある。
+
+理由は、ウィンドウが出るとキーボード入力を奪い、**人間の並行作業と衝突して
+事故になる**こと。実際にウィンドウが出ないことは、プロセスの MainWindowHandle が
+0 になることで確認できる。`renderer none` でも `recordChannel` による WAV 録音は
+成立するので、音を測るテストも書ける。
+
+`-testconfig` は構成を検証して終了するだけなのでウィンドウを作らない。
+
+## 6. ビルド
 
 このマシン固有の詰まりどころが `doc/fork/build/README.md` にある。
 msbuild には `-p:PlatformToolset=v145 -p:VcpkgEnabled=false` が要る。
