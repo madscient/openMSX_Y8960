@@ -158,6 +158,7 @@ void RomY8960::reset(EmuTime time)
 	}
 
 	sccEnabled = false;
+	ramEnabled = false;
 	scc.reset(time);
 }
 
