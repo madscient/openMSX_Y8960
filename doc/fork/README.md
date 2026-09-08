@@ -50,8 +50,8 @@ upstream の文書で変更しているのはルートの `README` だけ。
 | DCSG ×2 | 実装済み（`SNPSG` をそのまま、3Eh / 3Fh） |
 | OPLL ×2 | 実装済み（チャンネル別音色バンク付き YM2413） |
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`） |
-| MSX-TIMER | 実装済み |
-| デジタルミキサー | 実装済み |
+| MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定） |
+| デジタルミキサー | 実装済み（B6h-B7h。アドレスは暫定） |
 | OPL2 + ADPCM-B ×2 | 実装済み（OPL2 波形選択つき） |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の 2 ビット） |
 | I/O Enabler2 (7FFFh) | OPL2 (b0/b1) と SSG (b4)。DCSG (b2/b3) とタイマー (b7) は未実装 |
