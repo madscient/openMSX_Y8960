@@ -4,7 +4,7 @@ Y8960 カートリッジのエミュレーションを openMSX に追加する�
 Y8960 対応は upstream には存在しない独自機能である。
 
 実装状況の一覧と外部リポジトリとの関係は `doc/fork/README.md`、
-作業時の規則は `doc/fork/CLAUDE.md` にある。
+作業時の規則はルートの `CLAUDE.md` にある。
 
 ## 文書一覧
 
@@ -26,4 +26,4 @@ Y8960 の実装本体は buppu3/openMSX の `y8960` ブランチ由来で、
 
 一次仕様である hra1129/Y8960_Cartridge からは**何も取り込んでいない**。
 `hardware-notes.md` は RTL と仕様書を読解した結果の記述であって、複製ではない。
-理由は `doc/fork/CLAUDE.md` §1。
+理由はルートの `CLAUDE.md` §1。
