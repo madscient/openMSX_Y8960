@@ -130,7 +130,8 @@ port 3E:      O Y8960 DCSG 0
 port 3F:      O Y8960 DCSG 1
 port 7A-7B:   O Y8960 OPLL 1
 port 7C-7D:   O C-BIOS MSX-MUSIC, Y8960 OPLL 0
-port A0-A3: I/O PSG, Y8960 SSG
+port A0-A3: I   PSG
+port A0-A3:   O PSG, Y8960 SSG
 port B0-B3: I/O y8960-timer
 port B6-B7: I/O y8960-mixer
 port C0-C1: I/O Y8960 OPL2 0
@@ -143,7 +144,8 @@ port C2-C3: I/O Y8960 OPL2 1
   ソフトが明示的に開くまで重ならない。
   切り分けたいときは、本体側の MSX-MUSIC を外した機種でテストするのが早い
 - A0-A3 の重なりも**設計どおり**。SSGS は 1 デバイスで、系統は
-  レジスタポインタの bit5 で振り分けられる（§3.6）
+  レジスタポインタの bit5 で振り分けられる（§3.6）。
+  **読み出しは本体 PSG だけ**で、カートリッジ版の SSGS はライトオンリーである
 
 ### 3.3 I/O enabler — OPLL 分だけ実装済み
 
