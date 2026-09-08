@@ -11,11 +11,23 @@
 //  	OPLL1: 		0x7FF2 - 0x7FF3
 //					tunnel to OPLL1 I/O port
 //
+//  	OPL2-0:     0x7FEC - 0x7FED
+//					tunnel to OPL2-0 I/O port
+//
+//  	OPL2-1:     0x7FEE - 0x7FEF
+//					tunnel to OPL2-1 I/O port
+//
 //  	I/O Enabler1: 0x7FF6
 //					b0: open OPLL0 I/O ports (0x7C-0x7D)
 //					b1: open OPLL1 I/O ports (0x7A-0x7B)
 //					Both are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
+//
+//  	I/O Enabler2: 0x7FFF
+//					b0: open OPL2-0 I/O ports (0xC0-0xC1)
+//					b1: open OPL2-1 I/O ports (0xC2-0xC3)
+//					b2/b3 (DCSG), b4 (SSG) and b7 (timer) are not wired up:
+//					those blocks have no gate yet and are always reachable.
 //
 //  	SCC:		0x9800 - 0x9FFF(bank#63)
 //					SCC sound register
@@ -92,6 +104,26 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 		opll_1 = dynamic_cast<Y8960OPLL*>(getMotherBoard().findDevice(devName2));
 		if (opll_1 == nullptr) {
 			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName2, "'.");
+		}
+	}
+
+	std::string_view devName3 = config.getChildData("opl2_0", "");
+	if (devName3 == "") {
+		opl2_0 = nullptr;
+	} else {
+		opl2_0 = dynamic_cast<Y8960OPL2Device*>(getMotherBoard().findDevice(devName3));
+		if (opl2_0 == nullptr) {
+			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName3, "'.");
+		}
+	}
+
+	std::string_view devName4 = config.getChildData("opl2_1", "");
+	if (devName4 == "") {
+		opl2_1 = nullptr;
+	} else {
+		opl2_1 = dynamic_cast<Y8960OPL2Device*>(getMotherBoard().findDevice(devName4));
+		if (opl2_1 == nullptr) {
+			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName4, "'.");
 		}
 	}
 
@@ -226,6 +258,31 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 	if ((address & 0xFFFE) == 0x7FF2) {
 		if(opll_1 != nullptr) {
 			opll_1->writePort(address & 1, value, time);
+		}
+	}
+
+	// write to OPL2-0. Address bit 1 picks the circuit on the real hardware,
+	// so 7FECh goes to the same one that 0xC0-0xC1 reaches.
+	if ((address & 0xFFFE) == 0x7FEC) {
+		if(opl2_0 != nullptr) {
+			opl2_0->writePort(address & 1, value, time);
+		}
+	}
+
+	// write to OPL2-1
+	if ((address & 0xFFFE) == 0x7FEE) {
+		if(opl2_1 != nullptr) {
+			opl2_1->writePort(address & 1, value, time);
+		}
+	}
+
+	// write to I/O Enabler2
+	if (address == 0x7FFF) {
+		if(opl2_0 != nullptr) {
+			opl2_0->setIoEnabled((value & 0x01) != 0);
+		}
+		if(opl2_1 != nullptr) {
+			opl2_1->setIoEnabled((value & 0x02) != 0);
 		}
 	}
 
