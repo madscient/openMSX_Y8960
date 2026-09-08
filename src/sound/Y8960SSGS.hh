@@ -1,5 +1,5 @@
-#ifndef Y8960SSG_HH
-#define Y8960SSG_HH
+#ifndef Y8960SSGS_HH
+#define Y8960SSGS_HH
 
 #include "ResampledSoundDevice.hh"
 #include "Y8960SsgCore.hh"
@@ -32,7 +32,7 @@ namespace openmsx {
   * This is one stereo sound device rather than two mono ones because the
   * panpot is per channel, while openMSX only has a balance per device.
   */
-class Y8960SSG final : public ResampledSoundDevice
+class Y8960SSGS final : public ResampledSoundDevice
 {
 public:
 	static constexpr unsigned NUM_UNITS = 2;
@@ -43,8 +43,8 @@ public:
 	static constexpr uint8_t PAN_MAX = 15;
 	static constexpr uint8_t PAN_CENTER = (PAN_MAX + 1) / 2;
 
-	Y8960SSG(const std::string& name, const DeviceConfig& config, EmuTime time);
-	~Y8960SSG();
+	Y8960SSGS(const std::string& name, const DeviceConfig& config, EmuTime time);
+	~Y8960SSGS();
 
 	void reset(EmuTime time);
 	void writeRegister(unsigned reg, uint8_t value, EmuTime time);

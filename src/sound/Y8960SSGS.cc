@@ -1,4 +1,4 @@
-#include "Y8960SSG.hh"
+#include "Y8960SSGS.hh"
 
 #include "DeviceConfig.hh"
 #include "MSXMotherBoard.hh"
@@ -14,7 +14,7 @@ namespace openmsx {
 // The cores run at the same rate the AY8910 does.
 static constexpr int NATIVE_FREQ_INT = 3579545 / 2 / 8;
 
-Y8960SSG::Y8960SSG(const std::string& name_, const DeviceConfig& config, EmuTime time)
+Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTime time)
 	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 SSGS",
 	                       NUM_CHANNELS, NATIVE_FREQ_INT, true)
 	, unit{Y8960SsgCore(name_ + " unit0", config, time),
@@ -27,19 +27,19 @@ Y8960SSG::Y8960SSG(const std::string& name_, const DeviceConfig& config, EmuTime
 	registerSound(config);
 }
 
-Y8960SSG::~Y8960SSG()
+Y8960SSGS::~Y8960SSGS()
 {
 	unregisterSound();
 }
 
-void Y8960SSG::reset(EmuTime time)
+void Y8960SSGS::reset(EmuTime time)
 {
 	for (auto& u : unit) u.reset(time);
 	std::ranges::fill(pan, PAN_CENTER);
 	measureDc();
 }
 
-void Y8960SSG::measureDc()
+void Y8960SSGS::measureDc()
 {
 	// Generate a single sample with everything silent to find out where the
 	// zero level of each channel sits.
@@ -59,7 +59,7 @@ void Y8960SSG::measureDc()
 // this follows the YMZ280B of the same family: both sides open at the centre,
 // the opposite side closing linearly as the value moves away, and the two
 // extreme steps hard over to one side.
-void Y8960SSG::panGains(uint8_t pan_, float& gainL, float& gainR)
+void Y8960SSGS::panGains(uint8_t pan_, float& gainL, float& gainR)
 {
 	if (pan_ == PAN_CENTER) {
 		gainL = 1.0f;
@@ -74,7 +74,7 @@ void Y8960SSG::panGains(uint8_t pan_, float& gainL, float& gainR)
 	}
 }
 
-void Y8960SSG::writeRegister(unsigned reg, uint8_t value, EmuTime time)
+void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 {
 	if (reg >= 0x40) return; // ADPCM / sequencer area, not used by the Y8960
 
@@ -90,12 +90,12 @@ void Y8960SSG::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 	// $0E-$0F do not exist, these parts have no I/O ports
 }
 
-uint8_t Y8960SSG::readRegister(unsigned reg, EmuTime time)
+uint8_t Y8960SSGS::readRegister(unsigned reg, EmuTime time)
 {
 	return peekRegister(reg, time);
 }
 
-uint8_t Y8960SSG::peekRegister(unsigned reg, EmuTime time) const
+uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const
 {
 	if (reg >= 0x40) return 0xFF;
 
@@ -109,12 +109,12 @@ uint8_t Y8960SSG::peekRegister(unsigned reg, EmuTime time) const
 	return 0xFF;
 }
 
-float Y8960SSG::getAmplificationFactorImpl() const
+float Y8960SSGS::getAmplificationFactorImpl() const
 {
 	return unit[0].getAmplificationFactor();
 }
 
-void Y8960SSG::generateChannels(std::span<float*> bufs, unsigned num)
+void Y8960SSGS::generateChannels(std::span<float*> bufs, unsigned num)
 {
 	// The cores produce mono; collect that first and then spread it over
 	// the stereo output with the panpot.
@@ -148,25 +148,25 @@ void Y8960SSG::generateChannels(std::span<float*> bufs, unsigned num)
 
 // SimpleDebuggable
 
-Y8960SSG::Debuggable::Debuggable(MSXMotherBoard& motherBoard_, const std::string& name_)
+Y8960SSGS::Debuggable::Debuggable(MSXMotherBoard& motherBoard_, const std::string& name_)
 	: SimpleDebuggable(motherBoard_, name_ + " regs", "Y8960 SSGS", 0x40)
 {
 }
 
-uint8_t Y8960SSG::Debuggable::read(unsigned address, EmuTime time)
+uint8_t Y8960SSGS::Debuggable::read(unsigned address, EmuTime time)
 {
-	const auto& ssg = OUTER(Y8960SSG, debuggable);
+	const auto& ssg = OUTER(Y8960SSGS, debuggable);
 	return ssg.peekRegister(address, time);
 }
 
-void Y8960SSG::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
+void Y8960SSGS::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
 {
-	auto& ssg = OUTER(Y8960SSG, debuggable);
+	auto& ssg = OUTER(Y8960SSGS, debuggable);
 	ssg.writeRegister(address, value, time);
 }
 
 template<typename Archive>
-void Y8960SSG::serialize(Archive& ar, unsigned /*version*/)
+void Y8960SSGS::serialize(Archive& ar, unsigned /*version*/)
 {
 	ar.serialize("unit0", unit[0],
 	             "unit1", unit[1],
@@ -175,6 +175,6 @@ void Y8960SSG::serialize(Archive& ar, unsigned /*version*/)
 		measureDc();
 	}
 }
-INSTANTIATE_SERIALIZE_METHODS(Y8960SSG);
+INSTANTIATE_SERIALIZE_METHODS(Y8960SSGS);
 
 } // namespace openmsx

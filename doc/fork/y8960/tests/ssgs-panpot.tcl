@@ -1,4 +1,4 @@
-# Y8960 の SSGS のパンポット ($10-$12) と 2 系統の分離、
+# Y8960 の SSGS のパンポット ($10-$12) と SSG 2 系統の分離、
 # および I/O Enabler2 (7FFFh) の b4 の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script ssgs-panpot.tcl
@@ -9,8 +9,8 @@
 #
 # 判別力があるのは left と right で、パンポットが効いていなければ
 # 3 本とも center と同じ（L=R）になる。unit1 は $20 起点に書いた音が
-# 4 番目のチャンネルから出ることを見ており、2 系統の分離を確かめている。
-# 最初に 7FFFh へ書いているのは、それが無いと SSG の I/O が閉じたままで
+# 4 番目のチャンネルから出ることを見ており、SSG 2 系統の分離を確かめている。
+# 最初に 7FFFh へ書いているのは、それが無いと SSGS の I/O が閉じたままで
 # 何も鳴らないため。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
@@ -46,13 +46,13 @@ proc capture {name base pan chan} {
 	mem_write 0x7FFF 0x10        ;# I/O Enabler2 b4: SSG を開く
 	note $base
 	w [expr {$base+0x10}] $pan   ;# ch A のパンポット
-	set "::Y8960 SSG_ch${chan}_record" "$OUT/$name.wav"
+	set "::Y8960 SSGS_ch${chan}_record" "$OUT/$name.wav"
 	after time 1 [list stop $name]
 }
 
 proc stop {name} {
-	set "::Y8960 SSG_ch1_record" ""
-	set "::Y8960 SSG_ch4_record" ""
+	set "::Y8960 SSGS_ch1_record" ""
+	set "::Y8960 SSGS_ch4_record" ""
 	global step ; incr step ; next
 }
 
