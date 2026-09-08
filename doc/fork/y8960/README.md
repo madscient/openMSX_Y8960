@@ -23,6 +23,46 @@ Y8960 対応は upstream には存在しない独自機能である。
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
 
+## テストの回し方
+
+すべて手で回す。ビルド手順は `doc/fork/build/README.md`。
+`openmsx.exe` はコンソールに何も出さないので、結果はファイルに出る。
+
+```sh
+EXE=./derived/x64-VC-Release/install/openmsx.exe
+export OPENMSX_SYSTEM_DATA="$(pwd)/share"
+export OPENMSX_USER_DATA="$(pwd)/derived/openmsx-user"
+T=doc/fork/y8960/tests
+OUT=/tmp/y8960   # 任意の出力先
+mkdir -p "$OUT"
+
+# 1. OPLL の I/O Enabler (7FF6h)。$OUT/opll.txt を目で見る
+Y8960_TEST_OUT="$OUT/opll.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opll-enabler.tcl"
+
+# 2. OPL2 の波形選択。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-waveform.tcl"
+py $T/check-opl2-waveform.py "$OUT"
+
+# 3. SSGS のパンポットと 2 系統の分離
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-panpot.tcl"
+py $T/check-ssgs-panpot.py "$OUT"
+
+# 4. SSGS がリードに反応しないこと。$OUT/wo.txt を目で見る
+Y8960_TEST_OUT="$OUT/wo.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-write-only.tcl"
+```
+
+既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
+
+```sh
+for e in audio audio2 Panasonic_FS-CA1 2nd_PSG; do
+    $EXE -testconfig -machine C-BIOS_MSX2+ -ext "$e"; echo "$e: $?"
+done
+```
+
+判定スクリプトのある 2 本は、**期待値を壊すと落ちること**も確かめてある
+（例: `ws2.wav` を `ws0.wav` で置き換えると NG になる）。
+テストを足すときも同じ確認をすること。
+
 ## 取り込み元
 
 Y8960 の実装本体は buppu3/openMSX の `y8960` ブランチ由来で、
