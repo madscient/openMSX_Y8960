@@ -31,13 +31,13 @@
     </PSG>
     <!-- DCSG は 1 ポートずつで、アドレス bit0 が 2 回路のどちらかを選ぶ -->
     <SNPSG id="Y8960 DCSG 0">
-      <io base="0x7E" num="1" type="O"/>
+      <io base="0x3E" num="1" type="O"/>
       <sound>
         <volume>21000</volume>
       </sound>
     </SNPSG>
     <SNPSG id="Y8960 DCSG 1">
-      <io base="0x7F" num="1" type="O"/>
+      <io base="0x3F" num="1" type="O"/>
       <sound>
         <volume>21000</volume>
       </sound>
