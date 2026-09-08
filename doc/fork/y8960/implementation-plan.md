@@ -56,7 +56,7 @@ Y8960 カートリッジ（hra1129/Y8960_Cartridge）を openMSX の拡張機器
 （`fd90ed560..91bd0e7ad`、`git log buppu3/v9968..buppu3/y8960` で取れる）。
 
 V9968 は取り込まないので、**この 15 コミットだけを最新 master に cherry-pick** した。
-ローカルブランチ名は `y8960`。`origin` は openMSX/openMSX のまま、
+載せ替え先のローカルブランチは `main`。`origin` は openMSX/openMSX のまま、
 `buppu3` は 2 つ目の remote として残してある。
 
 - cherry-pick で著者情報（buppu3）は保持される
@@ -68,7 +68,7 @@ V9968 は取り込まないので、**この 15 コミットだけを最新 mast
 再現するなら:
 
 ```sh
-git checkout -b y8960 master
+git checkout -b main master
 git cherry-pick fd90ed560..91bd0e7ad
 ```
 
@@ -273,7 +273,7 @@ DCSG は 1 ポートずつで、**アドレス bit0 が 2 回路のどちらか�
 
 - ビルド環境の構築 → `doc/fork/build/README.md`（済み）
 - `buppu3` remote の追加と、`buppu3/y8960` を追跡するローカルブランチ `y8960`（済み）
-- `y8960` ブランチのビルドと起動確認（済み）。
+- 作業ブランチのビルドと起動確認（済み）。
   `-ext HRA_Y8960` を挿した構成で Y8960 の全デバイスが登録されることを
   `machine_info` で確認した
 - **残**: hra1129 さんへの I/O アドレス確認（§4.3）
@@ -360,6 +360,7 @@ DCSG は 1 ポートずつで、**アドレス bit0 が 2 回路のどちらか�
 - 発見: **7Ch で本体 MSX-MUSIC と衝突する**（§3.2.1）。I/O enabler 未実装が原因で、
   実機では起きない。§7 の保留事項「I/O enabler を実装する」の優先度が上がった
 - 未決: ミキサー 40h-41h（§4.3）。hra1129 さんへの確認事項
+- 作業ブランチを `y8960` から `main` にリネーム（公開リポジトリの既定ブランチにするため）
 
 ### 2026-09-09
 
