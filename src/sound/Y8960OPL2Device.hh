@@ -21,7 +21,7 @@ public:
 
 	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
 	  * メモリマップド I/O からの writePort() はこれに影響されない。 */
-	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	void setIoEnabled(bool enabled) { if (useIoEnabler) ioEnabled = enabled; }
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
@@ -29,7 +29,8 @@ public:
 private:
 	Y8960OPL2 opl2;
 	byte registerLatch;
-	bool ioEnabled = false;
+	const bool useIoEnabler;
+	bool ioEnabled;
 };
 SERIALIZE_CLASS_VERSION(Y8960OPL2Device, 1);
 
