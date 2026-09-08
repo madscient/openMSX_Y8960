@@ -10,6 +10,11 @@
 # あわせて enabler も見る。7FFFh を書かないうちは C0h-C1h への書き込みが
 # 落ちるので、最初の capture が 7FFFh を開けている点に意味がある。
 
+# 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
+# この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
+set renderer none
+set sound_driver null
+
 set OUTDIR [expr {[info exists ::env(Y8960_TEST_OUT)] ? $::env(Y8960_TEST_OUT) : "."}]
 
 proc mem_write {offset val} {

@@ -10,6 +10,11 @@
 # enabler を実装する前は writeIO() が無条件に転送していたので、
 # 2 では 0x11/0x22 が、4 では OPLL0=0x55 が入っていた。
 
+# 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
+# この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
+set renderer none
+set sound_driver null
+
 set OUTPATH [expr {[info exists ::env(Y8960_TEST_OUT)] ? $::env(Y8960_TEST_OUT)
                                                        : "y8960-enabler-test.txt"}]
 set OUT [open $OUTPATH w]
