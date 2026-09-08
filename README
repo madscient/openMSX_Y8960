@@ -1,4 +1,63 @@
 ----------------------------------------------------------------------------
+This is an unofficial fork of openMSX
+----------------------------------------------------------------------------
+
+It adds emulation of the Y8960 Cartridge, a sound cartridge for the MSX
+designed by HRA! (hra1129). The hardware itself is still work in progress,
+so the emulation follows a moving target and is expected to change.
+
+Upstream openMSX does not contain any of this. Report problems here, not to
+the openMSX developers.
+
+    upstream:  https://github.com/openMSX/openMSX
+
+What is added
+-------------
+
+    Y8960-OPLL      YM2413 with a per-channel preset tone bank
+    Y8960-MIXER     the cartridge's digital mixer
+    MSX-TIMER       the cartridge's timer block
+    Y8960 ROM type  SCC plus the cartridge's mapper
+    PSG chip_select two SSG circuits sharing one register space
+    share/extensions/HRA_Y8960.xml
+
+    Not implemented yet: the OPL2 + ADPCM-B block.
+
+Notes for this fork are under doc/fork/. They are written in Japanese and
+are aimed at developers, not at end users.
+
+Credits
+-------
+
+The Y8960 emulation started from the work of buppu3, taken from the 'y8960'
+branch of https://github.com/buppu3/openMSX and rebased onto current
+openMSX. Their commits keep their original authorship. The V9968 VDP
+emulation that lives on the same branch is deliberately not included here.
+
+The hardware, its documentation and the FPGA sources are by HRA! (hra1129),
+https://github.com/hra1129/Y8960_Cartridge . Nothing from that repository is
+copied into this one: its license forbids commercial use, which is not
+compatible with the GPL that openMSX is released under. The emulation was
+written from reading the specification.
+
+src/sound/YM2413NukeYKTBanked.cc carries preset tone data for the OPLL-X,
+OPLL-P and VRC7 tone banks in addition to the YM2413 ones. That data is
+believed to come from "Copyright free OPLL(x) ROM patches" by David Viens
+and Hubert Lamontagne:
+
+    https://github.com/plgDavid/misc/wiki/Copyright-free-OPLL(x)-ROM-patches
+
+It is licensed CC BY-SA, so redistribution has to keep this attribution.
+The provenance has not been confirmed with the original author of that file;
+if you know better, please say so.
+
+License
+-------
+
+Same as openMSX: GNU General Public License version 2, see doc/GPL.txt. The
+notice below is the original openMSX README.
+
+----------------------------------------------------------------------------
 openMSX - the MSX emulator that aims for perfection
 ----------------------------------------------------------------------------
 
