@@ -252,6 +252,7 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
 
 1. **DCSG の I/O アドレス**: xlsx `dcsg` シートは **3Eh/3Fh**、
    RTL は **7Eh/7Fh** (`c_dcsg_io = 8'h7E`)。bit6 が違う。
+   **決着済み**: 2026-09-09 に hra1129 さんが 3Eh/3Fh を正と回答。RTL が古い。
 2. **OPLL の enable ビットとリセット時の状態**（§6.1 に詳述）。
    回路とアドレスの対応は RTL と xlsx で一致しているが、
    7FF6h の enable ビットの割り当てが xlsx と RTL で逆になっており、
