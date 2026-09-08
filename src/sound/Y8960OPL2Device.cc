@@ -10,6 +10,8 @@ Y8960OPL2Device::Y8960OPL2Device(const DeviceConfig& config)
 	       config.getChildDataAsInt("sampleram", 256) * 1024,
 	       getCurrentTime())
 	, registerLatch(0)
+	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
+	, ioEnabled(!useIoEnabler)
 {
 	reset(getCurrentTime());
 }
@@ -18,7 +20,7 @@ void Y8960OPL2Device::reset(EmuTime time)
 {
 	opl2.reset(time);
 	registerLatch = 0;
-	ioEnabled = false;
+	ioEnabled = !useIoEnabler;
 }
 
 byte Y8960OPL2Device::readIO(uint16_t port, EmuTime time)
