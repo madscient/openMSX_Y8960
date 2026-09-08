@@ -1,7 +1,8 @@
 # このフォークで作業するときの規則
 
 本リポジトリは upstream の openMSX (https://github.com/openMSX/openMSX) の
-unofficial fork である。事実関係と文書の索引は `README.md` を見ること。
+unofficial fork である。**本書は upstream には無い、このフォーク固有のファイル。**
+事実関係と文書の索引は `doc/fork/README.md` を見ること。
 
 ## 1. 持ち込んではいけないもの
 
@@ -13,7 +14,7 @@ openMSX は **GPL-2.0-only**（`meson.build` の `license` 宣言）。
   商業的な製品や活動に使用しないこと」を課している。
   非商用制限は GPL と両立しない
 
-`y8960/hardware-notes.md` は**読解した事実の記述**であって、コードや文章の
+`doc/fork/y8960/hardware-notes.md` は**読解した事実の記述**であって、コードや文章の
 複製ではない。仕様を参照するのは構わないが、この線を越えない。
 
 ## 2. 落としてはいけない帰属表示
@@ -29,8 +30,8 @@ openMSX は **GPL-2.0-only**（`meson.build` の `license` 宣言）。
 `doc/` 直下や `doc/internal/` は upstream の文書が入る階層なので、そこには足さない。
 upstream を取り込むときに衝突せず、どれがフォークの成果物かが階層で分かる。
 
+- `CLAUDE.md`（本書、リポジトリのルート）— AI 向けの規則
 - `doc/fork/README.md` — 人間向けの情報リソース。事実と索引
-- `doc/fork/CLAUDE.md`（本書）— AI 向けの規則
 - `doc/fork/<主題>/` — 主題ごとの文書
 
 ### 例外: ルートの `README`
@@ -51,13 +52,13 @@ upstream のファイルを変更してよい。「なるべく触らない」�
 ## 4. 作業の記録
 
 主題ごとに作業計画と実行経緯の文書を持ち、決定・却下・訂正はその都度書く。
-Y8960 なら `y8960/implementation-plan.md`。口頭で終えない。
+Y8960 なら `doc/fork/y8960/implementation-plan.md`。口頭で終えない。
 
 主張には確度を併記する。走らせて確かめたなら**確認済み**とその手段を、
 作っただけなら**未検証**、出典を示せないなら**推測**と根拠を一行。
 
 ## 5. ビルド
 
-このマシン固有の詰まりどころが `build/README.md` にある。
+このマシン固有の詰まりどころが `doc/fork/build/README.md` にある。
 msbuild には `-p:PlatformToolset=v145 -p:VcpkgEnabled=false` が要る。
 理由もそちらに書いてある。
