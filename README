@@ -41,15 +41,17 @@ compatible with the GPL that openMSX is released under. The emulation was
 written from reading the specification.
 
 src/sound/YM2413NukeYKTBanked.cc carries preset tone data for the OPLL-X,
-OPLL-P and VRC7 tone banks in addition to the YM2413 ones. That data is
-believed to come from "Copyright free OPLL(x) ROM patches" by David Viens
-and Hubert Lamontagne:
+OPLL-P and VRC7 tone banks in addition to the YM2413 ones. That data comes
+from "Copyright free OPLL(x) ROM patches" by David Viens and Hubert
+Lamontagne:
 
     https://github.com/plgDavid/misc/wiki/Copyright-free-OPLL(x)-ROM-patches
 
-It is licensed CC BY-SA, so redistribution has to keep this attribution.
-The provenance has not been confirmed with the original author of that file;
-if you know better, please say so.
+    Copyright free OPLL(x) ROM patches
+    (C) David Viens, Hubert Lamontagne
+    Licensed under CC BY-SA.
+
+Redistribution has to keep that attribution.
 
 License
 -------
