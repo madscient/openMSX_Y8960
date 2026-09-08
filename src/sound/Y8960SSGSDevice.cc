@@ -1,10 +1,10 @@
-#include "Y8960SSGDevice.hh"
+#include "Y8960SSGSDevice.hh"
 
 #include "serialize.hh"
 
 namespace openmsx {
 
-Y8960SSGDevice::Y8960SSGDevice(const DeviceConfig& config)
+Y8960SSGSDevice::Y8960SSGSDevice(const DeviceConfig& config)
 	: MSXDevice(config)
 	, ssg(getName(), config, getCurrentTime())
 	, registerLatch(0)
@@ -15,33 +15,33 @@ Y8960SSGDevice::Y8960SSGDevice(const DeviceConfig& config)
 	reset(getCurrentTime());
 }
 
-void Y8960SSGDevice::reset(EmuTime time)
+void Y8960SSGSDevice::reset(EmuTime time)
 {
 	ssg.reset(time);
 	registerLatch = 0;
 	ioEnabled = !useIoEnabler;
 }
 
-byte Y8960SSGDevice::readIO(uint16_t port, EmuTime time)
+byte Y8960SSGSDevice::readIO(uint16_t port, EmuTime time)
 {
 	if (!readable || !ioEnabled) return 0xFF;
 	// only the read port returns anything, as on the PSG
 	return ((port & 3) == 2) ? ssg.readRegister(registerLatch, time) : 0xFF;
 }
 
-byte Y8960SSGDevice::peekIO(uint16_t port, EmuTime time) const
+byte Y8960SSGSDevice::peekIO(uint16_t port, EmuTime time) const
 {
 	if (!readable || !ioEnabled) return 0xFF;
 	return ((port & 3) == 2) ? ssg.peekRegister(registerLatch, time) : 0xFF;
 }
 
-void Y8960SSGDevice::writeIO(uint16_t port, byte value, EmuTime time)
+void Y8960SSGSDevice::writeIO(uint16_t port, byte value, EmuTime time)
 {
 	if (!ioEnabled) return;
 	writePort((port & 3) == 1, value, time);
 }
 
-void Y8960SSGDevice::writePort(bool port, byte value, EmuTime time)
+void Y8960SSGSDevice::writePort(bool port, byte value, EmuTime time)
 {
 	if (port) {
 		ssg.writeRegister(registerLatch, value, time);
@@ -51,14 +51,14 @@ void Y8960SSGDevice::writePort(bool port, byte value, EmuTime time)
 }
 
 template<typename Archive>
-void Y8960SSGDevice::serialize(Archive& ar, unsigned /*version*/)
+void Y8960SSGSDevice::serialize(Archive& ar, unsigned /*version*/)
 {
 	ar.template serializeBase<MSXDevice>(*this);
 	ar.serialize("ssg",           ssg,
 	             "registerLatch", registerLatch,
 	             "ioEnabled",     ioEnabled);
 }
-INSTANTIATE_SERIALIZE_METHODS(Y8960SSGDevice);
-REGISTER_MSXDEVICE(Y8960SSGDevice, "Y8960-SSG");
+INSTANTIATE_SERIALIZE_METHODS(Y8960SSGSDevice);
+REGISTER_MSXDEVICE(Y8960SSGSDevice, "Y8960-SSGS");
 
 } // namespace openmsx
