@@ -1,54 +1,60 @@
 # doc/fork — このフォーク固有の文書
 
-## このディレクトリの規則
-
 本リポジトリは upstream の openMSX (https://github.com/openMSX/openMSX) の
-unofficial fork である。
+unofficial fork である。ここには upstream に存在しない、このフォークの
+作業に関する文書を置く。
 
-**フォーク固有の文書は `doc/fork/` 配下に置き、upstream の文書はなるべく触らない。**
-`doc/` 直下や `doc/internal/` は upstream の文書が入る階層なので、そこには足さない。
-こうしておくと upstream を取り込むときに衝突しないし、
-どれがフォークの成果物かが階層だけで分かる。
+対象読者は開発者。エンドユーザー向けではないので、
+`doc/node.mk` の `INSTALL_DOCS` に載せておらず、インストールもされない。
 
-`doc/fork/` の対象読者は開発者と AI であり、エンドユーザーではない。
-`doc/node.mk` の `INSTALL_DOCS` に載せないので、インストールされない。
+作業時に守る規則は `CLAUDE.md` にまとめてある。
 
-### 例外: ルートの `README`
+## 文書一覧
 
-**`README` だけは upstream のものに追記する。** GitHub のフロントページになるため、
-ここに集約する理由がある。次の 2 つを置く。
-
-- **フォークである旨** — upstream ではないこと、何が足してあるか、
-  問題の報告先。これが無いと利用者が upstream と取り違える
-- **帰属表示** — CC BY-SA の OPLL(x) 音色データなど、
-  再頒布に伴って表示が要るもの。目に触れない場所に置くと意味がない
-
-`doc/authors.txt` は upstream のクレジット一覧なので**触らない**。
-フォーク側のクレジットは `README` に集める。
-
-コードとビルド定義（`src/`, `build/`, `share/`）は、機能追加に必要な範囲で
-upstream のファイルを変更する。ここは「なるべく触らない」の対象外。
-
-## 内容
-
-| ディレクトリ | 内容 |
+| パス | 内容 |
 |---|---|
+| `CLAUDE.md` | 作業時の規則（ライセンス制約、文書の置き場所、記録の作法） |
 | `y8960/` | Y8960 カートリッジのエミュレーション実装 |
-| `build/` | このマシンでのビルド環境の構築手順と経緯 |
+| `y8960/hardware-notes.md` | Y8960 のハードウェア仕様の調査結果。出典と確度つき |
+| `y8960/implementation-plan.md` | 実装計画・決定・実行経緯 |
+| `y8960/tests/` | 手で回す検証スクリプト |
+| `build/README.md` | このマシンでのビルド環境。詰まりどころと手順 |
 
-## 取り込んではいけないもの
+## upstream との関係
 
-openMSX は **GPL-2.0-only** である（`meson.build` の `license` 宣言）。
-以下はライセンスが非互換なので、**コードもデータも本リポジトリに持ち込まない**。
+| | |
+|---|---|
+| upstream | https://github.com/openMSX/openMSX |
+| 分岐の起点 | `master`（upstream 追従用にそのまま置いてある） |
+| 作業ブランチ | `y8960` |
+| ライセンス | GPL-2.0-only（upstream と同じ） |
 
-- **hra1129/Y8960_Cartridge の FPGA ソースと図表**。
-  そのライセンスは条項 3 で「書面による事前の許可なしに販売、および
-  商業的な製品や活動に使用しないこと」を課している。
-  非商用制限は GPL と両立しない。
-  `y8960/hardware-notes.md` は**読解した事実の記述**であって、
-  コードや文章の複製ではない。この線を越えないこと
+upstream の文書で変更しているのはルートの `README` だけ。
+それ以外の変更はコードとビルド定義に限られる。
 
-帰属表示が要るものは README に書いてある。特に
-`src/sound/YM2413NukeYKTBanked.cc` の OPLL-X / OPLL-P / VRC7 音色データは
-"Copyright free OPLL(x) ROM patches" (David Viens / Hubert Lamontagne) 由来で、
-CC BY-SA なので帰属表示を落とせない。**出所は確認済み**（2026-09-09）。
+## 外部リポジトリ
+
+本リポジトリには取り込んでいない情報源。
+
+| リポジトリ | 役割 | 扱い |
+|---|---|---|
+| [hra1129/Y8960_Cartridge](https://github.com/hra1129/Y8960_Cartridge) | Y8960 の**一次仕様**（FPGA RTL + docx/xlsx）。WIP | 仕様の参照元。**コードもデータも取り込まない**（非商用ライセンスで GPL と非互換） |
+| [buppu3/openMSX](https://github.com/buppu3/openMSX) | `y8960` ブランチに Y8960 実装。GPL | Y8960 分の 15 コミットを cherry-pick 済み。V9968 は取り込んでいない |
+| [madscient/Y8960emu](https://github.com/madscient/Y8960emu) | OPLLEX / OPL2EX の別実装（ymfm ベース）。MIT | 設計の参照と挙動の突き合わせ用。コアは移植しない |
+| [madscient/EPSGemuEngine](https://github.com/madscient/EPSGemuEngine) | SSG/EPSG の別実装。MIT + BSD-3 | 参照のみ |
+
+## Y8960 の実装状況
+
+| ブロック | 状態 |
+|---|---|
+| SSG ×2 | 実装済み（openMSX の `PSG` に `chip_select` を追加） |
+| DCSG ×2 | 実装済み（`SNPSG` をそのまま、7Eh / 7Fh） |
+| OPLL ×2 | 実装済み（チャンネル別音色バンク付き YM2413） |
+| SCC + マッパー | 実装済み（ROM 種別 `Y8960`） |
+| MSX-TIMER | 実装済み |
+| デジタルミキサー | 実装済み |
+| I/O Enabler (7FF6h) | OPLL 分のみ実装済み |
+| **OPL2 + ADPCM-B ×2** | **未実装** |
+| I/O Enabler2 (7FFFh) | 未実装 |
+
+詳細と残作業は `y8960/implementation-plan.md`。
