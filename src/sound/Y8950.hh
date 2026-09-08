@@ -25,35 +25,11 @@ class DeviceConfig;
 class Y8950Periphery;
 
 class Y8950 final : private ResampledSoundDevice, private EmuTimerCallback
+                  , public Y8950Status
 {
 public:
 	static constexpr int CLOCK_FREQ     = 3579545;
 	static constexpr int CLOCK_FREQ_DIV = 72;
-
-	// Bitmask for register 0x04
-	// Timer1 Start.
-	static constexpr int R04_ST1          = 0x01;
-	// Timer2 Start.
-	static constexpr int R04_ST2          = 0x02;
-	// not used
-	//static constexpr int R04            = 0x04;
-	// Mask 'Buffer Ready'.
-	static constexpr int R04_MASK_BUF_RDY = 0x08;
-	// Mask 'End of sequence'.
-	static constexpr int R04_MASK_EOS     = 0x10;
-	// Mask Timer2 flag.
-	static constexpr int R04_MASK_T2      = 0x20;
-	// Mask Timer1 flag.
-	static constexpr int R04_MASK_T1      = 0x40;
-	// IRQ RESET.
-	static constexpr int R04_IRQ_RESET    = 0x80;
-
-	// Bitmask for status register
-	static constexpr int STATUS_PCM_BSY = 0x01;
-	static constexpr int STATUS_EOS     = R04_MASK_EOS;
-	static constexpr int STATUS_BUF_RDY = R04_MASK_BUF_RDY;
-	static constexpr int STATUS_T2      = R04_MASK_T2;
-	static constexpr int STATUS_T1      = R04_MASK_T1;
 
 	Y8950(const std::string& name, const DeviceConfig& config,
 	      unsigned sampleRam, EmuTime time, MSXAudio& audio);
@@ -68,10 +44,10 @@ public:
 	[[nodiscard]] uint8_t readStatus(EmuTime time) const;
 	[[nodiscard]] uint8_t peekStatus(EmuTime time) const;
 
-	// for ADPCM
-	void setStatus(uint8_t flags);
-	void resetStatus(uint8_t flags);
-	[[nodiscard]] uint8_t peekRawStatus() const;
+	// Y8950Status, for ADPCM
+	void setStatus(uint8_t flags) override;
+	void resetStatus(uint8_t flags) override;
+	[[nodiscard]] uint8_t peekRawStatus() const override;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
