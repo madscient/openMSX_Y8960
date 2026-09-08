@@ -5,13 +5,29 @@
 本リポジトリは upstream の openMSX (https://github.com/openMSX/openMSX) の
 unofficial fork である。
 
-**upstream に存在しない、このフォーク固有の文書はすべて `doc/fork/` 配下に置く。**
-`doc/` 直下や `doc/internal/` は upstream の文書が入る階層なので、そこには置かない。
-こうしておくと upstream の変更を取り込むときに衝突しないし、
+**フォーク固有の文書は `doc/fork/` 配下に置き、upstream の文書はなるべく触らない。**
+`doc/` 直下や `doc/internal/` は upstream の文書が入る階層なので、そこには足さない。
+こうしておくと upstream を取り込むときに衝突しないし、
 どれがフォークの成果物かが階層だけで分かる。
 
-対象読者は開発者と AI であり、エンドユーザーではない。
+`doc/fork/` の対象読者は開発者と AI であり、エンドユーザーではない。
 `doc/node.mk` の `INSTALL_DOCS` に載せないので、インストールされない。
+
+### 例外: ルートの `README`
+
+**`README` だけは upstream のものに追記する。** GitHub のフロントページになるため、
+ここに集約する理由がある。次の 2 つを置く。
+
+- **フォークである旨** — upstream ではないこと、何が足してあるか、
+  問題の報告先。これが無いと利用者が upstream と取り違える
+- **帰属表示** — CC BY-SA の OPLL(x) 音色データなど、
+  再頒布に伴って表示が要るもの。目に触れない場所に置くと意味がない
+
+`doc/authors.txt` は upstream のクレジット一覧なので**触らない**。
+フォーク側のクレジットは `README` に集める。
+
+コードとビルド定義（`src/`, `build/`, `share/`）は、機能追加に必要な範囲で
+upstream のファイルを変更する。ここは「なるべく触らない」の対象外。
 
 ## 内容
 
