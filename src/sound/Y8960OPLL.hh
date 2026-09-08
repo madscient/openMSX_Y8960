@@ -19,13 +19,14 @@ public:
 	/** 7FF6h (I/O Enabler1) による直接 I/O ポートの開閉。
 	  * メモリマップド I/O からの writePort() はこれに影響されない。
 	  * 実機もそちらは常に通る（そうでないと I/O を開く手段が無くなる）。 */
-	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	void setIoEnabled(bool enabled) { if (useIoEnabler) ioEnabled = enabled; }
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
 protected:
 	YM2413 ym2413;
-	bool ioEnabled = false;
+	const bool useIoEnabler;
+	bool ioEnabled;
 };
 SERIALIZE_CLASS_VERSION(Y8960OPLL, 4);
 
