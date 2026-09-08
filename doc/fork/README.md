@@ -25,7 +25,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 |---|---|
 | upstream | https://github.com/openMSX/openMSX |
 | 分岐の起点 | `master`（upstream 追従用にそのまま置いてある） |
-| 作業ブランチ | `y8960` |
+| 作業ブランチ | `main` |
 | ライセンス | GPL-2.0-only（upstream と同じ） |
 
 upstream の文書で変更しているのはルートの `README` だけ。
