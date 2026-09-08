@@ -8,6 +8,9 @@ Y8960SSGDevice::Y8960SSGDevice(const DeviceConfig& config)
 	: MSXDevice(config)
 	, ssg(getName(), config, getCurrentTime())
 	, registerLatch(0)
+	, readable(config.getChildDataAsBool("readable", false))
+	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
+	, ioEnabled(!useIoEnabler)
 {
 	reset(getCurrentTime());
 }
@@ -16,19 +19,19 @@ void Y8960SSGDevice::reset(EmuTime time)
 {
 	ssg.reset(time);
 	registerLatch = 0;
-	ioEnabled = false;
+	ioEnabled = !useIoEnabler;
 }
 
 byte Y8960SSGDevice::readIO(uint16_t port, EmuTime time)
 {
-	if (!ioEnabled) return 0xFF;
+	if (!readable || !ioEnabled) return 0xFF;
 	// only the read port returns anything, as on the PSG
 	return ((port & 3) == 2) ? ssg.readRegister(registerLatch, time) : 0xFF;
 }
 
 byte Y8960SSGDevice::peekIO(uint16_t port, EmuTime time) const
 {
-	if (!ioEnabled) return 0xFF;
+	if (!readable || !ioEnabled) return 0xFF;
 	return ((port & 3) == 2) ? ssg.peekRegister(registerLatch, time) : 0xFF;
 }
 

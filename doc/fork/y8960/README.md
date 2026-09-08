@@ -18,6 +18,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のパンポットと 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
+| `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。

@@ -28,8 +28,13 @@ public:
 
 	void writePort(bool port, byte value, EmuTime time);
 
+	/** カートリッジ版はリードに反応しない。A0h-A2h は本体 PSG と重なっており、
+	  * 読み出しに応じると本体と衝突するため。本体内蔵版は既存の PSG を
+	  * 置き換えるので読み書きの両方に応じる。
+	  * XML の <readable> で切り替える (既定はカートリッジ版)。 */
+
 	/** 7FFFh (I/O Enabler2) bit 4. */
-	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	void setIoEnabled(bool enabled) { if (useIoEnabler) ioEnabled = enabled; }
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
@@ -37,7 +42,9 @@ public:
 private:
 	Y8960SSG ssg;
 	byte registerLatch;
-	bool ioEnabled = false;
+	const bool readable;
+	const bool useIoEnabler;
+	bool ioEnabled;
 };
 SERIALIZE_CLASS_VERSION(Y8960SSGDevice, 1);
 
