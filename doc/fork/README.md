@@ -18,6 +18,8 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `y8960/implementation-plan.md` | 実装計画・決定・実行経緯 |
 | `y8960/tests/` | 手で回す検証スクリプト |
 | `build/README.md` | このマシンでのビルド環境。詰まりどころと手順 |
+| `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
+| `tools/` | push 前点検と文書整合の検査スクリプト |
 
 ## upstream との関係
 
