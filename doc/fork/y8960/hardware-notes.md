@@ -256,6 +256,11 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
    回路とアドレスの対応は RTL と xlsx で一致しているが、
    7FF6h の enable ビットの割り当てが xlsx と RTL で逆になっており、
    さらにリセット時に有効なのが 7Ch-7Dh ではなく 7Ah-7Bh の側である。
+2.1. **OPL2 のメモリマップド側の呼び方**: xlsx は C0h-C1h を OPL2-1、
+   7FECh-7FEDh を OPL2-2 としているが、RTL ではどちらも `bus_address[1]==0` で
+   同じ 1 番目の回路に届く（**確認済み**: `opl2_patch/opl2.v:102-103`）。
+   両立しない。OPLL は同じ規則で xlsx と一致していたので、ずれるのは OPL2 だけ。
+
 3. **ROM/RAM バンクの境界**: manual §4 は「BANK#0-15 が ROM、#16-31 が RAM」。
    `IKASCC_vrc_s.v` の patch ヘッダコメントは「BANK#0-#7 ROM、#8-#15 RAM」。
    RTL の実際の動作は**どちらでもなく**、rammode が 1 なら全バンクに書ける

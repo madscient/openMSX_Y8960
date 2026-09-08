@@ -52,8 +52,8 @@ upstream の文書で変更しているのはルートの `README` だけ。
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`） |
 | MSX-TIMER | 実装済み |
 | デジタルミキサー | 実装済み |
-| I/O Enabler (7FF6h) | OPLL 分のみ実装済み |
-| **OPL2 + ADPCM-B ×2** | **未実装** |
-| I/O Enabler2 (7FFFh) | 未実装 |
+| OPL2 + ADPCM-B ×2 | 実装済み（OPL2 波形選択つき） |
+| I/O Enabler (7FF6h) | 実装済み（OPLL 用の 2 ビット） |
+| I/O Enabler2 (7FFFh) | OPL2 用の 2 ビットのみ。DCSG / SSG / タイマーは未実装 |
 
 詳細と残作業は `y8960/implementation-plan.md`。
