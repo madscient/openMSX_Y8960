@@ -13,22 +13,15 @@
     <MSX-TIMER id="y8960-timer">
       <io base="0xB0" num="4"/>
     </MSX-TIMER>
-    <PSG id="Y8960 SSG 0">
-      <io base="0xA0" num="4" type="O"/>
-      <mirrored_registers>false</mirrored_registers>
-      <chip_select>0</chip_select>
+    <!-- SSGS: YM2149 2 系統。$00-$1F が系統 0、$20-$3F が系統 1 で、
+         各系統の $10-$12 が 4bit パンポット。A0h=レジスタ番号、A1h=書き込み、
+         A2h=読み出し。本体 PSG と同じポートに重なるのは実機どおり -->
+    <Y8960-SSG id="Y8960 SSG">
+      <io base="0xA0" num="4"/>
       <sound>
         <volume>21000</volume>
       </sound>
-    </PSG>
-    <PSG id="Y8960 SSG 1">
-      <io base="0xA0" num="4" type="O"/>
-      <mirrored_registers>false</mirrored_registers>
-      <chip_select>1</chip_select>
-      <sound>
-        <volume>21000</volume>
-      </sound>
-    </PSG>
+    </Y8960-SSG>
     <!-- DCSG は 1 ポートずつで、アドレス bit0 が 2 回路のどちらかを選ぶ -->
     <SNPSG id="Y8960 DCSG 0">
       <io base="0x3E" num="1" type="O"/>
@@ -85,6 +78,7 @@
           <opll1>Y8960 OPLL 1</opll1> <!-- I/O tunnel from 7FF2h -->
           <opl2_0>Y8960 OPL2 0</opl2_0> <!-- I/O tunnel from 7FECh -->
           <opl2_1>Y8960 OPL2 1</opl2_1> <!-- I/O tunnel from 7FEEh -->
+          <ssg>Y8960 SSG</ssg> <!-- I/O Enabler2 b4 -->
         </ROM>
       </secondary>
     </primary>
@@ -95,8 +89,8 @@
       <channel num="1" idref="Y8960 OPLL 1"/>
       <channel num="2" idref="Y8960 OPL2 0"/>
       <channel num="3" idref="Y8960 OPL2 1"/>
-      <channel num="4" idref="Y8960 SSG 0"/>
-      <channel num="5" idref="Y8960 SSG 1"/>
+      <channel num="4" idref="Y8960 SSG"/>
+      <!-- channel num="5" は SSG 系統 1 用だったが、いまは 1 デバイスにまとめてある -->
       <channel num="6" idref="Y8960 DCSG 0"/>
       <channel num="7" idref="Y8960 DCSG 1"/>
       <!-- channel num="8" idref="Y8960 ADPCM"/ -->
