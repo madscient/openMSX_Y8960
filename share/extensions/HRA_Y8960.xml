@@ -56,6 +56,22 @@
       </sound>
       <ym2413-core>NukeYKT-Banked</ym2413-core>
     </Y8960-OPLL>
+    <!-- OPL2 + ADPCM-B. Address bit 1 picks the circuit, so C0h-C1h and the
+         7FECh tunnel reach the same one. -->
+    <Y8960-OPL2 id="Y8960 OPL2 0">
+      <io base="0xC0" num="2"/>
+      <sampleram>256</sampleram>
+      <sound>
+        <volume>12000</volume>
+      </sound>
+    </Y8960-OPL2>
+    <Y8960-OPL2 id="Y8960 OPL2 1">
+      <io base="0xC2" num="2"/>
+      <sampleram>256</sampleram>
+      <sound>
+        <volume>12000</volume>
+      </sound>
+    </Y8960-OPL2>
     <primary slot="any">
       <secondary slot="any">
         <ROM id="Y8960 SCC">
@@ -67,6 +83,8 @@
           <rom/>
           <opll0>Y8960 OPLL 0</opll0> <!-- I/O tunnel from 7FF4h -->
           <opll1>Y8960 OPLL 1</opll1> <!-- I/O tunnel from 7FF2h -->
+          <opl2_0>Y8960 OPL2 0</opl2_0> <!-- I/O tunnel from 7FECh -->
+          <opl2_1>Y8960 OPL2 1</opl2_1> <!-- I/O tunnel from 7FEEh -->
         </ROM>
       </secondary>
     </primary>
@@ -75,8 +93,8 @@
       <external>true</external>
       <channel num="0" idref="Y8960 OPLL 0"/>
       <channel num="1" idref="Y8960 OPLL 1"/>
-      <!-- channel num="2" idref="Y8960 OPL2 0"/ -->
-      <!-- channel num="3" idref="Y8960 OPL2 1"/ -->
+      <channel num="2" idref="Y8960 OPL2 0"/>
+      <channel num="3" idref="Y8960 OPL2 1"/>
       <channel num="4" idref="Y8960 SSG 0"/>
       <channel num="5" idref="Y8960 SSG 1"/>
       <channel num="6" idref="Y8960 DCSG 0"/>
