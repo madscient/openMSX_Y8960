@@ -16,7 +16,7 @@ class DeviceConfig;
 
 /** One YM2149 of the Y8960's SSGS block.
   *
-  * Forked from AY8910. It is not a SoundDevice of its own: Y8960SSG owns two
+  * Forked from AY8910. It is not a SoundDevice of its own: Y8960SSGS owns two
   * of these and mixes them into one stereo stream, because the panpot is per
   * channel and openMSX only has per-device balance.
   *
@@ -30,7 +30,7 @@ public:
 	             EmuTime time);
 	~Y8960SsgCore();
 
-	/** Generate 3 mono channels. Y8960SSG applies the panpot afterwards. */
+	/** Generate 3 mono channels. Y8960SSGS applies the panpot afterwards. */
 	void generateChannels(std::span<float*> bufs, unsigned num);
 	[[nodiscard]] float getAmplificationFactor() const;
 

@@ -1,8 +1,8 @@
-#ifndef Y8960SSGDEVICE_HH
-#define Y8960SSGDEVICE_HH
+#ifndef Y8960SSGSDEVICE_HH
+#define Y8960SSGSDEVICE_HH
 
 #include "MSXDevice.hh"
-#include "Y8960SSG.hh"
+#include "Y8960SSGS.hh"
 #include "serialize_meta.hh"
 
 namespace openmsx {
@@ -16,10 +16,10 @@ namespace openmsx {
   * Same layout as the MSX PSG, but the register number is 6 bits wide here
   * because there are two units.
   */
-class Y8960SSGDevice final : public MSXDevice
+class Y8960SSGSDevice final : public MSXDevice
 {
 public:
-	explicit Y8960SSGDevice(const DeviceConfig& config);
+	explicit Y8960SSGSDevice(const DeviceConfig& config);
 
 	void reset(EmuTime time) override;
 	[[nodiscard]] byte readIO(uint16_t port, EmuTime time) override;
@@ -40,13 +40,13 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	Y8960SSG ssg;
+	Y8960SSGS ssg;
 	byte registerLatch;
 	const bool readable;
 	const bool useIoEnabler;
 	bool ioEnabled;
 };
-SERIALIZE_CLASS_VERSION(Y8960SSGDevice, 1);
+SERIALIZE_CLASS_VERSION(Y8960SSGSDevice, 1);
 
 } // namespace openmsx
 

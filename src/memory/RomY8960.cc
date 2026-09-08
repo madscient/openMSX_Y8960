@@ -128,11 +128,11 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 		}
 	}
 
-	std::string_view devName5 = config.getChildData("ssg", "");
+	std::string_view devName5 = config.getChildData("ssgs", "");
 	if (devName5 == "") {
 		ssg = nullptr;
 	} else {
-		ssg = dynamic_cast<Y8960SSGDevice*>(getMotherBoard().findDevice(devName5));
+		ssg = dynamic_cast<Y8960SSGSDevice*>(getMotherBoard().findDevice(devName5));
 		if (ssg == nullptr) {
 			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName5, "'.");
 		}

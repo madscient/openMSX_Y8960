@@ -43,7 +43,7 @@ proc run_test {} {
 	# enabler を開ける前: SSGS には届かない
 	psg_write 0x00 0x5A
 	puts $OUT [format "1. enabler closed : SSG.reg0=0x%02X (expect 0x00)" \
-		[debug read "Y8960 SSG regs" 0]]
+		[debug read "Y8960 SSGS regs" 0]]
 
 	# 本体 PSG の読み出しが汚れていないこと
 	puts $OUT [format "2. read back A2h  : 0x%02X (expect 0x5A)" \
@@ -56,7 +56,7 @@ proc run_test {} {
 	mem_write 0x7FFF 0x10
 	psg_write 0x00 0x5A
 	puts $OUT [format "4. enabler open   : SSG.reg0=0x%02X PSG.reg0=0x%02X (expect 0x5A both)" \
-		[debug read "Y8960 SSG regs" 0] [debug read "PSG regs" 0]]
+		[debug read "Y8960 SSGS regs" 0] [debug read "PSG regs" 0]]
 
 	close $OUT
 	exit
