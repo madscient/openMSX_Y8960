@@ -16,12 +16,18 @@ public:
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
 	void writePort(bool port, byte value, EmuTime time);
 
+	/** 7FF6h (I/O Enabler1) による直接 I/O ポートの開閉。
+	  * メモリマップド I/O からの writePort() はこれに影響されない。
+	  * 実機もそちらは常に通る（そうでないと I/O を開く手段が無くなる）。 */
+	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
 protected:
 	YM2413 ym2413;
+	bool ioEnabled = false;
 };
-SERIALIZE_CLASS_VERSION(Y8960OPLL, 3); // must be in-sync with MSXMusicBase
+SERIALIZE_CLASS_VERSION(Y8960OPLL, 4);
 
 } // namespace openmsx
 

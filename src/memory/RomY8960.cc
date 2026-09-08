@@ -11,6 +11,12 @@
 //  	OPLL1: 		0x7FF2 - 0x7FF3
 //					tunnel to OPLL1 I/O port
 //
+//  	I/O Enabler1: 0x7FF6
+//					b0: open OPLL0 I/O ports (0x7C-0x7D)
+//					b1: open OPLL1 I/O ports (0x7A-0x7B)
+//					Both are closed after reset, like the FM-PAC. The tunnels
+//					above stay open, otherwise there is no way to open them.
+//
 //  	SCC:		0x9800 - 0x9FFF(bank#63)
 //					SCC sound register
 //
@@ -72,7 +78,7 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	if (devName1 == "") {
 		opll_0 = nullptr;
 	} else {
-		opll_0 = getMotherBoard().findDevice(devName1);
+		opll_0 = dynamic_cast<Y8960OPLL*>(getMotherBoard().findDevice(devName1));
 		if (opll_0 == nullptr) {
 			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName1, "'.");
 		}
@@ -83,7 +89,7 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	if (devName2 == "") {
 		opll_1 = nullptr;
 	} else {
-		opll_1 = getMotherBoard().findDevice(devName2);
+		opll_1 = dynamic_cast<Y8960OPLL*>(getMotherBoard().findDevice(devName2));
 		if (opll_1 == nullptr) {
 			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName2, "'.");
 		}
@@ -211,14 +217,24 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 	// write to OPLL1
 	if ((address & 0xFFFE) == 0x7FF4) {
 		if(opll_0 != nullptr) {
-			opll_0->writeIO(address & 1, value, time);
+			opll_0->writePort(address & 1, value, time);
 		}
 	}
 
 	// write to OPLL2
 	if ((address & 0xFFFE) == 0x7FF2) {
 		if(opll_1 != nullptr) {
-			opll_1->writeIO(address & 1, value, time);
+			opll_1->writePort(address & 1, value, time);
+		}
+	}
+
+	// write to I/O Enabler1
+	if (address == 0x7FF6) {
+		if(opll_0 != nullptr) {
+			opll_0->setIoEnabled((value & 0x01) != 0);
+		}
+		if(opll_1 != nullptr) {
+			opll_1->setIoEnabled((value & 0x02) != 0);
 		}
 	}
 
