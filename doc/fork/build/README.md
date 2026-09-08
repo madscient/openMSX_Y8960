@@ -58,7 +58,7 @@ upstream のファイルを書き換えないので、pull で衝突しない。
 ### 2.4 vcpkg のグローバル統合が割り込む（**これが最も厄介**）
 
 このマシンには vcpkg がグローバル統合されている
-（`%LOCALAPPDATA%\vcpkg\vcpkg.user.props` / `.targets` が
+（`%LOCALAPPDATA%/vcpkg/vcpkg.user.props` / `.targets` が
 `C:\vcpkg\scripts\buildsystems\msbuild\vcpkg.targets` を読み込む）。
 これは**このマシンの全 MSBuild C++ プロジェクトに無条件で割り込む**。
 
@@ -106,11 +106,20 @@ py build/thirdparty_download.py windows
 ビルド（x64 / Release の例）:
 
 ```sh
-MSBUILD="/c/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe"
+# MSBuild の場所はマシンごとに違うので決め打ちにしない
+MSBUILD=$(vswhere.exe -latest -products "*" -requires Microsoft.Component.MSBuild -find "MSBuild/**/Bin/MSBuild.exe" | head -1)
+# vswhere.exe は PATH に無いので、Installer のディレクトリを足しておく:
+#   PATH="$PATH:/c/Program Files (x86)/Microsoft Visual Studio/Installer"
+
 OPTS="-nologo -m -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v145 -p:VcpkgEnabled=false"
 "$MSBUILD" $OPTS build/3rdparty/3rdparty.sln
 "$MSBUILD" $OPTS build/msvc/openmsx.sln
 ```
+
+**`PlatformToolset` と `VcpkgEnabled` もこのマシンの事情である**（§2.2、§2.4）。
+別のマシンでは要否が変わる。vcxproj が指定する v143 が入っていれば
+`-p:PlatformToolset` は要らないし、vcpkg のグローバル統合が無ければ
+`-p:VcpkgEnabled` も要らない。付けたままでも害は無い。
 
 出力先は `derived/x64-VC-Release/install`。
 
@@ -177,7 +186,22 @@ New-Item -ItemType Junction `
 
 `derived/` は gitignore 済みなので、リンクを張っても追跡対象にならない。
 
-## 5. 実行経緯
+## 5. 別のマシンで再開するとき
+
+本書の §1 と §2 は**このマシンで実際に踏んだ地雷の記録**であって、
+どのマシンでも同じとは限らない。別のマシンでは次を確かめ直すこと。
+
+1. **Python が 3.9 以上か**（§2.1）。`py -0p` で見る
+2. **使える PlatformToolset**（§2.2）。
+   `MSBuild/Microsoft/VC/*/Platforms/x64/PlatformToolsets` を列挙する
+3. **vcpkg のグローバル統合の有無**（§2.4）。
+   `%LOCALAPPDATA%/vcpkg/vcpkg.user.props` があるかどうか
+4. **ROM の置き場所**（§4.1）。マシンごとに違うのでこの文書には書いていない
+
+`derived/` は全部生成物なので、リポジトリを clone して §3 の手順を踏めば復元できる。
+C-BIOS はリポジトリ内の `Contrib/cbios/` にあるので追加の入手は要らない。
+
+## 6. 実行経緯
 
 ### 2026-09-08
 
