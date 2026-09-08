@@ -97,6 +97,7 @@
 #include "MSXTimer.hh"
 #include "Y8960Mixer.hh"
 #include "Y8960OPL2Device.hh"
+#include "Y8960SSGDevice.hh"
 #include "Y8960OPLL.hh"
 
 #include "one_of.hh"
@@ -333,6 +334,8 @@ std::unique_ptr<MSXDevice> DeviceFactory::create(DeviceConfig& conf)
 		result = std::make_unique<MSXTimer>(conf);
 	} else if (type == "Y8960-MIXER") {
 		result = std::make_unique<Y8960Mixer>(conf);
+	} else if (type == "Y8960-SSG") {
+		result = std::make_unique<Y8960SSGDevice>(conf);
 	} else if (type == "Y8960-OPL2") {
 		result = std::make_unique<Y8960OPL2Device>(conf);
 	} else if (type == "Y8960-OPLL") {
