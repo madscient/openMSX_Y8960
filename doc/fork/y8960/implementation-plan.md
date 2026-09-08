@@ -258,20 +258,23 @@ ADPCM は独立したサウンドデバイスにならないので `Y8960 ADPCM`
 
 ### 4.3 I/O アドレス
 
-一次情報が三者三様だった。いずれも**確認済み**（3 つの出典をそれぞれ読んだ）。
+一次情報が食い違っている。いずれも**確認済み**（各出典を読んだ）。
+**hra1129 さんからの直接の回答があるものは、それを最優先する。**
 
 | | 採用値 | buppu3 実装 (2026-01) | RTL (2026-03) | xlsx |
 |---|---|---|---|---|
-| DCSG | **7Eh / 7Fh** | 48h-49h / 4Ah-4Bh | 7Eh / 7Fh | 3Eh / 3Fh |
+| DCSG | **3Eh / 3Fh** | 48h-49h / 4Ah-4Bh | 7Eh / 7Fh | 3Eh / 3Fh |
 | ミキサー | 40h-41h（据え置き） | 40h-41h | 無し（40h-4Fh は system controller） | — |
 | OPLL の対応 | 据え置き（RTL と一致） | 7Ch+7FF4h が OPLL 0 | 7Ch+7FF4h が core 0 | 7Ch+7FF4h が OPLL1 |
 | OPL2 | C0h-C1h / C2h-C3h | （未実装） | C0h-C1h / C2h-C3h | C0h-C1h / C2h-C3h |
 | MSX-TIMER | B0h-B3h | B0h-B3h | B0h-B3h | — |
 
-**DCSG は 7Eh / 7Fh に変更した**（2026-09-08、ユーザー判断）。
+**DCSG は 3Eh / 3Fh**。2026-09-09 に hra1129 さんから直接の回答があり、
+xlsx の 3Eh/3Fh が正、RTL の 7Eh は古いと確定した。**これが最も強い出典**で、
+RTL より優先する。
 DCSG は 1 ポートずつで、**アドレス bit0 が 2 回路のどちらかを選ぶ**
 （**確認済み**: `sn76489_audio_patch/sn76489.v:26-27` の `w_cs0_n` / `w_cs1_n`）。
-したがって 7Eh → DCSG 0、7Fh → DCSG 1。
+したがって 3Eh → DCSG 0、3Fh → DCSG 1。
 
 **前提: Y8960 自体が WIP なので、これらは変わりうる。**
 そのためアドレスは C++ 側に定数として持たず、`share/extensions/HRA_Y8960.xml` の
