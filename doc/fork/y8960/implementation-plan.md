@@ -127,11 +127,11 @@ ADPCM 用の枠 (num=8) が既に確保されているので、成立する見�
 ```
 port 3E:      O Y8960 DCSG 0
 port 3F:      O Y8960 DCSG 1
-port 40-41: I/O y8960-mixer
 port 7A-7B:   O Y8960 OPLL 1
 port 7C-7D:   O C-BIOS MSX-MUSIC, Y8960 OPLL 0
 port A0-A3: I/O PSG, Y8960 SSG
 port B0-B3: I/O y8960-timer
+port B6-B7: I/O y8960-mixer
 port C0-C1: I/O Y8960 OPL2 0
 port C2-C3: I/O Y8960 OPL2 1
 ```
@@ -294,10 +294,10 @@ ADPCM は独立したサウンドデバイスにならないので `Y8960 ADPCM`
 | | 採用値 | buppu3 実装 (2026-01) | RTL (2026-03) | xlsx |
 |---|---|---|---|---|
 | DCSG | **3Eh / 3Fh** | 48h-49h / 4Ah-4Bh | 7Eh / 7Fh | 3Eh / 3Fh |
-| ミキサー | 40h-41h（据え置き） | 40h-41h | 無し（40h-4Fh は system controller） | — |
+| ミキサー | **B6h-B7h（暫定）** | 40h-41h | 無し（40h-4Fh は system controller） | — |
 | OPLL の対応 | 据え置き（RTL と一致） | 7Ch+7FF4h が OPLL 0 | 7Ch+7FF4h が core 0 | 7Ch+7FF4h が OPLL1 |
 | OPL2 | C0h-C1h / C2h-C3h | （未実装） | C0h-C1h / C2h-C3h | C0h-C1h / C2h-C3h |
-| MSX-TIMER | B0h-B3h | B0h-B3h | B0h-B3h | — |
+| MSX-TIMER | **B0h-B3h（確定）** | B0h-B3h | B0h-B3h | — |
 
 **DCSG は 3Eh / 3Fh**。2026-09-09 に hra1129 さんから直接の回答があり、
 xlsx の 3Eh/3Fh が正、RTL の 7Eh は古いと確定した。**これが最も強い出典**で、
@@ -315,8 +315,15 @@ DCSG は 1 ポートずつで、**アドレス bit0 が 2 回路のどちらか�
 7Ch-7Dh + 7FF4h-7FF5h が 1 番目の回路で、従来の MSX-MUSIC 互換の側である。
 以前ここに「RTL とは逆」と書いていたのは誤りだった。
 
-ミキサーの 40h-41h は現 RTL の system controller (40h-4Fh) と衝突し、
-`ioport.txt` はミキサーを B6h-B7h と書いている。**据え置き**（確認事項）。
+**ミキサーは B6h-B7h に移した（2026-09-09、暫定）。**
+buppu3 実装の 40h-41h は現 RTL の system controller (40h-4Fh) と衝突する。
+`ioport.txt` は `B6h-B7h: MSX-SOUND MIXER` と書いており、
+hra1129 さんも「まだ作ってないので**未確定**。B6h-B7h あたりがいいかも」と
+述べている（**確認済み**: Discord のスクリーンショット）。
+根拠が 2 つ揃い、据え置いても衝突が残るだけなので移した。
+
+**これは確定ではない。** hra1129 さんが実装したときに変わりうる。
+やり直しの値段は `HRA_Y8960.xml` の `<io base>` 1 行と本書の表だけ。
 
 **OPL2 のメモリマップド側は xlsx が自己矛盾している。** xlsx は C0h-C1h を
 OPL2-1、7FECh-7FEDh を OPL2-2 と書いているが、RTL では両方とも
@@ -448,6 +455,16 @@ OPLL 側は同じ規則で xlsx と一致していたので、食い違うのは
   実機では起きない。§7 の保留事項「I/O enabler を実装する」の優先度が上がった
 - 未決: ミキサー 40h-41h（§4.3）。hra1129 さんへの確認事項
 - 作業ブランチを `y8960` から `main` にリネーム（公開リポジトリの既定ブランチにするため）
+
+### 2026-09-09 (4) — タイマー確定、ミキサー暫定
+
+- hra1129 さんから **MSX-TIMER の I/O ポートが確定**（**確認済み**:
+  Discord のスクリーンショットの表）。B0h=レジスタ番号、B1h=そのレジスタの
+  読み書き、B2h=割り込みフラグの読み出しとクリア、B3h=カウンタの読み出し。
+  buppu3 実装の `MSXTimer::readIO` / `writeIO` がこのとおりで、**変更不要**だった
+- ミキサーは「まだ作ってないので未確定。B6h-B7h あたりがいいかも」との由。
+  `ioport.txt` の記載とも一致するので **B6h-B7h に移した（暫定）**（§4.3）。
+  カートリッジのリポジトリに更新が無いことは確認済み（最新 `d6d16a3`、2026-09-07）
 
 ### 2026-09-09 (3) — SSGS
 
