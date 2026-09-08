@@ -46,14 +46,14 @@ upstream の文書で変更しているのはルートの `README` だけ。
 
 | ブロック | 状態 |
 |---|---|
-| SSG ×2 | 実装済み（openMSX の `PSG` に `chip_select` を追加） |
-| DCSG ×2 | 実装済み（`SNPSG` をそのまま、7Eh / 7Fh） |
+| SSGS (YMZ705/732 相当) | 実装済み。$00-$1F / $20-$3F の 2 系統 + チャンネルごとの 4bit パンポット |
+| DCSG ×2 | 実装済み（`SNPSG` をそのまま、3Eh / 3Fh） |
 | OPLL ×2 | 実装済み（チャンネル別音色バンク付き YM2413） |
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`） |
 | MSX-TIMER | 実装済み |
 | デジタルミキサー | 実装済み |
 | OPL2 + ADPCM-B ×2 | 実装済み（OPL2 波形選択つき） |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の 2 ビット） |
-| I/O Enabler2 (7FFFh) | OPL2 用の 2 ビットのみ。DCSG / SSG / タイマーは未実装 |
+| I/O Enabler2 (7FFFh) | OPL2 (b0/b1) と SSG (b4)。DCSG (b2/b3) とタイマー (b7) は未実装 |
 
 詳細と残作業は `y8960/implementation-plan.md`。
