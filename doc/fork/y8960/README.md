@@ -14,6 +14,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `hardware-notes.md` | Y8960 ハードウェア仕様の調査結果。一次情報の出典と確度つき |
 | `implementation-plan.md` | 実装計画・決定事項・実行経緯 |
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
+| `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
+| `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
