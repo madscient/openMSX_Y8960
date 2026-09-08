@@ -710,6 +710,8 @@
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8950KeyboardDevice.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8950Periphery.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960Mixer.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPL2.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPL2Device.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2151.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413.cc" />
@@ -1335,6 +1337,8 @@
     <None Include="$(OpenMSXSrcDir)\sound\Y8950KeyboardDevice.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8950Periphery.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8960Mixer.hh" />
+    <None Include="$(OpenMSXSrcDir)\sound\Y8960OPL2.hh" />
+    <None Include="$(OpenMSXSrcDir)\sound\Y8960OPL2Device.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2151.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413.hh" />
