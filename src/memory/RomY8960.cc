@@ -1,6 +1,10 @@
 // Y8960 mapper
 //
 // memory mapped I/O
+//    The memory mapped registers below are the cartridge's way in to the
+//    sound blocks. Built into an MSX the blocks sit on the bus directly and
+//    the window is not there; <use_mmio_tunnel> false drops it.
+//
 //    Always-valid register:
 //  	RamEnable:  0x48FB, 0x49FB, 0x4AFB, 0x4BFB, 0x4CFB, 0x4DFB, 0x4EFB, 0x4FFB
 //					Enable RAM write control
@@ -107,6 +111,7 @@ template<typename T>
 
 RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	: Rom8kBBlocks(config, std::move(rom_))
+	, useMmioTunnel(config.getChildDataAsBool("use_mmio_tunnel", true))
 	, ram(config, getName() + " ram", "ram", 8192 * RamBankCounts)
 	, scc(getName(), config, getCurrentTime())
 {
@@ -248,6 +253,54 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		ram[getRamAddress(address)] = value;
 	}
 
+	// Built into an MSX the sound blocks sit on the bus directly, so the
+	// cartridge's way in to them is not there.
+	if (useMmioTunnel) {
+		writeMmio(address, value, time);
+	}
+
+	// write to ramEnable register
+	if ((address & 0xF8FF) == 0x48FB) {
+		ramEnabled = value & 1;
+	}
+
+	// write to bank register
+	unsigned int region = 0;
+	bool pageSelect = false;
+	if (!ramEnabled && (address & 0x1800) == 0x1000) {
+		pageSelect = true;
+		region = convAddressToRegion(address);
+	} else if (ramEnabled && (address & 0xF8FC) == 0x48FC) {
+		pageSelect = true;
+		region = (address & 3) + 2;
+	}
+	if (pageSelect) {
+		uint8_t oldBank = getBank(region);
+		setBank(region, value);
+
+		// invaildate cache
+		if (value != oldBank) {
+			invalidateDeviceRWCache(region << 13, 8192);
+		}
+
+		// SCC enable/disable
+		bool newSccEnabled = sccEnabled;
+		if (region == 4) {
+			newSccEnabled = ((value & 0x3F) == 0x3F);
+			if (newSccEnabled != sccEnabled) {
+				sccEnabled = newSccEnabled;
+			}
+		}
+
+		// switch rom bank
+		bankSwitch(region, value);
+	}
+}
+
+void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
+{
+	if ((address & 0xFFE0) != 0x7FE0) return;
+
 	// write to OPLL1
 	if ((address & 0xFFFE) == 0x7FF4) {
 		if(opll_0 != nullptr) {
@@ -322,43 +375,6 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		if(opll_1 != nullptr) {
 			opll_1->setIoEnabled((value & 0x02) != 0);
 		}
-	}
-
-	// write to ramEnable register
-	if ((address & 0xF8FF) == 0x48FB) {
-		ramEnabled = value & 1;
-	}
-
-	// write to bank register
-	unsigned int region = 0;
-	bool pageSelect = false;
-	if (!ramEnabled && (address & 0x1800) == 0x1000) {
-		pageSelect = true;
-		region = convAddressToRegion(address);
-	} else if (ramEnabled && (address & 0xF8FC) == 0x48FC) {
-		pageSelect = true;
-		region = (address & 3) + 2;
-	}
-	if (pageSelect) {
-		uint8_t oldBank = getBank(region);
-		setBank(region, value);
-
-		// invaildate cache
-		if (value != oldBank) {
-			invalidateDeviceRWCache(region << 13, 8192);
-		}
-
-		// SCC enable/disable
-		bool newSccEnabled = sccEnabled;
-		if (region == 4) {
-			newSccEnabled = ((value & 0x3F) == 0x3F);
-			if (newSccEnabled != sccEnabled) {
-				sccEnabled = newSccEnabled;
-			}
-		}
-
-		// switch rom bank
-		bankSwitch(region, value);
 	}
 }
 

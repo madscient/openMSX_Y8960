@@ -69,8 +69,11 @@ done
 
 - 判定スクリプトのある 2 本は、入力を差し替える（`ws2.wav` を `ws0.wav` で
   置き換えると NG になる）
-- `enabler2.tcl` は、ゲートと結線を外した XML を別の `OPENMSX_USER_DATA` の
-  `extensions/` に置いて回す。作業ツリーの `share/` を触らずに済む
+- `enabler2.tcl` は、**本体内蔵版の設定**（`<use_io_enabler>false</use_io_enabler>`、
+  `<use_mmio_tunnel>false</use_mmio_tunnel>`）を書いた XML を別の
+  `OPENMSX_USER_DATA` の `extensions/` に置いて回す。作業ツリーの `share/` を
+  触らずに済む。カートリッジ版向けの期待値は当然すべて外れ、
+  **どの手順が動くかで切り替えが効いていることが分かる**
 
 ## 取り込み元
 
