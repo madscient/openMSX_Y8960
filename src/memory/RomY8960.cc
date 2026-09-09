@@ -17,6 +17,13 @@
 //  	OPL2-1:     0x7FEE - 0x7FEF
 //					tunnel to OPL2-1 I/O port
 //
+//  	SSGS:       0x7FEA - 0x7FEB
+//					tunnel to SSGS I/O port
+//
+//  	DCSG0:      0x7FF0
+//  	DCSG1:      0x7FF1
+//					tunnel to the DCSG register port
+//
 //  	I/O Enabler1: 0x7FF6
 //					b0: open OPLL0 I/O ports (0x7C-0x7D)
 //					b1: open OPLL1 I/O ports (0x7A-0x7B)
@@ -26,9 +33,11 @@
 //  	I/O Enabler2: 0x7FFF
 //					b0: open OPL2-0 I/O ports (0xC0-0xC1)
 //					b1: open OPL2-1 I/O ports (0xC2-0xC3)
+//					b2: open the DCSG0 I/O port (0x3E)
+//					b3: open the DCSG1 I/O port (0x3F)
 //					b4: open the SSGS I/O ports (0xA0-0xA2)
-//					b2/b3 (DCSG) and b7 (timer) are not wired up: those
-//					blocks have no gate yet and are always reachable.
+//					b7: open the MSX-TIMER I/O ports (0xB0-0xB3)
+//					All are closed after reset. The tunnels above stay open.
 //
 //  	SCC:		0x9800 - 0x9FFF(bank#63)
 //					SCC sound register
@@ -74,6 +83,23 @@
 
 namespace openmsx {
 
+namespace {
+
+template<typename T>
+[[nodiscard]] T* findWiredDevice(MSXMotherBoard& motherBoard,
+                                 const DeviceConfig& config, std::string_view element)
+{
+	auto devName = config.getChildData(element, "");
+	if (devName.empty()) return nullptr;
+	auto* device = dynamic_cast<T*>(motherBoard.findDevice(devName));
+	if (device == nullptr) {
+		motherBoard.getMSXCliComm().printWarning("can not found device '", devName, "'.");
+	}
+	return device;
+}
+
+} // anonymous namespace
+
 RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	: Rom8kBBlocks(config, std::move(rom_))
 	, ram(config, getName() + " ram", "ram", 8192 * RamBankCounts)
@@ -87,56 +113,15 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 			"chips!");
 	}
 
-	std::string_view devName1 = config.getChildData("opll0", "");
-	if (devName1 == "") {
-		opll_0 = nullptr;
-	} else {
-		opll_0 = dynamic_cast<Y8960OPLL*>(getMotherBoard().findDevice(devName1));
-		if (opll_0 == nullptr) {
-			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName1, "'.");
-		}
-	}
-
-
-	std::string_view devName2 = config.getChildData("opll1", "");
-	if (devName2 == "") {
-		opll_1 = nullptr;
-	} else {
-		opll_1 = dynamic_cast<Y8960OPLL*>(getMotherBoard().findDevice(devName2));
-		if (opll_1 == nullptr) {
-			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName2, "'.");
-		}
-	}
-
-	std::string_view devName3 = config.getChildData("opl2_0", "");
-	if (devName3 == "") {
-		opl2_0 = nullptr;
-	} else {
-		opl2_0 = dynamic_cast<Y8960OPL2Device*>(getMotherBoard().findDevice(devName3));
-		if (opl2_0 == nullptr) {
-			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName3, "'.");
-		}
-	}
-
-	std::string_view devName4 = config.getChildData("opl2_1", "");
-	if (devName4 == "") {
-		opl2_1 = nullptr;
-	} else {
-		opl2_1 = dynamic_cast<Y8960OPL2Device*>(getMotherBoard().findDevice(devName4));
-		if (opl2_1 == nullptr) {
-			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName4, "'.");
-		}
-	}
-
-	std::string_view devName5 = config.getChildData("ssgs", "");
-	if (devName5 == "") {
-		ssg = nullptr;
-	} else {
-		ssg = dynamic_cast<Y8960SSGSDevice*>(getMotherBoard().findDevice(devName5));
-		if (ssg == nullptr) {
-			getMotherBoard().getMSXCliComm().printWarning("can not found device '", devName5, "'.");
-		}
-	}
+	auto& motherBoard = getMotherBoard();
+	opll_0 = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll0");
+	opll_1 = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll1");
+	opl2_0 = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2_0");
+	opl2_1 = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2_1");
+	ssgs   = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
+	dcsg_0 = findWiredDevice<Y8960DCSGDevice>(motherBoard, config, "dcsg0");
+	dcsg_1 = findWiredDevice<Y8960DCSGDevice>(motherBoard, config, "dcsg1");
+	timer  = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");
 
 	powerUp(getCurrentTime());
 }
@@ -287,6 +272,22 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		}
 	}
 
+	// write to the SSGS
+	if ((address & 0xFFFE) == 0x7FEA) {
+		if(ssgs != nullptr) {
+			ssgs->writePort(address & 1, value, time);
+		}
+	}
+
+	// write to the DCSG. It has a single register port, so here the address
+	// bit picks the circuit rather than the address/data half.
+	if ((address & 0xFFFE) == 0x7FF0) {
+		auto* dcsg = (address & 1) ? dcsg_1 : dcsg_0;
+		if(dcsg != nullptr) {
+			dcsg->writePort(value, time);
+		}
+	}
+
 	// write to I/O Enabler2
 	if (address == 0x7FFF) {
 		if(opl2_0 != nullptr) {
@@ -295,8 +296,17 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		if(opl2_1 != nullptr) {
 			opl2_1->setIoEnabled((value & 0x02) != 0);
 		}
-		if(ssg != nullptr) {
-			ssg->setIoEnabled((value & 0x10) != 0);
+		if(dcsg_0 != nullptr) {
+			dcsg_0->setIoEnabled((value & 0x04) != 0);
+		}
+		if(dcsg_1 != nullptr) {
+			dcsg_1->setIoEnabled((value & 0x08) != 0);
+		}
+		if(ssgs != nullptr) {
+			ssgs->setIoEnabled((value & 0x10) != 0);
+		}
+		if(timer != nullptr) {
+			timer->setIoEnabled((value & 0x80) != 0);
 		}
 	}
 
