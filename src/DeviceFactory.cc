@@ -95,6 +95,7 @@
 #include "YamahaFDC.hh"
 #include "YamahaSKW01.hh"
 #include "MSXTimer.hh"
+#include "Y8960DCSGDevice.hh"
 #include "Y8960Mixer.hh"
 #include "Y8960OPL2Device.hh"
 #include "Y8960SSGSDevice.hh"
@@ -334,6 +335,8 @@ std::unique_ptr<MSXDevice> DeviceFactory::create(DeviceConfig& conf)
 		result = std::make_unique<MSXTimer>(conf);
 	} else if (type == "Y8960-MIXER") {
 		result = std::make_unique<Y8960Mixer>(conf);
+	} else if (type == "Y8960-DCSG") {
+		result = std::make_unique<Y8960DCSGDevice>(conf);
 	} else if (type == "Y8960-SSGS") {
 		result = std::make_unique<Y8960SSGSDevice>(conf);
 	} else if (type == "Y8960-OPL2") {

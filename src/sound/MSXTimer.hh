@@ -5,6 +5,7 @@
 #include "IRQHelper.hh"
 #include "DynamicClock.hh"
 #include "Schedulable.hh"
+#include "serialize_meta.hh"
 #include <memory>
 #include <string>
 
@@ -81,6 +82,13 @@ public:
 	[[nodiscard]] byte readIO(uint16_t port, EmuTime time) override;
 	[[nodiscard]] byte peekIO(uint16_t port, EmuTime time) const override;
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
+
+	/** 7FFFh (I/O Enabler2) bit 7 による I/O ポートの開閉。
+	  * カウンタと割り込みは閉じている間も動き続ける。実機の enabler は
+	  * アドレスデコードだけを止めるため。
+	  * XML の <use_io_enabler> で切り替える (既定はカートリッジ版)。 */
+	void setIoEnabled(bool enabled) { if (useIoEnabler) ioEnabled = enabled; }
+
 	//[[nodiscard]] byte readMem(uint16_t address, EmuTime time) override;
 	//[[nodiscard]] byte peekMem(uint16_t address, EmuTime time) const override;
 	//void writeMem(uint16_t address, byte value, EmuTime time) override;
@@ -104,7 +112,10 @@ private:
 	MSXTimerCore timer3;
 	byte registerLatch;
 	byte counterSelectLatch;
+	const bool useIoEnabler;
+	bool ioEnabled;
 };
+SERIALIZE_CLASS_VERSION(MSXTimer, 2);
 
 } // namespace openmsx
 
