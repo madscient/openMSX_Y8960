@@ -22,13 +22,14 @@ namespace openmsx {
   * mix, because there is only one output to hear in that case.
   *
   * The mixer proper takes a left/right gain per sound chip and one overall
-  * gain, and applies both to the Y8960's own devices.
+  * left/right gain, and applies both to the Y8960's own devices.
   *
-  * **Nothing drives those gains.** The hardware block does not exist yet and
-  * its registers are unspecified, so B6h-B7h only stores what is written to
-  * it and every gain stays at unity. Wiring them up is a matter of calling
-  * setChannelGain() / setMasterGain() from writeIO() once the register layout
-  * is known.
+  * **Nothing drives those gains.** B6h selects a register and B7h reads or
+  * writes it, the way the PSG is addressed, but what that register array
+  * holds is unspecified: the hardware block does not exist yet. So B6h-B7h
+  * only stores what is written to it and every gain stays at unity. Wiring
+  * them up is a matter of calling setChannelGain() / setMasterGain() from
+  * writeIO() once the register layout is known.
   */
 class Y8960Mixer final : public MSXDevice, private Observer<Setting>
 {
@@ -47,8 +48,8 @@ public:
 	/** 音源チップ 1 個ぶんの左右ゲイン。0.0 が無音、1.0 が素通り。 */
 	void setChannelGain(int channel, float left, float right);
 
-	/** Y8960 の音源すべてに掛かるゲイン。0.0 が無音、1.0 が素通り。 */
-	void setMasterGain(float gain);
+	/** Y8960 の音源すべてに掛かる左右ゲイン。0.0 が無音、1.0 が素通り。 */
+	void setMasterGain(float left, float right);
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
@@ -64,7 +65,7 @@ private:
 private:
 	std::array<std::vector<std::string_view>, ChannelCount> channelDevices;
 	std::array<Gain, ChannelCount> channelGain;
-	float masterGain;
+	Gain masterGain;
 	std::array<byte, RegCount> regs;
 	byte registerLatch;
 	std::unique_ptr<EnumSetting<MSXMixer::OutputSelect>> outputSetting;
