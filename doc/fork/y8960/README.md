@@ -21,6 +21,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
 | `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG / OPL2 のトンネルの回帰テスト |
 | `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
+| `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
 | `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -53,7 +54,10 @@ py $T/check-ssgs-panpot.py "$OUT"
 # 4. SSGS がリードに反応しないこと。$OUT/wo.txt を目で見る
 Y8960_TEST_OUT="$OUT/wo.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-write-only.tcl"
 
-# 5. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
+# 5. MSX-TIMER の割り込み。$OUT/irq.txt を目で見る
+Y8960_TEST_OUT="$OUT/irq.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/timer-irq.tcl"
+
+# 6. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 ```
 
@@ -64,10 +68,10 @@ BI=/tmp/y8960-builtin   # 任意
 mkdir -p "$BI/machines"; cp Contrib/cbios/* "$BI/machines/"
 py $T/make-builtin-config.py "$BI"
 
-# 6. SSGS の GPIO。$OUT/gpio.txt を目で見る
+# 7. SSGS の GPIO。$OUT/gpio.txt を目で見る
 Y8960_TEST_OUT="$OUT/gpio.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/ssgs-gpio.tcl"
 
-# 7. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
+# 8. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
 Y8960_TEST_OUT="$OUT/en2-bi.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/enabler2.tcl"
 ```
 
