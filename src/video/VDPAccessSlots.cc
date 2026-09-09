@@ -207,7 +207,8 @@ struct CycleTable : AccessTable
 
 		// !!! Keep this in sync with the 'Delta' enum !!!
 		constexpr std::array<int, NUM_DELTAS> delta = {
-			0, 1, 16, 28, 24, 32, 36, 46, 60, 72, 84, 88, 36+68, 84+36, 60+68, 72+58
+			0, 1, 16, 28, 24, 32, 36, 46, 60, 72, 84, 88, 36+68, 84+36, 60+68, 72+58,
+			64, 100, 112
 		};
 
 		// Memory-cycle time of every cycle in the line: real time minus the

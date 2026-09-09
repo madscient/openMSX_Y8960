@@ -33,13 +33,25 @@ enum class Delta : int {
 	CMD_84_36 = 13 * TICKS, // 84+36 = 120
 	CMD_60_68 = 14 * TICKS, // 60+68 = 128
 	CMD_72_58 = 15 * TICKS, // 72+58 = 130
+	// The delay between the write to R#46 that starts a command and the
+	// command's first VRAM access. Measured from the rising edge of /CSW as
+	// 46, 70, 82, 82, 94 and 94 cycles; the values below are those plus the
+	// 18 cycles between openMSX's port-write timestamp and that edge. The
+	// startup is a wait like any other, so it is counted in memory cycles
+	// and it gets the sprite addend. POINT, PSET, SRCH, LMCM, LMMC and HMMC
+	// have not been measured and still start immediately.
+	CMD_START_64  = 16 * TICKS, // LMMM
+	CMD_START_88  = 11 * TICKS, // LMMV       (notice: duplicate of CMD_88!)
+	CMD_START_100 = 17 * TICKS, // HMMM, YMMM
+	CMD_START_112 = 18 * TICKS, // HMMV, LINE
 };
-static constexpr int NUM_DELTAS = 16;
-/** The CPU access delays in the 'Delta' enum, D16 and D28. */
+static constexpr int NUM_DELTAS = 19;
+/** The CPU access delays in the 'Delta' enum, CPU_D16 and CPU_D28. */
 static constexpr int FIRST_CPU_DELTA = 2;
 static constexpr int LAST_CPU_DELTA = 4; // exclusive
-/** The first command engine step in the 'Delta' enum; everything from here on
-  * is subject to the memory-cycle counting. */
+/** The command engine delays in the 'Delta' enum: the steps and the startup
+  * delays. Everything from here on gets the sprite addend. Both these and the
+  * CPU delays above are subject to the memory-cycle counting. */
 static constexpr int FIRST_CMD_DELTA = 4;
 static constexpr int LAST_CMD_DELTA = NUM_DELTAS; // exclusive
 

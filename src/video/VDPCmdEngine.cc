@@ -874,7 +874,7 @@ void VDPCmdEngine::startLine(EmuTime time)
 	ASX = ((NX - 1) >> 1);
 	ADX = DX;
 	ANX = 0;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_112);
 	setStatusChangeTime(EmuTime::zero()); // TODO can still be optimized
 	phase = 0;
 }
@@ -976,7 +976,7 @@ void VDPCmdEngine::startLmmv(EmuTime time)
 	unsigned tmpNY = clipNY_1(DY, NY, ARG);
 	ADX = DX;
 	ANX = tmpNX;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_88);
 	calcFinishTime(tmpNX, tmpNY, 72 + 24);
 	phase = 0;
 }
@@ -1101,7 +1101,7 @@ void VDPCmdEngine::startLmmm(EmuTime time)
 	ASX = SX;
 	ADX = DX;
 	ANX = tmpNX;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_64);
 	calcFinishTime(tmpNX, tmpNY, 64 + 32 + 24);
 	phase = 0;
 }
@@ -1361,7 +1361,7 @@ void VDPCmdEngine::startHmmv(EmuTime time)
 	unsigned tmpNY = clipNY_1(DY, NY, ARG);
 	ADX = DX;
 	ANX = tmpNX;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_112);
 	calcFinishTime(tmpNX, tmpNY, 48);
 }
 
@@ -1466,7 +1466,7 @@ void VDPCmdEngine::startHmmm(EmuTime time)
 	ASX = SX;
 	ADX = DX;
 	ANX = tmpNX;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_100);
 	calcFinishTime(tmpNX, tmpNY, 24 + 64);
 	phase = 0;
 }
@@ -1602,7 +1602,7 @@ void VDPCmdEngine::startYmmm(EmuTime time)
 	unsigned tmpNY = clipNY_2(SY, DY, NY, ARG);
 	ADX = DX;
 	ANX = tmpNX;
-	nextAccessSlot(time);
+	nextAccessSlot(time, VDPAccessSlots::Delta::CMD_START_100);
 	calcFinishTime(tmpNX, tmpNY, 24 + 36);
 	phase = 0;
 }

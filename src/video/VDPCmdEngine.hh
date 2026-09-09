@@ -229,6 +229,9 @@ private:
 	void nextAccessSlot(VDPAccessSlots::Delta delta) {
 		engineTime = getNextAccessSlot(engineTime, delta);
 	}
+	void nextAccessSlot(EmuTime time, VDPAccessSlots::Delta delta) {
+		engineTime = getNextAccessSlot(time, delta);
+	}
 	VDPAccessSlots::Calculator getSlotCalculator(
 			EmuTime limit) const {
 		return vdp.getAccessSlotCalculator(engineTime, limit);
