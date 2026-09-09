@@ -130,18 +130,46 @@ b4 = SSG, b7 = MSX-TIMER
 IKASCC 内蔵マッパーを patch して 2 モードにしたもの。
 
 **互換モード (rammode=0)** — Konami SCC 相当:
-- BANK レジスタ: 5000-57FFh(BANK0) / 7000-77FFh(BANK1) / 9000-97FFh(BANK2) / B000-B7FFh(BANK3)
-- SCC 音源レジスタ: `bankreg2 == 3Fh` かつ A[15:11]==10011b、すなわち 9800-9FFFh
-- 全 BANK が Read only
+- BANK レジスタ: 5000-57FFh(BANK0) / 7000-77FFh(BANK1) / 9000-97FFh(BANK2) / B000-B7FFh(BANK3)。
+  **rammode が 1 のときは受け付けない**（`&& !rammode`）
+- SCC 音源レジスタ: `bankreg2 == 6'h3F` かつ A[15:11]==10011b、すなわち 9800-9FFFh
 
 **RAM モード (rammode=1)** — 独自:
 - モードレジスタ: 4?FBh (? = 8..F、`ablo == FBh` かつ A[15:11]==01001b) の b0
-- BANK レジスタ: 4?FCh / 4?FDh / 4?FEh / 4?FFh
-- SCC 音源レジスタが追加で `bankreg1 == 3Fh` かつ A[15:11]==01111b = 7800-7FFFh にも出現
-- 書き込みが SRAM まで通る（`cpu_write = rammode & bus_write`）
+- BANK レジスタ: 4?FCh / 4?FDh / 4?FEh / 4?FFh。**rammode が 0 のときは受け付けない**
+- SCC 音源レジスタが追加で `rammode && bankreg1 == 6'h3F` かつ A[15:11]==01111b
+  = 7800-7FFFh にも出現
+- 書き込みが SRAM まで通る
 
-BANK レジスタは 6bit 書けるが、出力アドレスは `{rammode, bankreg[4:0]}`
-（**確認済み**: patch 後の `o_ROMADDR`）。SCC 側メモリは 256KB = 8KB × 32 バンク。
+リセット値は `rammode=0`、`bankreg0..3 = 0,1,2,3`。
+
+### 4.1 バンク番号と rammode が実際に何を決めているか
+
+**確認済み(読解)**: 2026-09-09 に `d6d16a3` を読んだ。効いているのは次の 3 行。
+
+| ファイル | 行の要旨 |
+|---|---|
+| `ikascc_patch/IKASCC_vrc_s.v` | `o_ROMADDR = { rammode, bankregN[4:0] }` |
+| `ikascc_patch/scc_bank.v` | `cpu_address = { scc_ma[17:13], bus_address[12:0] }` |
+| 同上 | `cpu_write = w_ram_mode & bus_write`、`w_ram_mode = scc_ma[18]` |
+
+`scc_ma` は `o_ROMADDR` そのものなので、これを合わせると次になる。
+
+- **メモリのアドレスは `bankreg[4:0]` だけで決まる。** 8KB × 32 バンク = 256KB。
+  `rammode` はアドレスに寄与しない
+- **`rammode` が決めるのは書き込みの可否だけ**（および `memory_io_en = ~scc_ma[5]`
+  によるメモリマップド I/O の窓の有無。**確認済み**: top の当該行）
+- **バンク番号による ROM/RAM の区別は無い。** `cpu_write` にバンク番号の分岐が
+  一切無いので、RAM モードでは 32 バンクすべてが書ける
+- **4000-5FFFh の書き込み保護も無い**（`w_mem_access = bus_valid & ~bus_io` で、
+  アドレスによる分岐が無い）
+- バンクレジスタは 6bit 書けるが、アドレスに出るのは `[4:0]` の 5bit。
+  **bit5 は SCC 音源レジスタの `== 6'h3F` 比較にだけ効く**
+
+メモリマップド I/O の窓は
+`memory_io_en & bus_write & (A15==0) & (A[13:5]==9'b111111111)`
+（**確認済み**: `y8960_address_decode.v`）。**書き込みのみ**で、
+`rammode=1` のとき窓ごと消える。
 
 ## 5. メモリ構成
 
@@ -325,10 +353,18 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
    直接 I/O と窓は別々に並びが決まっており（§3）、RTL から窓の側を推論した
    こちらの読みが誤りだった。DCSG の 7FF0h/7FF1h も同じ。
 
-3. **ROM/RAM バンクの境界**: manual §4 は「BANK#0-15 が ROM、#16-31 が RAM」。
-   `IKASCC_vrc_s.v` の patch ヘッダコメントは「BANK#0-#7 ROM、#8-#15 RAM」。
-   RTL の実際の動作は**どちらでもなく**、rammode が 1 なら全バンクに書ける
-   (`cpu_write = rammode & bus_write`、バンク番号による分岐は無い)。
+3. **ROM/RAM バンクの境界**: **出典が 4 つあり、4 つとも違う**
+   （**確認済み**: 2026-09-09 に `d6d16a3` の当該行を読んだ）。
+
+   | 出典 | 記述 |
+   |---|---|
+   | manual §4 | BANK#0-15 が ROM、#16-31 が RAM |
+   | `IKASCC_vrc_s.v` のヘッダコメント | BANK#0-#7 が ROM、#8-#15 が RAM |
+   | `scc_bank.v` のコメント | 互換モードは 0-31 が read only、RAM モードは 0-15 が read only で 16-31 が read/write |
+   | **RTL の assign** | **バンク番号による分岐が無い。RAM モードなら全 32 バンクが書ける** |
+
+   同じ `IKASCC_vrc_s.v` のヘッダは「BANK0...3 is ROM only」「BANK0 is ROM only」
+   とも書いているが、これに当たるコードも無い。§4.1 を見ること。
 4. **B6h-B7h のサウンドミキサー**: `ioport.txt` にあるが RTL に無い。
 5. **ADPCM メモリの 128KB×2 / 256KB×1 切替**: manual にあるがレジスタが無い。
 6. **BANK0 の出現アドレス**: manual §4 は「4000h-5FFFh と C000h-DFFFh の2か所」。
