@@ -2,6 +2,7 @@
 #define Y8960SSGCORE_HH
 
 #include "FloatSetting.hh"
+#include "TclCallback.hh"
 
 #include "EmuTime.hh"
 
@@ -12,6 +13,7 @@
 
 namespace openmsx {
 
+class AY8910Periphery;
 class DeviceConfig;
 
 /** One YM2149 of the Y8960's SSGS block.
@@ -20,14 +22,17 @@ class DeviceConfig;
   * of these and mixes them into one stereo stream, because the panpot is per
   * channel and openMSX only has per-device balance.
   *
-  * The I/O ports are gone with the AY8910Periphery that drove them; the YMZ
-  * parts have none, so registers 14 and 15 do not exist.
+  * The YMZ parts have no I/O ports, so registers 14 and 15 are dead storage
+  * unless a periphery is given. Only the Y8960 built into an MSX has one, on
+  * its primary unit, where it stands in for the machine's PSG.
   */
 class Y8960SsgCore final
 {
 public:
+	/** @param periphery_ what registers 14 and 15 drive, or nullptr for a
+	  *                    unit without I/O ports. */
 	Y8960SsgCore(const std::string& name, const DeviceConfig& config,
-	             EmuTime time);
+	             EmuTime time, AY8910Periphery* periphery_ = nullptr);
 	~Y8960SsgCore();
 
 	/** Generate 3 mono channels. Y8960SSGS applies the panpot afterwards. */
@@ -177,6 +182,8 @@ private:
 	void updateDetune();
 
 private:
+	AY8910Periphery* const periphery;
+	TclCallback directionsCallback;
 	FloatSetting vibratoPercent;
 	FloatSetting vibratoFrequency;
 	FloatSetting detunePercent;
@@ -187,6 +194,7 @@ private:
 	Envelope envelope;
 	std::array<uint8_t, 16> regs;
 	static constexpr bool isAY8910 = false; // the SSGS uses YM2149 cores
+	const bool ignorePortDirections;
 	bool doDetune;
 };
 
