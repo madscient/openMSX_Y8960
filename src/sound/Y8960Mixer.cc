@@ -69,7 +69,7 @@ void Y8960Mixer::reset(EmuTime /*time*/)
 	registerLatch = 0;
 	std::ranges::fill(regs, 0);
 
-	masterGain = 1.0f;
+	masterGain = Gain{.left = 1.0f, .right = 1.0f};
 	std::ranges::fill(channelGain, Gain{.left = 1.0f, .right = 1.0f});
 
 	for (const auto& devices : channelDevices) {
@@ -108,9 +108,9 @@ void Y8960Mixer::setChannelGain(int channel, float left, float right)
 	applyGain(channel);
 }
 
-void Y8960Mixer::setMasterGain(float gain)
+void Y8960Mixer::setMasterGain(float left, float right)
 {
-	masterGain = gain;
+	masterGain = Gain{.left = left, .right = right};
 	applyAllGains();
 }
 
@@ -119,7 +119,7 @@ void Y8960Mixer::applyGain(int channel)
 	const auto& g = channelGain[channel];
 	for (std::string_view device : channelDevices[channel]) {
 		getMotherBoard().getMSXMixer().setDeviceGain(
-			device, g.left * masterGain, g.right * masterGain);
+			device, g.left * masterGain.left, g.right * masterGain.right);
 	}
 }
 
