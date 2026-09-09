@@ -22,7 +22,7 @@ enum class Delta : int {
 	CPU_28    =  3 * TICKS, //                                   (TMS99x8)
 	CMD_24    =  4 * TICKS, // The remaining ones are command engine steps
 	CMD_32    =  5 * TICKS, //   counted in 'memory cycles' rather than 'VDP cycles'
-	CMD_36    =  6 * TICKS, //   see the comment about 'stretch1' and 'stretch2' in
+	CMD_36    =  6 * TICKS, //   see the comment about 'pad' in
 	CMD_46    =  7 * TICKS, //   VDPAccessSlots.cc
 	CMD_60    =  8 * TICKS,
 	CMD_72    =  9 * TICKS,
