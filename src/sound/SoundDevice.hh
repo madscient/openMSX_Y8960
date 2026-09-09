@@ -96,7 +96,6 @@ public:
 	 * NOTE: after calling setBalance() a number of times you must also call postSetBalance() once.
 	 */
 	void setBalance(unsigned channel, float balance);
-	void setBalance(unsigned channel, float leftGain, float rightGain);
 	virtual void postSetBalance();
 
 	/** Query the last generated audio signal for a specific channel.
