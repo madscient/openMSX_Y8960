@@ -20,6 +20,8 @@ MSXTimer::MSXTimer(const DeviceConfig& config)
 	, timer2(config.getMotherBoard().getScheduler(), *this, FREQ, 2)
 	, timer3(config.getMotherBoard().getScheduler(), *this, FREQ, 3)
 	, irq(config.getMotherBoard(), getName() + ".IRQ")
+	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
+	, ioEnabled(!useIoEnabler)
 {
 	powerUp(getCurrentTime());
 }
@@ -57,10 +59,12 @@ void MSXTimer::reset(EmuTime time)
 	timer1.reset(time);
 	timer2.reset(time);
 	timer3.reset(time);
+	ioEnabled = !useIoEnabler;
 }
 
 byte MSXTimer::readIO(uint16_t port, EmuTime time)
 {
+	if (!ioEnabled) return 0xFF;
 	byte result = 0xFF;
 	switch (port & 0x03) {
 	case 0x00:
@@ -110,6 +114,7 @@ byte MSXTimer::readIO(uint16_t port, EmuTime time)
 
 byte MSXTimer::peekIO(uint16_t port, EmuTime time) const
 {
+	if (!ioEnabled) return 0xFF;
 	byte result = 0xFF;
 	switch (port & 0x03) {
 	case 0x00:
@@ -159,6 +164,7 @@ byte MSXTimer::peekIO(uint16_t port, EmuTime time) const
 
 void MSXTimer::writeIO(uint16_t port, byte value, EmuTime time)
 {
+	if (!ioEnabled) return;
 	switch (port & 0x03) {
 	case 0x00:
 		registerLatch = value;
@@ -192,7 +198,7 @@ void MSXTimer::writeIO(uint16_t port, byte value, EmuTime time)
 }
 
 template<typename Archive>
-void MSXTimer::serialize(Archive& ar, unsigned /*version*/)
+void MSXTimer::serialize(Archive& ar, unsigned version)
 {
 	ar.serialize("timer0",         	   timer0,
 				 "timer1",		 	   timer1,
@@ -201,6 +207,9 @@ void MSXTimer::serialize(Archive& ar, unsigned /*version*/)
 				 "irqState",	   	   irqState,
 	             "registerLatch", 	   registerLatch,
 	             "counterSelectLatch", counterSelectLatch);
+	if (ar.versionAtLeast(version, 2)) {
+		ar.serialize("ioEnabled", ioEnabled);
+	}
 }
 INSTANTIATE_SERIALIZE_METHODS(MSXTimer);
 REGISTER_MSXDEVICE(MSXTimer, "MSX-TIMER");

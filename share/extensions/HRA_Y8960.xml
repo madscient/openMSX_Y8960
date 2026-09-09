@@ -25,18 +25,18 @@
       </sound>
     </Y8960-SSGS>
     <!-- DCSG は 1 ポートずつで、アドレス bit0 が 2 回路のどちらかを選ぶ -->
-    <SNPSG id="Y8960 DCSG 0">
+    <Y8960-DCSG id="Y8960 DCSG 0">
       <io base="0x3E" num="1" type="O"/>
       <sound>
         <volume>21000</volume>
       </sound>
-    </SNPSG>
-    <SNPSG id="Y8960 DCSG 1">
+    </Y8960-DCSG>
+    <Y8960-DCSG id="Y8960 DCSG 1">
       <io base="0x3F" num="1" type="O"/>
       <sound>
         <volume>21000</volume>
       </sound>
-    </SNPSG>
+    </Y8960-DCSG>
     <Y8960-OPLL id="Y8960 OPLL 0">
       <io base="0x7C" num="2" type="O"/>
       <sound>
@@ -80,7 +80,10 @@
           <opll1>Y8960 OPLL 1</opll1> <!-- I/O tunnel from 7FF2h -->
           <opl2_0>Y8960 OPL2 0</opl2_0> <!-- I/O tunnel from 7FECh -->
           <opl2_1>Y8960 OPL2 1</opl2_1> <!-- I/O tunnel from 7FEEh -->
-          <ssgs>Y8960 SSGS</ssgs> <!-- I/O Enabler2 b4 -->
+          <ssgs>Y8960 SSGS</ssgs> <!-- I/O tunnel from 7FEAh, I/O Enabler2 b4 -->
+          <dcsg0>Y8960 DCSG 0</dcsg0> <!-- I/O tunnel from 7FF0h, I/O Enabler2 b2 -->
+          <dcsg1>Y8960 DCSG 1</dcsg1> <!-- I/O tunnel from 7FF1h, I/O Enabler2 b3 -->
+          <timer>y8960-timer</timer> <!-- I/O Enabler2 b7 -->
         </ROM>
       </secondary>
     </primary>
