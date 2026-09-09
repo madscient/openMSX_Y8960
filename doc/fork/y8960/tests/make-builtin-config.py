@@ -53,6 +53,9 @@ def main():
         if device.tag == "ROM" and device.findtext("mappertype") == "Y8960":
             # 4. メモリマップド I/O の窓ごと無し
             set_child(device, "use_mmio_tunnel", "false")
+        if device.tag == "Y8960-MIXER":
+            # 5. 出力は既定でミックス。内蔵版に「本体側の出力」は無い
+            set_child(device, "default_output", "mix")
 
     path = os.path.join(out_dir, "HRA_Y8960.xml")
     with open(path, "w", encoding="utf-8", newline="\n") as f:

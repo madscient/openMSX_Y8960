@@ -97,7 +97,6 @@ public:
 	 * NOTE: this is meant to be called during the construction phase (before audio generation starts).
 	 */
 	void setBalance(unsigned channel, float balance);
-	void setBalance(unsigned channel, float leftGain, float rightGain);
 	virtual void postSetBalance();
 
 	/** Enable the use of setChannelFactors().
