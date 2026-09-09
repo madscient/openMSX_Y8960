@@ -425,6 +425,26 @@ Y8960 には **MSX 本体に内蔵して既存デバイスを置き換える**�
 `RomY8960` のメモリ保持を `Ram` 1 個（256KB）に変える。ROM イメージの
 載せ方も変わるので、影響はこのファイル 1 本に収まるが行数は出る。
 
+**RTL の読み方**（再開するときのために）。**リポジトリの外**に clone すること。
+コードもデータも本リポジトリには入れない（ルートの `CLAUDE.md` §1）。
+
+```sh
+git clone --depth 50 https://github.com/hra1129/Y8960_Cartridge.git
+```
+
+**Windows ではチェックアウトが途中で落ちる。** パスが長くMAX_PATH を超えるため。
+ファイルを展開せずにオブジェクトから直接読めば済む。
+
+```sh
+git ls-tree -r --name-only HEAD | grep -i scc     # 目的のファイルを探す
+git show HEAD:<path>                              # 中身を読む
+git cat-file -p $(git rev-parse HEAD:<path>)      # パスが長すぎるときはこちら
+```
+
+見るべきファイルは `fpga/Y8960_Cartridge_TangPrimer25K/src/ikascc_patch/` の
+`IKASCC_vrc_s.v` と `scc_bank.v`、および `src/y8960_address_decode/` の
+`y8960_address_decode.v`。
+
 ### 3.7 デジタルミキサーと出力の切り替え【実装済み 2026-09-09】
 
 **2 つの別物が同じデバイスに載っている。片方だけが実在する。**
