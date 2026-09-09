@@ -484,7 +484,9 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 		SoundDevice& device = *info.device;
 		auto l1 = info.left1;
 		auto r1 = info.right1;
-		bool enable = selectInput == info.externalOutput;
+		bool enable = (outputSelect == OutputSelect::BOTH) ||
+		              (info.externalOutput ==
+		               (outputSelect == OutputSelect::EXTERNAL));
 		if (!device.isStereo()) {
 			// device generates mono output
 			if (l1 == r1) {
@@ -789,10 +791,10 @@ void MSXMixer::updateVolumeParams(SoundDeviceInfo& info) const
 		}
 	}();
 	auto [ampL, ampR] = info.device->getAmplificationFactor();
-	info.left1  = l1 * ampL;
-	info.right1 = r1 * ampR;
-	info.left2  = l2 * ampL;
-	info.right2 = r2 * ampR;
+	info.left1  = l1 * ampL * info.gainLeft;
+	info.right1 = r1 * ampR * info.gainRight;
+	info.left2  = l2 * ampL * info.gainLeft;
+	info.right2 = r2 * ampR * info.gainRight;
 }
 
 void MSXMixer::updateMasterVolume()
@@ -882,39 +884,15 @@ void MSXMixer::SoundDeviceInfoTopic::tabCompletion(std::vector<std::string>& tok
 	}
 }
 
-void MSXMixer::setBalance(std::string_view name, int balance)
-{
-	float fbalance = (float)balance / 100.0;
-	bool found = false;
-	for (auto& info : infos) {
-		SoundDevice& device = *info.device;
-		std::string_view devName = device.getName();
-		if (name.compare(devName) == 0) {
-			found = true;
-			for (unsigned ch = 0; ch < device.getNumChannels(); ch++) {
-				device.setBalance(ch, fbalance);
-			}
-			device.postSetBalance();
-		}
-	}
-
-	if (!found) {
-		throw CommandException("Unknown sound device '", name, "'");
-	}
-}
-
-void MSXMixer::setBalance(std::string_view name, float leftGain, float rightGain)
+void MSXMixer::setDeviceGain(std::string_view name, float leftGain, float rightGain)
 {
 	bool found = false;
 	for (auto& info : infos) {
-		SoundDevice& device = *info.device;
-		std::string_view devName = device.getName();
-		if (name.compare(devName) == 0) {
+		if (name.compare(info.device->getName()) == 0) {
 			found = true;
-			for (unsigned ch = 0; ch < device.getNumChannels(); ch++) {
-				device.setBalance(ch, leftGain, rightGain);
-			}
-			device.postSetBalance();
+			info.gainLeft = leftGain;
+			info.gainRight = rightGain;
+			updateVolumeParams(info);
 		}
 	}
 
@@ -947,9 +925,9 @@ void MSXMixer::setExternal(std::string_view name, bool external)
 	}
 }
 
-void MSXMixer::selectExternal(bool external)
+void MSXMixer::selectOutput(OutputSelect select)
 {
-	selectInput = external;
+	outputSelect = select;
 }
 
 } // namespace openmsx

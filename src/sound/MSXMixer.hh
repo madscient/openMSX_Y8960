@@ -52,6 +52,9 @@ public:
 		float defaultVolume = 0.f;
 		float left1 = 0.f, right1 = 0.f, left2 = 0.f, right2 = 0.f;
 		bool externalOutput;
+		/** Y8960 のミキサーが掛ける出力ゲイン。デバイス内部のパンや
+		  * ユーザー設定の volume/balance とは独立に、最後に掛かる。 */
+		float gainLeft = 1.0f, gainRight = 1.0f;
 	};
 
 public:
@@ -143,10 +146,14 @@ public:
 
 	void reInit();
 
-	void setBalance(std::string_view name, int balance);
-	void setBalance(std::string_view name, float leftGain, float rightGain);
+	/** どの出力を鳴らすか。EXTERNAL は Y8960 のように、音声を本体に
+	  * 戻さず自分で出すカートリッジの側を指す。実機ではその 2 本の線を
+	  * 人が外で切り替えるかミックスするので、BOTH がミックスに当たる。 */
+	enum class OutputSelect { INTERNAL, EXTERNAL, BOTH };
+
+	void setDeviceGain(std::string_view name, float leftGain, float rightGain);
 	void setExternal(std::string_view name, bool external);
-	void selectExternal(bool external);
+	void selectOutput(OutputSelect select);
 
 private:
 	void updateVolumeParams(SoundDeviceInfo& info) const;
@@ -199,7 +206,7 @@ private:
 	unsigned muteCount = 1; // start muted
 	float tl0, tr0; // internal DC-filter state
 	int externalOutputCount = 0;
-	bool selectInput = false;
+	OutputSelect outputSelect = OutputSelect::INTERNAL;
 };
 
 } // namespace openmsx
