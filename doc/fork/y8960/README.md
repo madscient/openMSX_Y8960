@@ -19,7 +19,9 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/ssgs-panpot.tcl` | SSGS のパンポットと SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
-| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG のトンネルの回帰テスト |
+| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG / OPL2 のトンネルの回帰テスト |
+| `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
+| `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -55,6 +57,20 @@ Y8960_TEST_OUT="$OUT/wo.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -scri
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 ```
 
+本体内蔵版のぶんは、構成を組み立ててから回す。
+
+```sh
+BI=/tmp/y8960-builtin   # 任意
+mkdir -p "$BI/machines"; cp Contrib/cbios/* "$BI/machines/"
+py $T/make-builtin-config.py "$BI"
+
+# 6. SSGS の GPIO。$OUT/gpio.txt を目で見る
+Y8960_TEST_OUT="$OUT/gpio.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/ssgs-gpio.tcl"
+
+# 7. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
+Y8960_TEST_OUT="$OUT/en2-bi.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/enabler2.tcl"
+```
+
 既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
 
 ```sh
@@ -69,11 +85,10 @@ done
 
 - 判定スクリプトのある 2 本は、入力を差し替える（`ws2.wav` を `ws0.wav` で
   置き換えると NG になる）
-- `enabler2.tcl` は、**本体内蔵版の設定**（`<use_io_enabler>false</use_io_enabler>`、
-  `<use_mmio_tunnel>false</use_mmio_tunnel>`）を書いた XML を別の
-  `OPENMSX_USER_DATA` の `extensions/` に置いて回す。作業ツリーの `share/` を
-  触らずに済む。カートリッジ版向けの期待値は当然すべて外れ、
-  **どの手順が動くかで切り替えが効いていることが分かる**
+- `enabler2.tcl` と `ssgs-gpio.tcl` は、**もう一方の版の構成**で回す。
+  期待値は当然外れ、**どの手順が動くかで切り替えが効いていることが分かる**。
+  構成は `make-builtin-config.py` が別の `OPENMSX_USER_DATA` に書き出すので、
+  作業ツリーの `share/` は触らずに済む
 
 ## 取り込み元
 

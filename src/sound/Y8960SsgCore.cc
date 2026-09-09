@@ -476,8 +476,11 @@ inline void Y8960SsgCore::Envelope::advanceFast(unsigned duration)
 // Y8960SsgCore main class:
 
 Y8960SsgCore::Y8960SsgCore(const std::string& name_, const DeviceConfig& config,
-                           EmuTime time)
-	: vibratoPercent(
+                           EmuTime time, AY8910Periphery* periphery_)
+	: periphery(periphery_)
+	, directionsCallback(
+		config.getGlobalSettings().getInvalidPsgDirectionsSetting())
+	, vibratoPercent(
 		config.getCommandController(), tmpStrCat(name_, "_vibrato_percent"),
 		"controls strength of vibrato effect", 0.0, 0.0, 10.0)
 	, vibratoFrequency(
@@ -491,6 +494,7 @@ Y8960SsgCore::Y8960SsgCore(const std::string& name_, const DeviceConfig& config,
 		"frequency of detune effect in Hertz", 5.0, 1.0, 100.0)
 	, amplitude(config)
 	, envelope(amplitude.getEnvVolTable())
+	, ignorePortDirections(config.getChildDataAsBool("ignorePortDirections", true))
 {
 	updateDetune();
 
@@ -518,6 +522,20 @@ void Y8960SsgCore::reset(EmuTime time)
 uint8_t Y8960SsgCore::readRegister(unsigned reg, EmuTime time)
 {
 	if (reg >= 16) return 255;
+	if (periphery) {
+		switch (reg) {
+		case AY_PORTA:
+			if (!(regs[AY_ENABLE] & PORT_A_DIRECTION)) { // input
+				regs[reg] = periphery->readA(time);
+			}
+			break;
+		case AY_PORTB:
+			if (!(regs[AY_ENABLE] & PORT_B_DIRECTION)) { // input
+				regs[reg] = periphery->readB(time);
+			}
+			break;
+		}
+	}
 
 	// TODO some AY8910 models have 1F as mask for registers 1, 3, 5
 	static constexpr std::array<uint8_t, 16> regMask = {
@@ -531,6 +549,20 @@ uint8_t Y8960SsgCore::readRegister(unsigned reg, EmuTime time)
 uint8_t Y8960SsgCore::peekRegister(unsigned reg, EmuTime time) const
 {
 	if (reg >= 16) return 255;
+	if (periphery) {
+		switch (reg) {
+		case AY_PORTA:
+			if (!(regs[AY_ENABLE] & PORT_A_DIRECTION)) { // input
+				return periphery->readA(time);
+			}
+			break;
+		case AY_PORTB:
+			if (!(regs[AY_ENABLE] & PORT_B_DIRECTION)) { // input
+				return periphery->readB(time);
+			}
+			break;
+		}
+	}
 	return regs[reg];
 }
 
@@ -542,7 +574,20 @@ void Y8960SsgCore::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 }
 void Y8960SsgCore::wrtReg(unsigned reg, uint8_t value, EmuTime time)
 {
+	// Warn/force port directions
+	if (periphery && (reg == AY_ENABLE)) {
+		if (value & PORT_A_DIRECTION) {
+			directionsCallback.execute();
+		}
+		if (ignorePortDirections) {
+			// portA -> input
+			// portB -> output
+			value = (value & ~PORT_A_DIRECTION) | PORT_B_DIRECTION;
+		}
+	}
+
 	// Note: unused bits are stored as well; they can be read back.
+	uint8_t diff = regs[reg] ^ value;
 	regs[reg] = value;
 
 	switch (reg) {
@@ -578,6 +623,27 @@ void Y8960SsgCore::wrtReg(unsigned reg, uint8_t value, EmuTime time)
 		break;
 	case AY_ESHAPE:
 		envelope.setShape(value);
+		break;
+	case AY_ENABLE:
+		if (!periphery) break;
+		if (diff & PORT_A_DIRECTION) {
+			periphery->writeA((value & PORT_A_DIRECTION) ? regs[AY_PORTA] : 0xff,
+			                  time);
+		}
+		if (diff & PORT_B_DIRECTION) {
+			periphery->writeB((value & PORT_B_DIRECTION) ? regs[AY_PORTB] : 0xff,
+			                  time);
+		}
+		break;
+	case AY_PORTA:
+		if (periphery && (regs[AY_ENABLE] & PORT_A_DIRECTION)) { // output
+			periphery->writeA(value, time);
+		}
+		break;
+	case AY_PORTB:
+		if (periphery && (regs[AY_ENABLE] & PORT_B_DIRECTION)) { // output
+			periphery->writeB(value, time);
+		}
 		break;
 	}
 }
