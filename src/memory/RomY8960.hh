@@ -33,6 +33,7 @@ public:
 
 private:
 	void bankSwitch(unsigned page, unsigned block);
+	void writeMmio(uint16_t address, byte value, EmuTime time);
 	bool isRamRegion(unsigned int region) const;
 	uint8_t getBank(unsigned int region) const;
 	void setBank(unsigned int region, uint8_t bank);
@@ -48,6 +49,7 @@ private:
 	Y8960DCSGDevice *dcsg_0;
 	Y8960DCSGDevice *dcsg_1;
 	MSXTimer *timer;
+	const bool useMmioTunnel;
 	SCC scc;
 	Ram ram;
 	bool sccEnabled;
