@@ -105,6 +105,16 @@ top では `memory_io_en = ~scc_ma[5] = ~rammode`（**確認済み**）。
 | 7FF6h | I/O Enabler 1 |
 | 7FFFh | I/O Enabler 2 |
 
+**この表は正しい。窓の中は高位側が #1 である**（**確認済み**: 2026-09-09 に
+hra1129 さんから直接の回答）。直接 I/O 側の並びとは**別々に決まっている**ので、
+片方から他方は導けない。理由はどちらも過去の実装との互換である。
+
+| ブロック | 直接 I/O の #1 | 窓の #1 |
+|---|---|---|
+| OPLL | 7Ch-7Dh（高位） | 7FF4h-7FF5h（高位） |
+| OPL2 | C0h-C1h（低位） | 7FEEh-7FEFh（高位） |
+| DCSG | 3Eh（低位） | 7FF1h（高位） |
+
 I/O Enabler 1 (7FF6h): b0 = OPLL#1, b1 = OPLL#2
 I/O Enabler 2 (7FFFh): b0 = OPL2#1, b1 = OPL2#2, b2 = DCSG#1, b3 = DCSG#2,
 b4 = SSG, b7 = MSX-TIMER
@@ -308,9 +318,12 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
    7FF6h の enable ビットの割り当てが xlsx と RTL で逆になっており、
    さらにリセット時に有効なのが 7Ch-7Dh ではなく 7Ah-7Bh の側である。
 2.1. **OPL2 のメモリマップド側の呼び方**: xlsx は C0h-C1h を OPL2-1、
-   7FECh-7FEDh を OPL2-2 としているが、RTL ではどちらも `bus_address[1]==0` で
-   同じ 1 番目の回路に届く（**確認済み**: `opl2_patch/opl2.v:102-103`）。
-   両立しない。OPLL は同じ規則で xlsx と一致していたので、ずれるのは OPL2 だけ。
+   7FECh-7FEDh を OPL2-2 としている。RTL の `bus_address[1]` から読むと
+   どちらも 1 番目の回路に届くように見える（**確認済み**:
+   `opl2_patch/opl2.v:102-103`）。
+   **決着済み**: 2026-09-09 に hra1129 さんが **xlsx を正**と回答。
+   直接 I/O と窓は別々に並びが決まっており（§3）、RTL から窓の側を推論した
+   こちらの読みが誤りだった。DCSG の 7FF0h/7FF1h も同じ。
 
 3. **ROM/RAM バンクの境界**: manual §4 は「BANK#0-15 が ROM、#16-31 が RAM」。
    `IKASCC_vrc_s.v` の patch ヘッダコメントは「BANK#0-#7 ROM、#8-#15 RAM」。
