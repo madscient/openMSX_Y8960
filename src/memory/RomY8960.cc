@@ -11,18 +11,23 @@
 //  	OPLL1: 		0x7FF2 - 0x7FF3
 //					tunnel to OPLL1 I/O port
 //
-//  	OPL2-0:     0x7FEC - 0x7FED
-//					tunnel to OPL2-0 I/O port
-//
-//  	OPL2-1:     0x7FEE - 0x7FEF
+//  	OPL2-1:     0x7FEC - 0x7FED
 //					tunnel to OPL2-1 I/O port
+//
+//  	OPL2-0:     0x7FEE - 0x7FEF
+//					tunnel to OPL2-0 I/O port
 //
 //  	SSGS:       0x7FEA - 0x7FEB
 //					tunnel to SSGS I/O port
 //
-//  	DCSG0:      0x7FF0
-//  	DCSG1:      0x7FF1
+//  	DCSG1:      0x7FF0
+//  	DCSG0:      0x7FF1
 //					tunnel to the DCSG register port
+//
+//	In this window the first circuit of a pair sits at the HIGHER address,
+//	which is the opposite of how the direct I/O ports are laid out for the
+//	OPL2 and the DCSG. Both orders are inherited from earlier hardware, so
+//	neither follows from the other (hra1129, 2026-09-09).
 //
 //  	I/O Enabler1: 0x7FF6
 //					b0: open OPLL0 I/O ports (0x7C-0x7D)
@@ -257,18 +262,17 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		}
 	}
 
-	// write to OPL2-0. Address bit 1 picks the circuit on the real hardware,
-	// so 7FECh goes to the same one that 0xC0-0xC1 reaches.
+	// write to OPL2-1
 	if ((address & 0xFFFE) == 0x7FEC) {
-		if(opl2_0 != nullptr) {
-			opl2_0->writePort(address & 1, value, time);
+		if(opl2_1 != nullptr) {
+			opl2_1->writePort(address & 1, value, time);
 		}
 	}
 
-	// write to OPL2-1
+	// write to OPL2-0
 	if ((address & 0xFFFE) == 0x7FEE) {
-		if(opl2_1 != nullptr) {
-			opl2_1->writePort(address & 1, value, time);
+		if(opl2_0 != nullptr) {
+			opl2_0->writePort(address & 1, value, time);
 		}
 	}
 
@@ -282,7 +286,7 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 	// write to the DCSG. It has a single register port, so here the address
 	// bit picks the circuit rather than the address/data half.
 	if ((address & 0xFFFE) == 0x7FF0) {
-		auto* dcsg = (address & 1) ? dcsg_1 : dcsg_0;
+		auto* dcsg = (address & 1) ? dcsg_0 : dcsg_1;
 		if(dcsg != nullptr) {
 			dcsg->writePort(value, time);
 		}
