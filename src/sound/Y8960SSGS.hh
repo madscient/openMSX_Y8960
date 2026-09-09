@@ -14,6 +14,8 @@
 
 namespace openmsx {
 
+class AY8910Periphery;
+
 /** The SSGS block of the Y8960: two YM2149 units with a panpot per channel.
   *
   * Register map, same as the YMZ705 (SSGS) and YMZ732 (SSGS2):
@@ -23,7 +25,7 @@ namespace openmsx {
   * and within a unit:
   *
   *   $00-$0D  YM2149 registers
-  *   $0E-$0F  absent, these parts have no I/O ports
+  *   $0E-$0F  absent, unless the primary unit carries the GPIO
   *   $10-$12  4 bit panpot for channel A, B and C
   *
   * $40 and up is the ADPCM and sequencer area of those parts, which the Y8960
@@ -43,7 +45,10 @@ public:
 	static constexpr uint8_t PAN_MAX = 15;
 	static constexpr uint8_t PAN_CENTER = (PAN_MAX + 1) / 2;
 
-	Y8960SSGS(const std::string& name, const DeviceConfig& config, EmuTime time);
+	/** @param periphery what the primary unit's GPIO drives, or nullptr for
+	  *                   a block without one. */
+	Y8960SSGS(const std::string& name, const DeviceConfig& config, EmuTime time,
+	          AY8910Periphery* periphery = nullptr);
 	~Y8960SSGS();
 
 	void reset(EmuTime time);
@@ -61,9 +66,11 @@ private:
 
 	static void panGains(uint8_t pan, float& gainL, float& gainR);
 	void measureDc();
+	[[nodiscard]] bool isGpioReg(unsigned unit_, unsigned sub) const;
 
 private:
 	std::array<Y8960SsgCore, NUM_UNITS> unit;
+	const bool hasGpio;
 	std::array<uint8_t, NUM_CHANNELS> pan;
 
 	/** The core's output is unipolar, so a silent channel does not sit at

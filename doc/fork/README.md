@@ -58,6 +58,6 @@ upstream の文書で変更しているのはルートの `README` だけ。
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の 2 ビット） |
 | I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0/b1、DCSG b2/b3、SSGS b4、タイマー b7） |
 | メモリマップド I/O のトンネル | 実装済み（7FEAh-7FF5h。窓を `rammode` で閉じるのは未実装） |
-| カートリッジ版 / 本体内蔵版の切り替え | 4 点のうち 3 点は実装済み。SSGS の GPIO のみ未実装 |
+| カートリッジ版 / 本体内蔵版の切り替え | 実装済み（I/O イネーブラー、MMIO トンネル、SSGS のリード、SSGS の GPIO の 4 点） |
 
 詳細と残作業は `y8960/implementation-plan.md`。

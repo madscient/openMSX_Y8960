@@ -14,11 +14,13 @@ namespace openmsx {
 // The cores run at the same rate the AY8910 does.
 static constexpr int NATIVE_FREQ_INT = 3579545 / 2 / 8;
 
-Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTime time)
+Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTime time,
+                     AY8910Periphery* periphery)
 	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 SSGS",
 	                       NUM_CHANNELS, NATIVE_FREQ_INT, true)
-	, unit{Y8960SsgCore(name_ + " unit0", config, time),
+	, unit{Y8960SsgCore(name_ + " unit0", config, time, periphery),
 	       Y8960SsgCore(name_ + " unit1", config, time)}
+	, hasGpio(periphery != nullptr)
 	, pan{}
 	, dc{}
 	, debuggable(config.getMotherBoard(), getName())
@@ -74,6 +76,13 @@ void Y8960SSGS::panGains(uint8_t pan_, float& gainL, float& gainR)
 	}
 }
 
+// Only the primary unit has the GPIO, and only when the Y8960 is built into an
+// MSX in place of its PSG. The cartridge has none, like the YMZ parts.
+bool Y8960SSGS::isGpioReg(unsigned unit_, unsigned sub) const
+{
+	return hasGpio && (unit_ == 0) && (sub >= 0x0E) && (sub <= 0x0F);
+}
+
 void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 {
 	if (reg >= 0x40) return; // ADPCM / sequencer area, not used by the Y8960
@@ -84,15 +93,25 @@ void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 	unsigned sub = reg & 0x1F;
 	if ((sub >= 0x10) && (sub <= 0x12)) {
 		pan[u * CHANNELS_PER_UNIT + (sub - 0x10)] = value & PAN_MAX;
-	} else if (sub <= 0x0D) {
+	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
 		unit[u].writeRegister(sub, value, time);
 	}
-	// $0E-$0F do not exist, these parts have no I/O ports
 }
 
 uint8_t Y8960SSGS::readRegister(unsigned reg, EmuTime time)
 {
-	return peekRegister(reg, time);
+	// Not peekRegister(): reading a GPIO register latches what the periphery
+	// returned, which a peek must not do.
+	if (reg >= 0x40) return 0xFF;
+
+	unsigned u = (reg >> 5) & 1;
+	unsigned sub = reg & 0x1F;
+	if ((sub >= 0x10) && (sub <= 0x12)) {
+		return pan[u * CHANNELS_PER_UNIT + (sub - 0x10)];
+	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
+		return unit[u].readRegister(sub, time);
+	}
+	return 0xFF;
 }
 
 uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const
@@ -103,7 +122,7 @@ uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const
 	unsigned sub = reg & 0x1F;
 	if ((sub >= 0x10) && (sub <= 0x12)) {
 		return pan[u * CHANNELS_PER_UNIT + (sub - 0x10)];
-	} else if (sub <= 0x0D) {
+	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
 		return unit[u].peekRegister(sub, time);
 	}
 	return 0xFF;
