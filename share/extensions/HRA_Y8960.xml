@@ -88,11 +88,14 @@
         </ROM>
       </secondary>
     </primary>
-    <!-- 暫定。hra1129 さんは「まだ作ってないので未確定、B6h-B7h あたりが
-         いいかも」との由。ioport.txt の記載とも一致するのでそれに合わせてある -->
+    <!-- ミキサーのアドレスは暫定。hra1129 さんは「まだ作ってないので未確定、
+         B6h-B7h あたりがいいかも」との由。ioport.txt の記載とも一致する。
+         レジスタ仕様が無いので B6h-B7h は値を憶えるだけで音には触らない。
+         カートリッジは音声を本体に戻さないので、既定は Y8960 側の出力だけ。
+         y8960-mixer_output 設定で msx / mix に切り替えられる -->
     <Y8960-MIXER id="y8960-mixer">
       <io base="0xB6" num="2"/>
-      <external>true</external>
+      <default_output>y8960</default_output>
       <channel num="0" idref="Y8960 OPLL 0"/>
       <channel num="1" idref="Y8960 OPLL 1"/>
       <channel num="2" idref="Y8960 OPL2 0"/>

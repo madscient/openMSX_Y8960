@@ -22,6 +22,10 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG / OPL2 のトンネルの回帰テスト |
 | `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
+| `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
+| `tests/check-mixer-output.py` | 上記 WAV の判定 |
+| `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
+| `tests/check-mixer-passthrough.py` | 上記 WAV の判定 |
 | `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -57,7 +61,13 @@ Y8960_TEST_OUT="$OUT/wo.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -scri
 # 5. MSX-TIMER の割り込み。$OUT/irq.txt を目で見る
 Y8960_TEST_OUT="$OUT/irq.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/timer-irq.tcl"
 
-# 6. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
+# 6. ミキサー。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-output.tcl"
+py $T/check-mixer-output.py "$OUT"
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-passthrough.tcl"
+py $T/check-mixer-passthrough.py "$OUT"
+
+# 7. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 ```
 
@@ -68,10 +78,10 @@ BI=/tmp/y8960-builtin   # 任意
 mkdir -p "$BI/machines"; cp Contrib/cbios/* "$BI/machines/"
 py $T/make-builtin-config.py "$BI"
 
-# 7. SSGS の GPIO。$OUT/gpio.txt を目で見る
+# 8. SSGS の GPIO。$OUT/gpio.txt を目で見る
 Y8960_TEST_OUT="$OUT/gpio.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/ssgs-gpio.tcl"
 
-# 8. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
+# 9. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
 Y8960_TEST_OUT="$OUT/en2-bi.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/enabler2.tcl"
 ```
 
