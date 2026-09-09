@@ -338,11 +338,10 @@ void MSXTimerCore::updateSchedule(EmuTime time)
         scheduled = false;
     }
 
-    // 次の同期ポイントを設定
+    // 次の同期ポイントを設定。clock は動かさない。動かすと同期ポイントに
+    // 達した時点での経過クロック数が 0 になり、カウンタが進まなくなる。
     if (ff_count_enable && period > 0) {
-        clock.reset(time);
-        clock += period;
-	    setSyncPoint(clock.getTime());
+        setSyncPoint(clock + period);
         scheduled = true;
     }
 }
@@ -367,7 +366,7 @@ void MSXTimerCore::checkCounter(uint32_t& counter, uint8_t& count_end, uint8_t& 
 
     // 経過クロック数カウントアップする
     if (ff_count_enable) {
-        uint32_t period = ff_count_enable ? clock.getTicksTillUp(time) : 0;
+        uint32_t period = clock.getTicksTill(time);
         while (period > 0 && ff_count_enable) {
             // 次の桁上がり(下位ビットが 1.. -> 0.. に遷移する)ポイントまでのクロック数を計算
             uint32_t step = (uint32_t)(getNextPoint(counter) - (uint64_t)counter);
@@ -406,11 +405,16 @@ void MSXTimerCore::updateCounter(EmuTime time)
     ff_counter = counter;
     ff_count_end = count_end;
     ff_count_enable = count_enable;
+
+    // clock は「どこまでカウンタに反映したか」を持つ。ここを進めないと
+    // checkCounter が同じ時間を二度数える。端数は次回に持ち越す。
+    clock.advance(time);
 }
 
 void MSXTimerCore::reset(EmuTime time)
 {
     resetValue();
+    clock.reset(time);
     updateSchedule(time);
 }
 
