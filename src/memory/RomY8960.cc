@@ -5,6 +5,10 @@
 //    sound blocks. Built into an MSX the blocks sit on the bus directly and
 //    the window is not there; <use_mmio_tunnel> false drops it.
 //
+//    The window 0x7FE0-0x7FFF is fully covered by the SCC window of the same
+//    page (0x7800-0x7FFF), so it is only there while 0x6000-0x7FFF shows
+//    neither RAM nor the SCC registers.
+//
 //    Always-valid register:
 //  	RamEnable:  0x48FB, 0x49FB, 0x4AFB, 0x4BFB, 0x4CFB, 0x4DFB, 0x4EFB, 0x4FFB
 //					Enable RAM write control
@@ -48,7 +52,10 @@
 //					b7: open the MSX-TIMER I/O ports (0xB0-0xB3)
 //					All are closed after reset. The tunnels above stay open.
 //
-//  	SCC:		0x9800 - 0x9FFF(bank#63)
+//  	SCC:		0x1800-0x1FFF of any bank whose bank register holds #63,
+//  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
+//  				0xB800-0xBFFF. Only 0x9800-0x9FFF is Konami SCC compatible.
+//					In RAM mode 0x4000-0x5FFF is excluded: control page.
 //					SCC sound register
 //
 //    Registers available when RamEnable is 0:
@@ -76,6 +83,10 @@
 //
 //  	bank 4: 	0x48FF, 0x49FF, 0x4AFF, 0x4BFF, 0x4CFF, 0x4DFF, 0x4EFF, 0x4FFF
 //					Bank switch for 0xA000-0xBFFF
+//
+//    In RAM mode 0x4000-0x5FFF is not writable: writes there only reach the
+//    registers above. Reads show whatever its bank register selected.
+//
 // bank
 //		 0 - 15		ROM bank
 //		16 - 31		RAM bank
@@ -161,8 +172,36 @@ void RomY8960::bankSwitch(unsigned page, unsigned block)
 
 bool RomY8960::isRamRegion(unsigned int region) const
 {
-	uint8_t bank = bankReg[region];
+	uint8_t bank = getBank(region);
+	// SccBank is not a memory bank. Letting it through would make
+	// getRamAddress() index far past the end of `ram`.
+	if ((bank & 0x3F) == SccBank) return false;
 	return bank >= RomBankCounts;
+}
+
+bool RomY8960::isSccRegion(unsigned int region) const
+{
+	// In RAM mode 0x4000-0x5FFF is the control page: the mode register and the
+	// bank registers live there, so the SCC window is not offered on top.
+	if (ramEnabled && (region == 2)) return false;
+	return (getBank(region) & 0x3F) == SccBank;
+}
+
+bool RomY8960::isSccAddress(uint16_t address) const
+{
+	if ((address < 0x4000) || (address >= 0xC000)) return false;
+	return ((address & 0x1800) == 0x1800) &&
+	       isSccRegion(convAddressToRegion(address));
+}
+
+bool RomY8960::isMmioVisible() const
+{
+	// The window 0x7FE0-0x7FFF lies entirely inside the SCC window of the same
+	// page (0x7800-0x7FFF), so the two never share it: the window exists only
+	// while 0x6000-0x7FFF shows neither RAM nor SCC.
+	constexpr unsigned int MmioRegion = 3;
+	if (ramEnabled && isRamRegion(MmioRegion)) return false;
+	return !isSccRegion(MmioRegion);
 }
 
 uint8_t RomY8960::getBank(unsigned int region) const
@@ -195,14 +234,13 @@ void RomY8960::reset(EmuTime time)
 		setBank(i, i - 2);
 	}
 
-	sccEnabled = false;
 	ramEnabled = false;
 	scc.reset(time);
 }
 
 byte RomY8960::peekMem(uint16_t address, EmuTime time) const
 {
-	if (sccEnabled && (0x9800 <= address) && (address < 0xA000)) {
+	if (isSccAddress(address)) {
 		return scc.peekMem(narrow_cast<uint8_t>(address & 0xFF), time);
 	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
@@ -213,7 +251,7 @@ byte RomY8960::peekMem(uint16_t address, EmuTime time) const
 
 byte RomY8960::readMem(uint16_t address, EmuTime time)
 {
-	if (sccEnabled && (0x9800 <= address) && (address < 0xA000)) {
+	if (isSccAddress(address)) {
 		return scc.readMem(narrow_cast<uint8_t>(address & 0xFF), time);
 	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
@@ -224,7 +262,7 @@ byte RomY8960::readMem(uint16_t address, EmuTime time)
 
 const byte* RomY8960::getReadCacheLine(uint16_t address) const
 {
-	if (sccEnabled && (0x9800 <= address) && (address < 0xA000)) {
+	if (isSccAddress(address)) {
 		// don't cache SCC
 		return nullptr;
 	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
@@ -243,7 +281,7 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 	}
 
 	// write to SCC
-	if (sccEnabled && (0x9800 <= address) && (address < 0xA000)) {
+	if (isSccAddress(address)) {
 		scc.writeMem(narrow_cast<uint8_t>(address & 0xFF), value, time);
 		return;
 	}
@@ -255,13 +293,17 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 
 	// Built into an MSX the sound blocks sit on the bus directly, so the
 	// cartridge's way in to them is not there.
-	if (useMmioTunnel) {
+	if (useMmioTunnel && isMmioVisible()) {
 		writeMmio(address, value, time);
 	}
 
 	// write to ramEnable register
 	if ((address & 0xF8FF) == 0x48FB) {
-		ramEnabled = value & 1;
+		bool newRamEnabled = value & 1;
+		if (newRamEnabled != ramEnabled) {
+			ramEnabled = newRamEnabled;
+			invalidateDeviceRWCache(0x4000, 0x8000);
+		}
 	}
 
 	// write to bank register
@@ -281,15 +323,6 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		// invaildate cache
 		if (value != oldBank) {
 			invalidateDeviceRWCache(region << 13, 8192);
-		}
-
-		// SCC enable/disable
-		bool newSccEnabled = sccEnabled;
-		if (region == 4) {
-			newSccEnabled = ((value & 0x3F) == 0x3F);
-			if (newSccEnabled != sccEnabled) {
-				sccEnabled = newSccEnabled;
-			}
 		}
 
 		// switch rom bank
@@ -388,11 +421,8 @@ byte* RomY8960::getWriteCacheLine(uint16_t address)
 	} else if ((address & 0xFF00) == (0x7FF0 & CacheLine::HIGH)) {
 		// write to OPLL(0x7F00~0x7FFF)
 		return nullptr;
-	} else if (sccEnabled && (0x9800 <= address) && (address < 0xA000)) {
+	} else if (isSccAddress(address)) {
 		// write to SCC
-		return nullptr;
-	} else if ((address & 0xF800) == (0x9000 & CacheLine::HIGH)) {
-		// SCC enable/disable
 		return nullptr;
 	} else if ((address & 0x1800) == (0x1000 & CacheLine::HIGH)) {
 		// page selection
@@ -406,14 +436,18 @@ byte* RomY8960::getWriteCacheLine(uint16_t address)
 }
 
 template<typename Archive>
-void RomY8960::serialize(Archive& ar, unsigned /*version*/)
+void RomY8960::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<Rom8kBBlocks>(*this);
 	ar.serialize("scc",        scc,
-	             "sccEnabled", sccEnabled,
 				 "bankReg",	   bankReg,
 				 "ramEnabled", ramEnabled,
 				 "ram",		   ram);
+	if (ar.versionBelow(version, 2)) {
+		// Version 1 stored this; it is derived from bankReg now.
+		bool sccEnabled = false;
+		ar.serialize("sccEnabled", sccEnabled);
+	}
 }
 INSTANTIATE_SERIALIZE_METHODS(RomY8960);
 REGISTER_MSXDEVICE(RomY8960, "RomY8960");

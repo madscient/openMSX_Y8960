@@ -35,6 +35,9 @@ private:
 	void bankSwitch(unsigned page, unsigned block);
 	void writeMmio(uint16_t address, byte value, EmuTime time);
 	bool isRamRegion(unsigned int region) const;
+	bool isSccRegion(unsigned int region) const;
+	bool isSccAddress(uint16_t address) const;
+	bool isMmioVisible() const;
 	uint8_t getBank(unsigned int region) const;
 	void setBank(unsigned int region, uint8_t bank);
 	const unsigned int getRamAddress(uint16_t address) const;
@@ -52,10 +55,12 @@ private:
 	const bool useMmioTunnel;
 	SCC scc;
 	Ram ram;
-	bool sccEnabled;
 	bool ramEnabled;
 	std::array<uint8_t, 4> bankReg;
+
+	static constexpr uint8_t SccBank = 0x3F;
 };
+SERIALIZE_CLASS_VERSION(RomY8960, 2);
 
 } // namespace openmsx
 
