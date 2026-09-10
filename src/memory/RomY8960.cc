@@ -317,16 +317,14 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		region = (address & 3) + 2;
 	}
 	if (pageSelect) {
-		uint8_t oldBank = getBank(region);
+		if (value == getBank(region)) return;
 		setBank(region, value);
-
-		// invaildate cache
-		if (value != oldBank) {
-			invalidateDeviceRWCache(region << 13, 8192);
-		}
-
-		// switch rom bank
 		bankSwitch(region, value);
+		// bankSwitch() ends in RomBlocks::setBank(), which fills the CPU's
+		// read cache with the ROM block. So this has to come after it: the
+		// region may really show RAM, or the SCC window in its upper 2KB,
+		// and the CPU would go on reading ROM from the cache.
+		invalidateDeviceRWCache(region << 13, 8192);
 	}
 }
 

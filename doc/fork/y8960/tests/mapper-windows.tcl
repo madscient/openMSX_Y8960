@@ -3,7 +3,8 @@
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script mapper-windows.tcl
 #
 # 結果は標準出力と、環境変数 Y8960_TEST_OUT のディレクトリの mapper-windows.txt。
-# 1 件でも落ちれば終了コードが 1 になる。
+# **判定は最終行の RESULT を見る。** openmsx は Tcl の `exit` に渡した値を
+# プロセスの終了コードにしない（**確認済み**: 6 件落ちる構成でも 0 が返った）。
 #
 # 確かめている規則は implementation-plan.md §3.8.1 の 4 つ。
 #
@@ -154,10 +155,13 @@ cw 0x48FB 0x01
 cw 0x48FE 0x3F
 check_ne "bank 0x3F in RAM mode does not read as RAM" [cr 0x8000] ""
 
+if {$fails > 0} {
+	puts $log "RESULT: FAILED $fails"
+} else {
+	puts $log "RESULT: ALL PASS"
+}
 close $log
 set f [open "$OUT/mapper-windows.txt" r]
 puts [read $f]
 close $f
-if {$fails > 0} { puts "FAILED: $fails" ; exit 1 }
-puts "ALL PASS"
-exit 0
+exit
