@@ -43,7 +43,7 @@ private:
 
     void resetValue();
    	uint32_t divCount(uint32_t value) const;
-    uint32_t mulCount(uint32_t value) const;
+    uint64_t mulCount(uint32_t value) const;
    	uint32_t modCount(uint32_t value) const;
     bool get_w_end_count(uint32_t value) const;
    	uint64_t getNextPoint(uint32_t value) const;

@@ -258,25 +258,29 @@ uint32_t MSXTimerCore::divCount(uint32_t value) const
     }
 }
 
-uint32_t MSXTimerCore::mulCount(uint32_t value) const
+uint64_t MSXTimerCore::mulCount(uint32_t value) const
 {
+    // 64bit で返す。終端値 255 かつ分解能 7 のとき呼ばれる 256<<24 が
+    // 32bit に収まらない。0 になると getNextPoint() が張る同期ポイントが
+    // 消え、カウンタが進まなくなる。
+    uint64_t v = value;
     switch (ff_reso) {
     case 0:
-        return (value << 10);
+        return (v << 10);
     case 1:
-        return (value << 12);
+        return (v << 12);
     case 2:
-        return (value << 14);
+        return (v << 14);
     case 3:
-        return (value << 16);
+        return (v << 16);
     case 4:
-        return (value << 18);
+        return (v << 18);
     case 5:
-        return (value << 20);
+        return (v << 20);
     case 6:
-        return (value << 22);
+        return (v << 22);
     default:
-        return (value << 24);
+        return (v << 24);
     }
 }
 
@@ -366,15 +370,15 @@ void MSXTimerCore::checkCounter(uint32_t& counter, uint8_t& count_end, uint8_t& 
 
     // 経過クロック数カウントアップする
     if (ff_count_enable) {
-        uint32_t period = clock.getTicksTill(time);
+        uint64_t period = clock.getTicksTill(time);
         while (period > 0 && ff_count_enable) {
             // 次の桁上がり(下位ビットが 1.. -> 0.. に遷移する)ポイントまでのクロック数を計算
-            uint32_t step = (uint32_t)(getNextPoint(counter) - (uint64_t)counter);
+            uint64_t step = getNextPoint(counter) - (uint64_t)counter;
             if (step > period) step = period;
             assert(step > 0);
 
             // カウントアップ
-            uint64_t counter64 = (uint64_t)counter + (uint64_t)step;
+            uint64_t counter64 = (uint64_t)counter + step;
 
             // ff_count まで達した?
             if (get_w_end_count((uint32_t)(counter64 - 1))) {
