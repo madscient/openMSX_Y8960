@@ -24,8 +24,9 @@
 #  - Count Time: 終端値 5 で走らせ、期待値の前後で割り込みフラグ (B2h) を
 #    見る。**前で 0、後で 1** の 2 点で挟むので、速すぎても遅すぎても落ちる
 #
-# 終端値に 255 を使わないのは、reso 7 のとき内部計算が 32bit を溢れるため。
-# 溢れる条件は終端値 255 かつ reso 7 だけ。
+# **終端値 255 は分けて測る。** 内部の刻み計算は終端値+1 を分解能ぶん左シフト
+# するので、終端値 255 かつ reso 7 のときだけ 256<<24 が 32bit を溢れる。
+# ここだけ別の分岐に落ちるので、他の 8 件とは独立に見る必要がある。
 #
 # カウンタの読みは端数の持ち越しで 1 ずれうるので、幅で見る。
 
@@ -63,20 +64,20 @@ proc counter {ch} {
 proc report {name got want} {
 	global lines fails
 	if {$got == $want} {
-		lappend lines [format "PASS  %-34s %3s" $name $got]
+		lappend lines [format "PASS  %-42s %3s" $name $got]
 	} else {
 		incr fails
-		lappend lines [format "FAIL  %-34s %3s (want %s)" $name $got $want]
+		lappend lines [format "FAIL  %-42s %3s (want %s)" $name $got $want]
 	}
 }
 
 proc report_range {name got lo hi} {
 	global lines fails
 	if {$got >= $lo && $got <= $hi} {
-		lappend lines [format "PASS  %-34s %3s (want %s..%s)" $name $got $lo $hi]
+		lappend lines [format "PASS  %-42s %3s (want %s..%s)" $name $got $lo $hi]
 	} else {
 		incr fails
-		lappend lines [format "FAIL  %-34s %3s (want %s..%s)" $name $got $lo $hi]
+		lappend lines [format "FAIL  %-42s %3s (want %s..%s)" $name $got $lo $hi]
 	}
 }
 
@@ -90,6 +91,10 @@ set units {
 	{5 1.0    81  82}
 	{6 2.0    40  41}
 	{7 8.0    40  41}
+}
+# 終端値 255 での刻み。上の表と同じ reso 7 を、溢れる側の終端値で測る
+set wide {
+	{7 255 8.0 40 41}
 }
 # 分解能 / 期待値より手前の秒数 / 期待値より後の秒数。終端値は 5
 set counts {
@@ -116,7 +121,24 @@ proc unit_end {} {
 		[counter 0] [lindex $c 2] [lindex $c 3]
 	treg 0 2 0x00
 	incr ui
-	if {$ui < [llength $units]} { unit_start } else { count_start }
+	if {$ui < [llength $units]} { unit_start } else { wide_start }
+}
+
+proc wide_start {} {
+	global wide
+	set c [lindex $wide 0]
+	treg 0 0 [expr {[lindex $c 0] << 4}]
+	treg 0 1 [lindex $c 1]
+	treg 0 2 0x03
+	after time [lindex $c 2] wide_end
+}
+
+proc wide_end {} {
+	global wide
+	set c [lindex $wide 0]
+	report_range "unit reso [lindex $c 0] end [lindex $c 1] after [lindex $c 2]s" 		[counter 0] [lindex $c 3] [lindex $c 4]
+	treg 0 2 0x00
+	count_start
 }
 
 proc count_start {} {
