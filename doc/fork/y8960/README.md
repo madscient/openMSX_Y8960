@@ -22,6 +22,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG / OPL2 のトンネルの回帰テスト |
 | `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
+| `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
 | `tests/check-adpcm-play.py` | 上記 WAV の判定。ピークと基本周波数を見る |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
@@ -62,7 +63,10 @@ py $T/check-ssgs-panpot.py "$OUT"
 # 4. SSGS がリードに反応しないこと。$OUT/wo.txt を目で見る
 Y8960_TEST_OUT="$OUT/wo.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-write-only.tcl"
 
-# 5. MSX-TIMER の割り込み。$OUT/irq.txt を目で見る
+# 5. MSX-TIMER。分解能の方は最終行の RESULT を見る。割り込みは目で見る
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/timer-resolution.tcl"
+tail -1 "$OUT/timer-resolution.txt"
+
 Y8960_TEST_OUT="$OUT/irq.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/timer-irq.tcl"
 
 # 6. ADPCM-B の発音。判定は終了コードで分かる
