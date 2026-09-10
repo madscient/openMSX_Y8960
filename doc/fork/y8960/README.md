@@ -29,6 +29,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-passthrough.py` | 上記 WAV の判定 |
 | `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
+| `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
 | `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -74,8 +75,12 @@ py $T/check-mixer-output.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-passthrough.tcl"
 py $T/check-mixer-passthrough.py "$OUT"
 
-# 8. バンクメモリの窓。判定は終了コードで分かる
-Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mapper-windows.tcl"
+# 8. バンクメモリ。判定は出力ファイルの最終行の RESULT を見る
+#    （openmsx は Tcl の exit の値を終了コードにしない）
+for t in mapper-windows mapper-cpu-read; do
+    Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960         -script "$(pwd)/$T/$t.tcl"
+    tail -1 "$OUT/$t.txt"
+done
 
 # 9. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
@@ -113,6 +118,8 @@ done
   期待値は当然外れ、**どの手順が動くかで切り替えが効いていることが分かる**。
   構成は `make-builtin-config.py` が別の `OPENMSX_USER_DATA` に書き出すので、
   作業ツリーの `share/` は触らずに済む
+- `mapper-cpu-read.tcl` は、キャッシュ無効化の順序を元に戻してビルドし直して
+  回した。4 件中 2 件（CPU 側の読み）が落ちる
 - `mapper-windows.tcl` は、マッパーを変更前のコードに戻してビルドし直して
   回した。13 件中 6 件が落ちる。残る 7 件のうち 2 件は変更前でも通る
   （バンク0 の SCC 窓は変更前には存在せず、範囲外アクセスは Release ビルドに
