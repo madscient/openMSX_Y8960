@@ -28,6 +28,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
 | `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-passthrough.py` | 上記 WAV の判定 |
+| `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
 | `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -73,7 +74,10 @@ py $T/check-mixer-output.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-passthrough.tcl"
 py $T/check-mixer-passthrough.py "$OUT"
 
-# 8. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
+# 8. バンクメモリの窓。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mapper-windows.tcl"
+
+# 9. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 ```
 
@@ -84,10 +88,10 @@ BI=/tmp/y8960-builtin   # 任意
 mkdir -p "$BI/machines"; cp Contrib/cbios/* "$BI/machines/"
 py $T/make-builtin-config.py "$BI"
 
-# 9. SSGS の GPIO。$OUT/gpio.txt を目で見る
+# 10. SSGS の GPIO。$OUT/gpio.txt を目で見る
 Y8960_TEST_OUT="$OUT/gpio.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/ssgs-gpio.tcl"
 
-# 10. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
+# 11. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
 Y8960_TEST_OUT="$OUT/en2-bi.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/enabler2.tcl"
 ```
 
@@ -109,6 +113,11 @@ done
   期待値は当然外れ、**どの手順が動くかで切り替えが効いていることが分かる**。
   構成は `make-builtin-config.py` が別の `OPENMSX_USER_DATA` に書き出すので、
   作業ツリーの `share/` は触らずに済む
+- `mapper-windows.tcl` は、マッパーを変更前のコードに戻してビルドし直して
+  回した。13 件中 6 件が落ちる。残る 7 件のうち 2 件は変更前でも通る
+  （バンク0 の SCC 窓は変更前には存在せず、範囲外アクセスは Release ビルドに
+  assert が無いので黙って通る）。この 2 件は将来の回帰を捕まえるための番人で、
+  この変更の証拠にはならない
 
 ## 取り込み元
 
