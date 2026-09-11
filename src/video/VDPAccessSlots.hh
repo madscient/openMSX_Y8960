@@ -123,6 +123,20 @@ private:
 	EmuTime frame, EmuTime time, EmuTime limit,
 	const VDP& vdp);
 
+/** The largest interval paddingCycles() accepts. */
+inline constexpr int MAX_PADDING_SPAN = 8;
+
+/** How many cycles of line padding complete in the interval (t, t + n], where
+  * 't' is at position 'tick' in its line: the number of cycles by which that
+  * interval is longer in VDP cycles than in the VDP's memory cycles. Only for
+  * short intervals; see the comment about 'pad' in VDPAccessSlots.cc. */
+[[nodiscard]] int paddingCycles(int tick, int n, const VDP& vdp);
+
+/** Is the CPU slot at line position 'slotTick' a 'late' one? Those hand out
+  * their grant 2 cycles later than the rest, and release the CPU's request
+  * buffer one cycle before their access instead of one cycle after. */
+[[nodiscard]] bool isLateCpuSlot(int slotTick, const VDP& vdp);
+
 } // namespace openmsx::VDPAccessSlots
 
 #endif

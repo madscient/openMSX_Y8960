@@ -148,13 +148,8 @@ static constexpr std::array<int16_t, 91 + 18> slotsMsx1Text = {
 // Helper functions to transform the above tables into a format that is easier
 // (=faster) to work with.
 
-struct AccessTable
-{
-	operator std::span<const uint8_t, NUM_DELTAS * TICKS>() const { return values; }
-
-protected:
-	std::array<uint8_t, NUM_DELTAS * TICKS> values = {};
-};
+/** Upper bound on the number of entries in one of the tables above. */
+static constexpr size_t MAX_SLOTS = 192;
 
 /** Extra timing properties of a slot table, based on the investigation
   * documented here:
@@ -187,8 +182,18 @@ protected:
   * with 'sprOn' specific values timing values in LMMM and HMMM). The
   * measurements admit 1 or 2 here and cannot separate them.
   *
-  * Both only apply to the V99x8 bitmap tables; the character, text and MSX1
-  * tables have never been measured this way and are left alone. */
+  * 'lateLead' / 'plainSlots': CPU slots come in two classes. A 'late' slot
+  * wants 'lateLead' cycles more lookahead than the 16 of a 'plain' one, and it
+  * releases the CPU's single request buffer one cycle before its access instead
+  * of one cycle after. The V9938 die shows why: a CPU slot is one tick of a
+  * two-tick-wide waveform, and which of the two it is decides when the grant is
+  * sampled. In the sprites-enabled and the G1/G2/G3 tables every CPU slot is
+  * late except the two in 'plainSlots'; in the other tables 'lateLead' is 0 and
+  * there are no late slots at all.
+  *
+  * These apply to the V99x8 bitmap tables, and the slot classes also to the
+  * character table; the text and MSX1 tables have never been measured this way
+  * and are left alone. */
 struct Timing {
 	struct Pad {
 		int16_t at = 0;
@@ -196,13 +201,28 @@ struct Timing {
 	};
 	std::array<Pad, 3> pad = {};
 	int extra = 0;
+	int16_t lateLead = 0;
+	std::array<int16_t, 2> plainSlots = {-1, -1};
 };
+
+struct AccessTable
+{
+	std::array<uint8_t, NUM_DELTAS * TICKS> values = {};
+	Timing timing;
+};
+
+/** Is this one of the CPU slots that wants the longer lookahead? */
+[[nodiscard]] static constexpr bool isLate(const Timing& timing, int tick)
+{
+	return (timing.lateLead != 0) && !contains(timing.plainSlots, tick);
+}
 
 struct CycleTable : AccessTable
 {
 	constexpr CycleTable(bool msx1, std::span<const int16_t> slots,
-	                     Timing timing = {})
+	                     Timing timing_ = {})
 	{
+		timing = timing_;
 		assert(std::ranges::is_sorted(slots));
 
 		// !!! Keep this in sync with the 'Delta' enum !!!
@@ -225,18 +245,20 @@ struct CycleTable : AccessTable
 		}
 
 		// Which slots follow another slot after only 6 cycles? Only the
-		// sprites-off table has such slots (25 of its 88 slots).
+		// sprites-off table has such slots (25 of its 88 slots). And which
+		// want the longer CPU lookahead? Both indexed by slot, so that the
+		// search below does not have to ask per candidate.
 		std::bitset<TICKS> tight;
 		static_vector<int16_t, 25> tightSlots;
+		std::array<uint8_t, MAX_SLOTS> cpuLead = {};
 		for (auto i : xrange(slots.size())) {
 			auto s = slots[i];
-			if (s >= TICKS) break;
-			if ((i == 0) || (s < 6)) continue; // assume no tight slots wrap around 1368
-			auto p = slots[i - 1];
-			if ((p + 6) == s) {
-				tight[s] = true;
+			if ((i > 0) && (s >= 6) && ((slots[i - 1] + 6) == s) && (s < TICKS)) {
+				tight[s] = true; // assume no tight slots wrap around 1368
 				tightSlots.push_back(s);
 			}
+			cpuLead[i] = isLate(timing, s % TICKS)
+			           ? narrow_cast<uint8_t>(timing.lateLead) : 0;
 		}
 		assert(tightSlots.size() == one_of(0u, 25u));
 
@@ -250,10 +272,14 @@ struct CycleTable : AccessTable
 				// 'mem' is not monotonic in 'i' at the stretched slots, so
 				// the search can occasionally have to step back one slot.
 				auto ok = [&](int q) {
-					// The CPU never gets one of the tight slots: the VDP
-					// spends it on a dummy read and does the CPU's access in
-					// the next slot.
-					if (cpu && tight[slots[q] % TICKS]) return false;
+					if (cpu) {
+						// The CPU never gets one of the tight slots: the
+						// VDP spends it on a dummy read and does the CPU's
+						// access in the next slot. And a 'late' slot hands
+						// out its grant later than a plain one.
+						if (tight[slots[q] % TICKS]) return false;
+						return (mem[slots[q]] - mem[i]) >= (step + cpuLead[q]);
+					}
 					return cmd ? ((mem[slots[q]] - mem[i]) >= step)
 					           : ((slots[q] - i) >= step);
 				};
@@ -283,23 +309,19 @@ struct CycleTable : AccessTable
 	}
 };
 
-struct ZeroTable : AccessTable
-{
-};
-
-static constexpr CycleTable tabSpritesOn    {false, slotsSpritesOn,  Timing{.pad = {{{1330, 2}, {1337, 1}, {1348, 1}}}, .extra = 1}};
+static constexpr CycleTable tabSpritesOn    {false, slotsSpritesOn,  Timing{.pad = {{{1330, 2}, {1337, 1}, {1348, 1}}}, .extra = 1, .lateLead = 2, .plainSlots = {162, 170}}};
 static constexpr CycleTable tabSpritesOff   {false, slotsSpritesOff, Timing{.pad = {{{1332, 2}, {1342, 2}}}, .extra = 0}};
-static constexpr CycleTable tabChar         {false, slotsChar};
+static constexpr CycleTable tabChar         {false, slotsChar,        Timing{.lateLead = 2, .plainSlots = {166, 174}}};
 static constexpr CycleTable tabText         {false, slotsText};
 static constexpr CycleTable tabScreenOff    {false, slotsScreenOff,  Timing{.pad = {{{1334, 2}, {1344, 2}}}, .extra = 0}};
 static constexpr CycleTable tabMsx1Gfx12    {true,  slotsMsx1Gfx12};
 static constexpr CycleTable tabMsx1Gfx3     {true,  slotsMsx1Gfx3};
 static constexpr CycleTable tabMsx1Text     {true,  slotsMsx1Text};
 static constexpr CycleTable tabMsx1ScreenOff{true,  slotsMsx1ScreenOff};
-static constexpr ZeroTable  tabBroken;
+static constexpr AccessTable tabBroken{};
 
 
-[[nodiscard]] static inline std::span<const uint8_t, NUM_DELTAS * TICKS> getTab(const VDP& vdp)
+[[nodiscard]] static inline const AccessTable& getTable(const VDP& vdp)
 {
 	if (vdp.getBrokenCmdTiming()) return tabBroken;
 	bool enabled = vdp.isDisplayEnabled();
@@ -335,16 +357,35 @@ EmuTime getAccessSlot(
 {
 	VDP::VDPClock frame(frame_);
 	unsigned ticks = frame.getTicksTill_fast(time) % TICKS;
-	auto tab = getTab(vdp);
-	return time + VDP::VDPClock::duration(tab[std::to_underlying(delta) + ticks]);
+	const auto& tab = getTable(vdp);
+	return time + VDP::VDPClock::duration(tab.values[std::to_underlying(delta) + ticks]);
 }
 
 Calculator getCalculator(
 	EmuTime frame, EmuTime time, EmuTime limit,
 	const VDP& vdp)
 {
-	auto tab = getTab(vdp);
-	return {frame, time, limit, tab};
+	return {frame, time, limit, getTable(vdp).values};
+}
+
+int paddingCycles(int tick, int n, const VDP& vdp)
+{
+	assert(0 <= tick); assert(tick < TICKS);
+	assert(0 < n); assert(n <= MAX_PADDING_SPAN);
+
+	int result = 0;
+	for (const auto& p : getTable(vdp).timing.pad) {
+		if (!p.at) continue;
+		int d = p.at - tick;            // cycles till the next time this
+		if (d <= 0) d += TICKS;         //   padded memory cycle completes
+		if (d <= n) result += p.cycles;
+	}
+	return result;
+}
+
+bool isLateCpuSlot(int slotTick, const VDP& vdp)
+{
+	return isLate(getTable(vdp).timing, slotTick);
 }
 
 } // namespace openmsx::VDPAccessSlots

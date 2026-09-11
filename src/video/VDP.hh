@@ -1018,6 +1018,10 @@ private:
 
 	/** Helper methods for CPU-VRAM access. */
 	void scheduleCpuVramAccess(bool isRead, uint8_t write, EmuTime time);
+	void scheduleTMS99x8VramAccess(bool isRead, EmuTime time);
+	void scheduleV99x8VramAccess(bool isRead, EmuTime time);
+	[[nodiscard]] bool cpuRequestIsTooEarly(EmuTime request) const;
+	void flushCpuVramAccesses(EmuTime time);
 	void executeCpuVramAccess(EmuTime time);
 
 	/** Read the contents of a status register
@@ -1359,6 +1363,22 @@ private:
 	bool cpuVramReqIsRead;
 	bool pendingCpuAccess; // always equal to syncCpuVramAccess.isPending()
 
+	/** The slot granted to the most recently accepted CPU-VRAM request, and
+	  * its class. It stays valid after that access has taken place, because
+	  * the V9938 has only one request buffer and the next request has to
+	  * clear this slot to be accepted at all. See cpuRequestIsTooEarly().
+	  * 'zero' means no request has been accepted yet, which works because no
+	  * request can arrive within 5 cycles of the start of the emulation. */
+	EmuTime previousCpuSlot = EmuTime::zero();
+	bool previousCpuSlotIsLate = false;
+
+	/** A request accepted while the access before it has not taken place yet
+	  * (which only a 'late' slot allows) is booked here, until that earlier
+	  * access frees the sync point. 'infinity' means there is no such
+	  * request; there can never be more than one. */
+	EmuTime secondCpuSlot = EmuTime::infinity();
+	bool secondCpuVramReqIsRead = false;
+
 	/** Does CPU interface access main VRAM (false) or extended VRAM (true)?
 	  * This is determined by MXC (R#45, bit 6).
 	  */
@@ -1397,7 +1417,7 @@ private:
 	MSXCPU& cpu;
 	const uint8_t fixedVDPIOdelayCycles;
 };
-SERIALIZE_CLASS_VERSION(VDP, 10);
+SERIALIZE_CLASS_VERSION(VDP, 11);
 
 } // namespace openmsx
 

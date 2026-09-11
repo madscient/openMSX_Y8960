@@ -62,6 +62,11 @@ static uint8_t getDelayCycles(const XMLElement& devices)
 	return 0;
 }
 
+/** The delay between openMSX's port-#98 access timestamp -- the start of T2 of
+  * the Z80's I/O machine cycle -- and the moment the V9938 registers the CPU's
+  * VRAM request. Measured to 28.9 +- 0.2 cycles, so it could also be 28. */
+static constexpr int CPU_REQUEST_DELAY = 29;
+
 VDP::VDP(const DeviceConfig& config)
 	: MSXDevice(config)
 	, syncVSync(*this)
@@ -335,6 +340,9 @@ void VDP::reset(EmuTime time)
 	syncCpuVramAccess.removeSyncPoint();
 	syncCmdDone      .removeSyncPoint();
 	pendingCpuAccess = false;
+	previousCpuSlot = EmuTime::zero();
+	previousCpuSlotIsLate = false;
+	secondCpuSlot = EmuTime::infinity();
 
 	// Reset subsystems.
 	cmdEngine->sync(time);
@@ -450,9 +458,15 @@ void VDP::execSetSprites(EmuTime time)
 
 void VDP::execCpuVramAccess(EmuTime time)
 {
-	assert(!allowTooFastAccess);
 	pendingCpuAccess = false;
 	executeCpuVramAccess(time);
+	if (secondCpuSlot != EmuTime::infinity()) [[unlikely]] {
+		// A request accepted just before this access now gets its turn.
+		cpuVramReqIsRead = secondCpuVramReqIsRead;
+		pendingCpuAccess = true;
+		syncCpuVramAccess.setSyncPoint(secondCpuSlot);
+		secondCpuSlot = EmuTime::infinity();
+	}
 }
 
 void VDP::execSyncCmdDone(EmuTime time)
@@ -774,9 +788,13 @@ void VDP::vramWrite(uint8_t value, EmuTime time)
 
 uint8_t VDP::vramRead(EmuTime time)
 {
-	// Return the result from a previous read. In case
-	// allowTooFastAccess==true, the call to scheduleCpuVramAccess()
-	// already overwrites that variable, so make a local copy first.
+	if (allowTooFastAccess && pendingCpuAccess) [[unlikely]] {
+		// In this mode no access may be lost, so a read has to see the
+		// result of the access before it even when that access has not
+		// had its slot yet.
+		flushCpuVramAccesses(time);
+	}
+	// Return the result from a previous read.
 	uint8_t result = cpuVramData;
 
 	uint8_t dummy = 0;
@@ -788,61 +806,153 @@ void VDP::scheduleCpuVramAccess(bool isRead, uint8_t write, EmuTime time)
 {
 	// Tested on real V9938: 'cpuVramData' is shared between read and write.
 	// E.g. OUT (#98),A followed by IN A,(#98) returns the just written value.
+	// It is written by the port access itself, so also by a request that the
+	// VDP goes on to lose.
 	if (!isRead) cpuVramData = write;
-	cpuVramReqIsRead = isRead;
-	if (pendingCpuAccess) [[unlikely]] {
-		// Already scheduled. Do nothing.
-		// The old request has been overwritten by the new request!
-		assert(!allowTooFastAccess);
-		tooFastCallback.execute();
+
+	if (isMSX1VDP()) {
+		scheduleTMS99x8VramAccess(isRead, time);
 	} else {
-		if (allowTooFastAccess) [[unlikely]] {
-			// Immediately execute request.
-			// In the past, in allowTooFastAccess-mode, we would
-			// still schedule the actual access, but process
-			// pending requests early when a new one arrives before
-			// the old one was handled. Though this would still go
-			// wrong because of the delayed update of
-			// 'vramPointer'. We could _only_ _partly_ work around
-			// that by calculating the actual vram address early
-			// (likely not what the real VDP does). But because
-			// allowTooFastAccess is anyway an artificial situation
-			// we now solve this in a simpler way: simply not
-			// schedule CPU-VRAM accesses.
-			assert(!pendingCpuAccess);
-			executeCpuVramAccess(time);
-		} else {
-			// For V99x8 there are 16 extra cycles, for details see:
-			//    doc/internal/vdp-vram-timing/vdp-timing.html
-			// For TMS99x8 the situation is less clear, see
-			//    doc/internal/vdp-vram-timing/vdp-timing-2.html
-			// Additional measurements(*) show that picking either 8 or 9
-			// TMS cycles (equivalent to 32 or 36 V99x8 cycles) gives the
-			// same result as on a real MSX. This corresponds to
-			// respectively 1.49us or 1.68us, the TMS documentation
-			// specifies 2us for this value.
-			//  (*) In this test we did a lot of OUT operations (writes to
-			//  VRAM) that are exactly N cycles apart. After the writes we
-			//  detect whether all were successful by reading VRAM
-			//  (slowly). We vary N and found that you get corruption for
-			//  N<=26 cycles, but no corruption occurs for N>=27. This test
-			//  was done in screen 2 with 4 sprites visible on one line
-			//  (though the sprites did not seem to make a difference).
-			// So this test could not decide between 8 or 9 TMS cycles.
-			// To be on the safe side we picked 8.
-			//
-			// Update: 8 cycles (Delta::D32) causes corruption in
-			// 'Chase HQ', see
-			//    http://www.msx.org/forum/msx-talk/openmsx/openmsx-about-release-testing-help-wanted
-			// lowering it to 7 cycles seems fine. TODO needs more
-			// investigation. (Just guessing) possibly there are
-			// other variables that influence the exact timing (7
-			// vs 8 cycles).
-			pendingCpuAccess = true;
-			auto delta = isMSX1VDP() ? VDPAccessSlots::Delta::CPU_28
-						 : VDPAccessSlots::Delta::CPU_16;
-			syncCpuVramAccess.setSyncPoint(getAccessSlot(time, delta));
+		scheduleV99x8VramAccess(isRead, time);
+	}
+}
+
+void VDP::scheduleTMS99x8VramAccess(bool isRead, EmuTime time)
+{
+	if (pendingCpuAccess) [[unlikely]] {
+		if (!allowTooFastAccess) {
+			// The old request has been overwritten by the new request!
+			tooFastCallback.execute();
+			cpuVramReqIsRead = isRead;
+			return;
 		}
+		// In 'ignore' mode no access may be lost, so give the one that is
+		// still waiting its turn now. (And don't report it: this mode is
+		// selected precisely to not care.)
+		flushCpuVramAccesses(time);
+	}
+
+	// For TMS99x8 the situation is less clear than for V99x8, see
+	//    doc/internal/vdp-vram-timing/vdp-timing-2.html
+	// Additional measurements(*) show that picking either 8 or 9
+	// TMS cycles (equivalent to 32 or 36 V99x8 cycles) gives the
+	// same result as on a real MSX. This corresponds to
+	// respectively 1.49us or 1.68us, the TMS documentation
+	// specifies 2us for this value.
+	//  (*) In this test we did a lot of OUT operations (writes to
+	//  VRAM) that are exactly N cycles apart. After the writes we
+	//  detect whether all were successful by reading VRAM
+	//  (slowly). We vary N and found that you get corruption for
+	//  N<=26 cycles, but no corruption occurs for N>=27. This test
+	//  was done in screen 2 with 4 sprites visible on one line
+	//  (though the sprites did not seem to make a difference).
+	// So this test could not decide between 8 or 9 TMS cycles.
+	// To be on the safe side we picked 8.
+	//
+	// Update: 8 cycles (Delta::D32) causes corruption in
+	// 'Chase HQ', see
+	//    http://www.msx.org/forum/msx-talk/openmsx/openmsx-about-release-testing-help-wanted
+	// lowering it to 7 cycles seems fine. TODO needs more
+	// investigation. (Just guessing) possibly there are
+	// other variables that influence the exact timing (7
+	// vs 8 cycles).
+	cpuVramReqIsRead = isRead;
+	pendingCpuAccess = true;
+	syncCpuVramAccess.setSyncPoint(
+		getAccessSlot(time, VDPAccessSlots::Delta::CPU_28));
+}
+
+void VDP::scheduleV99x8VramAccess(bool isRead, EmuTime time)
+{
+	// The V9938 does not see the request at 'time': that is the start of T2
+	// of the Z80's I/O machine cycle, while /CSW only rises 3 T-states later.
+	// Measured from that edge the VDP registers the request 10.9 +- 0.2
+	// cycles later, so 29 cycles after 'time'. Only from there on do the 16
+	// cycles of lookahead count. See:
+	//    doc/internal/vdp-vram-timing/2026-measurement-analysis.md
+	EmuTime request = time + VDPClock::duration(CPU_REQUEST_DELAY);
+
+	if (cpuRequestIsTooEarly(request)) [[unlikely]] {
+		if (!allowTooFastAccess) {
+			// The VDP has nowhere to put this request, so nothing at all
+			// happens for it: no VRAM access, and the VRAM pointer does
+			// not advance.
+			tooFastCallback.execute();
+			return;
+		}
+		// In 'ignore' mode no access may be lost, so free the buffer by
+		// giving the access that is still waiting its turn now. (And don't
+		// report it: this mode is selected precisely to not care.)
+		flushCpuVramAccesses(time);
+	}
+
+	EmuTime slot = getAccessSlot(request, VDPAccessSlots::Delta::CPU_16);
+	previousCpuSlot = slot;
+	previousCpuSlotIsLate = VDPAccessSlots::isLateCpuSlot(
+		getTicksThisFrame(slot) % TICKS_PER_LINE, *this);
+
+	if (pendingCpuAccess) [[unlikely]] {
+		// Accepted while the access before it has not happened yet: it gets
+		// its sync point when that one fires. There can never be a third
+		// one, because the CPU cannot issue two port accesses less than 66
+		// cycles apart while the slot lattice never makes an accepted
+		// request wait more than 70 + 18 cycles, so by the time a third one
+		// is accepted the first access has taken place.
+		assert(secondCpuSlot == EmuTime::infinity());
+		assert(slot > *syncCpuVramAccess.isPending());
+		secondCpuSlot = slot;
+		secondCpuVramReqIsRead = isRead;
+	} else {
+		cpuVramReqIsRead = isRead;
+		pendingCpuAccess = true;
+		syncCpuVramAccess.setSyncPoint(slot);
+	}
+}
+
+/** The V9938 has a single CPU VRAM request buffer, and it is not free again
+  * until 'threshold' memory cycles before the access it was granted: +1 for a
+  * plain slot, -1 for a late one. A request that arrives earlier than that is
+  * lost. */
+bool VDP::cpuRequestIsTooEarly(EmuTime request) const
+{
+	// Almost always the request arrives well after the slot granted to the
+	// request before it, and is accepted whatever the padding in between
+	// does: a line carries only 4 cycles of it. Only the marginal cases need
+	// the exact distance, and those are always within a few cycles, so this
+	// also keeps the tick counts below well inside 32 bits.
+	if (request >= (previousCpuSlot + VDPClock::duration(5))) [[likely]] {
+		return false;
+	}
+	int tick = getTicksThisFrame(request) % TICKS_PER_LINE;
+	int threshold = previousCpuSlotIsLate ? -1 : 1;
+
+	if (request >= previousCpuSlot) {
+		// 0 to 4 cycles after it
+		int n = narrow<int>(VDPClock(previousCpuSlot).getTicksTill_fast(request));
+		int distance = n ? (n - VDPAccessSlots::paddingCycles(
+		                            (tick - n + TICKS_PER_LINE) % TICKS_PER_LINE,
+		                            n, *this))
+		                 : 0;
+		return distance < threshold;
+	} else {
+		// Before it, which only a late slot can accept, and only by one
+		// memory cycle. More than 5 cycles early is more than 2 memory
+		// cycles early whatever the padding does.
+		int n = narrow<int>(VDPClock(request).getTicksTill_fast(previousCpuSlot));
+		if (n > VDPAccessSlots::MAX_PADDING_SPAN) return true;
+		int distance = -(n - VDPAccessSlots::paddingCycles(tick, n, *this));
+		return distance < threshold;
+	}
+}
+
+void VDP::flushCpuVramAccesses(EmuTime time)
+{
+	// Only in 'too_fast_vram_access == ignore' mode, where no access may be
+	// lost: perform the accesses that have not had their slot yet.
+	assert(allowTooFastAccess);
+	while (pendingCpuAccess) {
+		syncCpuVramAccess.removeSyncPoint();
+		execCpuVramAccess(time);
 	}
 }
 
@@ -1432,10 +1542,8 @@ void VDP::update(const Setting& setting) noexcept
 	allowTooFastAccess = tooFastAccess.getEnum();
 
 	if (allowTooFastAccess && pendingCpuAccess) [[unlikely]] {
-		// in allowTooFastAccess-mode, don't schedule CPU-VRAM access
-		syncCpuVramAccess.removeSyncPoint();
-		pendingCpuAccess = false;
-		executeCpuVramAccess(getCurrentTime());
+		// Switched to 'ignore' while accesses were waiting for their slot.
+		flushCpuVramAccesses(getCurrentTime());
 	}
 }
 
@@ -1920,6 +2028,7 @@ int VDP::MsxX512PosInfo::calc(EmuTime time) const
 // version 8: removed 'userData' from Schedulable
 // version 9: update sprite-enabled-status only once per line
 // version 10: added writeAccess
+// version 11: added previousCpuSlot, previousCpuSlotIsLate, secondCpuSlot, secondCpuVramReqIsRead
 template<typename Archive>
 void VDP::serialize(Archive& ar, unsigned serVersion)
 {
@@ -2013,6 +2122,19 @@ void VDP::serialize(Archive& ar, unsigned serVersion)
 		ar.serialize("writeAccess", writeAccess);
 	} else {
 		writeAccess = !cpuVramReqIsRead; // best guess
+	}
+
+	if (ar.versionAtLeast(serVersion, 11)) {
+		ar.serialize("previousCpuSlot",        previousCpuSlot,
+		             "previousCpuSlotIsLate",  previousCpuSlotIsLate,
+		             "secondCpuSlot",          secondCpuSlot,
+		             "secondCpuVramReqIsRead", secondCpuVramReqIsRead);
+	} else if constexpr (Archive::IS_LOADER) {
+		// The first CPU-VRAM request after loading is then always
+		// accepted, which is at most one request too many.
+		previousCpuSlot = EmuTime::zero();
+		previousCpuSlotIsLate = false;
+		secondCpuSlot = EmuTime::infinity();
 	}
 
 	// externalVideo does not need serializing. It is set on load by the
