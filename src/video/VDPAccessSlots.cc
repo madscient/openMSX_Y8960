@@ -228,7 +228,7 @@ struct CycleTable : AccessTable
 		// !!! Keep this in sync with the 'Delta' enum !!!
 		constexpr std::array<int, NUM_DELTAS> delta = {
 			0, 1, 16, 28, 24, 32, 36, 46, 60, 72, 84, 88, 36+68, 84+36, 60+68, 72+58,
-			64, 100, 112
+			64, 100, 112, 16
 		};
 
 		// Memory-cycle time of every cycle in the line: real time minus the
@@ -265,7 +265,8 @@ struct CycleTable : AccessTable
 		size_t out = 0;
 		for (auto idx : xrange(NUM_DELTAS)) {
 			bool cmd = (FIRST_CMD_DELTA <= idx) && (idx < LAST_CMD_DELTA);
-			bool cpu = (FIRST_CPU_DELTA <= idx) && (idx < LAST_CPU_DELTA);
+			bool any = idx == std::to_underlying(Delta::CPU_16_ANY) / TICKS;
+			bool cpu = ((FIRST_CPU_DELTA <= idx) && (idx < LAST_CPU_DELTA)) || any;
 			int step = delta[idx] + (cmd ? timing.extra : 0);
 			int p = 0;
 			for (auto i : xrange(TICKS)) {
@@ -277,7 +278,7 @@ struct CycleTable : AccessTable
 						// VDP spends it on a dummy read and does the CPU's
 						// access in the next slot. And a 'late' slot hands
 						// out its grant later than a plain one.
-						if (tight[slots[q] % TICKS]) return false;
+						if (!any && tight[slots[q] % TICKS]) return false;
 						return (mem[slots[q]] - mem[i]) >= (step + cpuLead[q]);
 					}
 					return cmd ? ((mem[slots[q]] - mem[i]) >= step)

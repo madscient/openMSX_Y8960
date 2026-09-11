@@ -67,6 +67,12 @@ static uint8_t getDelayCycles(const XMLElement& devices)
   * VRAM request. Measured to 28.9 +- 0.2 cycles, so it could also be 28. */
 static constexpr int CPU_REQUEST_DELAY = 29;
 
+/** A CPU VRAM request that would have been granted a 'tight' slot costs the
+  * command engine that slot anyway, to a dummy read, if it arrives this many
+  * cycles before it. */
+static constexpr int DUMMY_WINDOW_LO = 18;
+static constexpr int DUMMY_WINDOW_HI = 22;
+
 VDP::VDP(const DeviceConfig& config)
 	: MSXDevice(config)
 	, syncVSync(*this)
@@ -78,6 +84,7 @@ VDP::VDP(const DeviceConfig& config)
 	, syncSetBlank(*this)
 	, syncSetSprites(*this)
 	, syncCpuVramAccess(*this)
+	, syncCpuVramDummy(*this)
 	, syncCmdDone(*this)
 	, display(getReactor().getDisplay())
 	, cmdTiming    (display.getRenderSettings().getCmdTimingSetting())
@@ -338,6 +345,7 @@ void VDP::reset(EmuTime time)
 	syncSetBlank     .removeSyncPoint();
 	syncSetSprites   .removeSyncPoint();
 	syncCpuVramAccess.removeSyncPoint();
+	syncCpuVramDummy .removeSyncPoint();
 	syncCmdDone      .removeSyncPoint();
 	pendingCpuAccess = false;
 	previousCpuSlot = EmuTime::zero();
@@ -887,6 +895,25 @@ void VDP::scheduleV99x8VramAccess(bool isRead, EmuTime time)
 	}
 
 	EmuTime slot = getAccessSlot(request, VDPAccessSlots::Delta::CPU_16);
+
+	// The slot the request would have been granted if the CPU could use every
+	// slot. When that is a 'tight' slot -- the continuation tick of a two-tick
+	// CPU-slot waveform, which the CPU cannot be served in -- the VDP still
+	// reserves it and spends it on a dummy read of 0x1FFFF, and serves the CPU
+	// at the next slot. Only in a narrow window: taking the request cycles the
+	// measurement repository reconstructs, 'request 18 to 21 cycles before
+	// that slot' predicts 585 of the 603 dummy reads in the sprites-off
+	// captures and 11 that did not happen. The boundary is not sharp -- 19
+	// misses 154 of them, 17 invents 134 -- so this is the best integer rule
+	// rather than an exact one.
+	EmuTime dummy = getAccessSlot(request, VDPAccessSlots::Delta::CPU_16_ANY);
+	if (dummy != slot) [[unlikely]] {
+		auto margin = VDPClock(request).getTicksTill_fast(dummy);
+		if ((DUMMY_WINDOW_LO <= margin) && (margin < DUMMY_WINDOW_HI)) {
+			syncCpuVramDummy.setSyncPoint(dummy);
+		}
+	}
+
 	previousCpuSlot = slot;
 	previousCpuSlotIsLate = VDPAccessSlots::isLateCpuSlot(
 		getTicksThisFrame(slot) % TICKS_PER_LINE, *this);
@@ -943,6 +970,15 @@ bool VDP::cpuRequestIsTooEarly(EmuTime request) const
 		int distance = -(n - VDPAccessSlots::paddingCycles(tick, n, *this));
 		return distance < threshold;
 	}
+}
+
+void VDP::execCpuVramDummy(EmuTime time)
+{
+	// The VDP grants this slot to the CPU but cannot serve the CPU in it, so
+	// it spends the memory cycle on a read of 0x1FFFF. Nothing is latched and
+	// the VRAM pointer does not move; the only thing that shows is that the
+	// command engine does not get the slot either.
+	cmdEngine->stealAccessSlot(time);
 }
 
 void VDP::flushCpuVramAccesses(EmuTime time)
@@ -2044,6 +2080,9 @@ void VDP::serialize(Archive& ar, unsigned serVersion)
 		             "syncSetBlank",      syncSetBlank,
 		             "syncCpuVramAccess", syncCpuVramAccess);
 		             // no need for syncCmdDone (only used for probe)
+		if (ar.versionAtLeast(serVersion, 11)) {
+			ar.serialize("syncCpuVramDummy", syncCpuVramDummy);
+		}
 	} else {
 		Schedulable::restoreOld(ar,
 			{&syncVSync, &syncDisplayStart, &syncVScan,

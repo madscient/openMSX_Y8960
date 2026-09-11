@@ -914,6 +914,14 @@ private:
 		}
 	} syncCpuVramAccess;
 
+	struct SyncCpuVramDummy final : public SyncBase {
+		using SyncBase::SyncBase;
+		void executeUntil(EmuTime time) override {
+			auto& vdp = OUTER(VDP, syncCpuVramDummy);
+			vdp.execCpuVramDummy(time);
+		}
+	} syncCpuVramDummy;
+
 	struct SyncCmdDone final : public SyncBase {
 		using SyncBase::SyncBase;
 		void executeUntil(EmuTime time) override {
@@ -1018,6 +1026,7 @@ private:
 
 	/** Helper methods for CPU-VRAM access. */
 	void scheduleCpuVramAccess(bool isRead, uint8_t write, EmuTime time);
+	void execCpuVramDummy(EmuTime time);
 	void scheduleTMS99x8VramAccess(bool isRead, EmuTime time);
 	void scheduleV99x8VramAccess(bool isRead, EmuTime time);
 	[[nodiscard]] bool cpuRequestIsTooEarly(EmuTime request) const;

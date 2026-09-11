@@ -44,16 +44,22 @@ enum class Delta : int {
 	CMD_START_88  = 11 * TICKS, // LMMV       (notice: duplicate of CMD_88!)
 	CMD_START_100 = 17 * TICKS, // HMMM, YMMM
 	CMD_START_112 = 18 * TICKS, // HMMV, LINE
+	// Like CPU_16, but without skipping the slots the CPU cannot be served
+	// in: the slot it would have been granted, which the VDP spends on a
+	// dummy read when the two differ.
+	CPU_16_ANY = 19 * TICKS,
 };
-static constexpr int NUM_DELTAS = 19;
-/** The CPU access delays in the 'Delta' enum, CPU_D16 and CPU_D28. */
+static constexpr int NUM_DELTAS = 20;
+/** The CPU access delays in the 'Delta' enum, CPU_D16 and CPU_D28. Note that
+  * CPU_16_ANY is deliberately not one of them: it is the only one that does
+  * use the slots the CPU cannot be served in. */
 static constexpr int FIRST_CPU_DELTA = 2;
 static constexpr int LAST_CPU_DELTA = 4; // exclusive
 /** The command engine delays in the 'Delta' enum: the steps and the startup
-  * delays. Everything from here on gets the sprite addend. Both these and the
-  * CPU delays above are subject to the memory-cycle counting. */
+  * delays. These get the sprite addend; they and the CPU delays above are all
+  * subject to the memory-cycle counting. */
 static constexpr int FIRST_CMD_DELTA = 4;
-static constexpr int LAST_CMD_DELTA = NUM_DELTAS; // exclusive
+static constexpr int LAST_CMD_DELTA = 19; // exclusive
 
 /** VDP-VRAM access slot calculator, meant to be used in the inner loops of the
   * VDPCmdEngine commands. Code optimized for the case that:
