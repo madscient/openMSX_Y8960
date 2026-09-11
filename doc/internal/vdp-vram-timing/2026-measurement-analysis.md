@@ -647,15 +647,51 @@ and ordinary single accesses:
 
 So the line before the display area already runs the sprites-on access pattern, with its
 32 bitmap slots spent on dummy reads, and the last display line still fetches bitmap while
-dummying out every sprite slot. In this analysis's numbering the comb changes at the line
-boundary rather than part-way through a line; what identifies the extra line is which
-accesses are real.
+dummying out every sprite slot.
 
-openMSX's `getTab()` returns `tabScreenOff` for the whole vertical border, which is right
-for the border proper but wrong for those two lines per frame -- one before the display
-area, which really uses the sprites-on table, and the last display line, which uses it
-while fetching no sprites. It is worth two lines out of 262 and only matters to a command
-running exactly there.
+**Where the grid changes.** An earlier version of this section read the comb as changing at
+the line boundary. That is wrong, and per-line calibration (each line fitted on its own
+eight refresh pulses, which the measurement repository's `lines.py` does) shows it plainly.
+The line before the display area:
+
+```
+    6-  14-  22- ...  110-  118-   162-  170-  182a  188-  194.  214a  220- ...
+```
+
+-- the left horizontal blanking runs the *sprites-off* comb, and from 162 on the line is
+identical to a display line except that its bitmap slots hold dummy reads. And the line
+after the display area:
+
+```
+    4.  17.  30-  36.  46. ...  116.  126.   164-  172-  180-  188- ...
+```
+
+-- the sprites-on sprite-fetch comb up to 126, all of it dummy, and the display-off comb
+from 164 on. So the access grid changes **at the same point in the line at both ends**,
+somewhere in (126, 162]: the last left-comb access and the first slot of the new grid
+bracket it, and the two tables happen to agree at 162 and 170, so any switch point in that
+window behaves identically.
+
+That is a different line origin for the access grid, not a different number of lines. In
+slots available to the command engine and the CPU:
+
+| line | hardware | openMSX | switching one whole line early | switching at 162 |
+|---|---|---|---|---|
+| the line before the display area | 44 | 154 | 31 | 44 |
+| the line after the display area | 140 | 154 | 154 | 140 |
+
+openMSX's `getTab()` keys on `isDisplayEnabled() = isDisplayArea && displayEnabled`, so it
+returns `tabScreenOff` for both, and gives a command 110 slots too many on the line before
+the display area -- for one line per frame, a command there runs several times too fast.
+Switching a whole line early is most of the fix; switching at cycle 162 of the line before
+and of the line after is the whole of it, and is no harder, because the sync point that
+changes the table already exists (`VDPVRAM::updateDisplayEnabled()` syncs the command
+engine) and only its moment has to move.
+
+One detail even that does not capture: the left blanking of the line before the display
+area runs the sprites-off comb (6, 14, ... 118), not the display-off one (0, 8, ... 120) --
+the same number of slots six cycles later, because that line fetches no sprite patterns for
+the border line above it. Not worth a fourth table.
 
 ## 13. How well the lookahead and the pin delay separate
 
