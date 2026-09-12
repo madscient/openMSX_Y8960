@@ -1,14 +1,20 @@
-#ifndef SN76489_HH
-#define SN76489_HH
+#ifndef Y8960DCSG_HH
+#define Y8960DCSG_HH
 
 #include "ResampledSoundDevice.hh"
 #include "SimpleDebuggable.hh"
 
 #include <array>
+#include <string>
 
 namespace openmsx {
 
-/** This class implements the Texas Instruments SN76489 sound chip.
+/** The DCSG block of the Y8960, a Texas Instruments SN76489.
+  *
+  * A copy of the SN76489 class, which names its sound device after the chip.
+  * The cartridge has two of them, so each has to be named after the device it
+  * belongs to instead, or the two would collide in the mixer.
+  *
   * Unlike the AY-3-8910, this chip only performs sound synthesis.
   *
   * Resources used:
@@ -23,11 +29,11 @@ namespace openmsx {
   * - blueMSX's implementation
   *   https://sourceforge.net/p/bluemsx/code/HEAD/tree/trunk/blueMSX/Src/SoundChips/SN76489.c
   */
-class SN76489 final : public ResampledSoundDevice
+class Y8960DCSG final : public ResampledSoundDevice
 {
 public:
-	explicit SN76489(const DeviceConfig& config);
-	~SN76489();
+	Y8960DCSG(const std::string& name, const DeviceConfig& config);
+	~Y8960DCSG();
 
 	// ResampledSoundDevice
 	void generateChannels(std::span<float*> buffers, unsigned num) override;

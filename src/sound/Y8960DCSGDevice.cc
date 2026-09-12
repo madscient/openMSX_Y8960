@@ -6,7 +6,7 @@ namespace openmsx {
 
 Y8960DCSGDevice::Y8960DCSGDevice(const DeviceConfig& config)
 	: MSXDevice(config)
-	, sn76489(getName(), config)
+	, dcsg(getName(), config)
 	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
 	, ioEnabled(!useIoEnabler)
 {
@@ -15,7 +15,7 @@ Y8960DCSGDevice::Y8960DCSGDevice(const DeviceConfig& config)
 
 void Y8960DCSGDevice::reset(EmuTime time)
 {
-	sn76489.reset(time);
+	dcsg.reset(time);
 	ioEnabled = !useIoEnabler;
 }
 
@@ -27,14 +27,14 @@ void Y8960DCSGDevice::writeIO(uint16_t /*port*/, byte value, EmuTime time)
 
 void Y8960DCSGDevice::writePort(byte value, EmuTime time)
 {
-	sn76489.write(value, time);
+	dcsg.write(value, time);
 }
 
 template<typename Archive>
 void Y8960DCSGDevice::serialize(Archive& ar, unsigned /*version*/)
 {
 	ar.template serializeBase<MSXDevice>(*this);
-	ar.serialize("sn76489",   sn76489,
+	ar.serialize("dcsg",      dcsg,
 	             "ioEnabled", ioEnabled);
 }
 INSTANTIATE_SERIALIZE_METHODS(Y8960DCSGDevice);

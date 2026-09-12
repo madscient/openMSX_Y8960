@@ -1,4 +1,4 @@
-#include "SN76489.hh"
+#include "Y8960DCSG.hh"
 
 #include "DeviceConfig.hh"
 #include "serialize.hh"
@@ -39,7 +39,7 @@ static constexpr auto volTable = [] {
 
 // NoiseShifter:
 
-inline void SN76489::NoiseShifter::initState(unsigned pattern_,
+inline void Y8960DCSG::NoiseShifter::initState(unsigned pattern_,
                                              unsigned period_)
 {
 	pattern = pattern_;
@@ -51,23 +51,23 @@ inline void SN76489::NoiseShifter::initState(unsigned pattern_,
 	random = allOnes - (allOnes >> 1);
 }
 
-inline unsigned SN76489::NoiseShifter::getOutput() const
+inline unsigned Y8960DCSG::NoiseShifter::getOutput() const
 {
 	return ~random & 1;
 }
 
-inline void SN76489::NoiseShifter::advance()
+inline void Y8960DCSG::NoiseShifter::advance()
 {
 	random = (random >> 1) ^ ((random & 1) ? pattern : 0);
 }
 
-inline void SN76489::NoiseShifter::queueAdvance(unsigned steps)
+inline void Y8960DCSG::NoiseShifter::queueAdvance(unsigned steps)
 {
 	stepsBehind += steps;
 	stepsBehind %= period;
 }
 
-void SN76489::NoiseShifter::catchUp()
+void Y8960DCSG::NoiseShifter::catchUp()
 {
 	for (/**/; stepsBehind; stepsBehind--) {
 		advance();
@@ -75,7 +75,7 @@ void SN76489::NoiseShifter::catchUp()
 }
 
 template<typename Archive>
-void SN76489::NoiseShifter::serialize(Archive& ar, unsigned /*version*/)
+void Y8960DCSG::NoiseShifter::serialize(Archive& ar, unsigned /*version*/)
 {
 	// Make sure there are no queued steps, so we don't have to serialize them.
 	// If we're loading, initState() already set stepsBehind to 0.
@@ -91,8 +91,8 @@ void SN76489::NoiseShifter::serialize(Archive& ar, unsigned /*version*/)
 
 // Main class:
 
-SN76489::SN76489(const DeviceConfig& config)
-	: ResampledSoundDevice(config.getMotherBoard(), "SN76489", "DCSG", 4, NATIVE_FREQ_INT, false)
+Y8960DCSG::Y8960DCSG(const std::string& name_, const DeviceConfig& config)
+	: ResampledSoundDevice(config.getMotherBoard(), name_, "DCSG", 4, NATIVE_FREQ_INT, false)
 	, debuggable(config.getMotherBoard(), getName())
 {
 	if (false) {
@@ -105,12 +105,12 @@ SN76489::SN76489(const DeviceConfig& config)
 	registerSound(config);
 }
 
-SN76489::~SN76489()
+Y8960DCSG::~Y8960DCSG()
 {
 	unregisterSound();
 }
 
-void SN76489::initState()
+void Y8960DCSG::initState()
 {
 	registerLatch = 0; // TODO: 3 for Sega.
 
@@ -127,7 +127,7 @@ void SN76489::initState()
 	initNoise();
 }
 
-void SN76489::initNoise()
+void Y8960DCSG::initNoise()
 {
 	// Note: These are the noise patterns for the SN76489A.
 	//       Other chip variants have different noise patterns.
@@ -140,13 +140,13 @@ void SN76489::initNoise()
 	noiseShifter.initState(pattern, period);
 }
 
-void SN76489::reset(EmuTime time)
+void Y8960DCSG::reset(EmuTime time)
 {
 	updateStream(time);
 	initState();
 }
 
-void SN76489::write(uint8_t value, EmuTime time)
+void Y8960DCSG::write(uint8_t value, EmuTime time)
 {
 	if (value & 0x80) {
 		registerLatch = (value & 0x70) >> 4;
@@ -183,14 +183,14 @@ void SN76489::write(uint8_t value, EmuTime time)
 	writeRegister(registerLatch, data, time);
 }
 
-uint16_t SN76489::peekRegister(unsigned reg, EmuTime /*time*/) const
+uint16_t Y8960DCSG::peekRegister(unsigned reg, EmuTime /*time*/) const
 {
 	// Note: None of the register values will change unless a register is
 	//       written, so we don't need to sync here.
 	return regs[reg];
 }
 
-void SN76489::writeRegister(unsigned reg, uint16_t value, EmuTime time)
+void Y8960DCSG::writeRegister(unsigned reg, uint16_t value, EmuTime time)
 {
 	if (reg == 6 || regs[reg] != value) {
 		updateStream(time);
@@ -212,7 +212,7 @@ void SN76489::writeRegister(unsigned reg, uint16_t value, EmuTime time)
  * channel are in phase, but do end up in their own separate mixing buffers.
  */
 
-template<bool NOISE> void SN76489::synthesizeChannel(
+template<bool NOISE> void Y8960DCSG::synthesizeChannel(
 		float*& buffer, unsigned num, unsigned generator)
 {
 	unsigned period = [&] {
@@ -286,7 +286,7 @@ template<bool NOISE> void SN76489::synthesizeChannel(
 	}
 }
 
-void SN76489::generateChannels(std::span<float*> buffers, unsigned num)
+void Y8960DCSG::generateChannels(std::span<float*> buffers, unsigned num)
 {
 	// Channel 3: noise.
 	if ((regs[6] & 3) == 3) {
@@ -308,7 +308,7 @@ void SN76489::generateChannels(std::span<float*> buffers, unsigned num)
 }
 
 template<typename Archive>
-void SN76489::serialize(Archive& ar, unsigned version)
+void Y8960DCSG::serialize(Archive& ar, unsigned version)
 {
 	ar.serialize("regs",          regs,
 	             "registerLatch", registerLatch,
@@ -325,7 +325,7 @@ void SN76489::serialize(Archive& ar, unsigned version)
 	// no need to reflect our class structure in the serialization.
 	noiseShifter.serialize(ar, version);
 }
-INSTANTIATE_SERIALIZE_METHODS(SN76489);
+INSTANTIATE_SERIALIZE_METHODS(Y8960DCSG);
 
 // Debuggable
 
@@ -345,29 +345,29 @@ static constexpr std::array SN76489_DEBUG_MAP = {
 	std::array<uint8_t, 2>{7, 0},
 };
 
-SN76489::Debuggable::Debuggable(MSXMotherBoard& motherBoard_, const std::string& name_)
+Y8960DCSG::Debuggable::Debuggable(MSXMotherBoard& motherBoard_, const std::string& name_)
 	: SimpleDebuggable(
 		motherBoard_, name_ + " regs",
 		"SN76489 regs - note the period regs are split over two entries", 11)
 {
 }
 
-uint8_t SN76489::Debuggable::read(unsigned address, EmuTime time)
+uint8_t Y8960DCSG::Debuggable::read(unsigned address, EmuTime time)
 {
 	auto [reg, hi] = SN76489_DEBUG_MAP[address];
 
-	const auto& sn76489 = OUTER(SN76489, debuggable);
+	const auto& sn76489 = OUTER(Y8960DCSG, debuggable);
 	uint16_t data = sn76489.peekRegister(reg, time);
 	return hi ? narrow_cast<uint8_t>(data >> 4)
 	          : narrow_cast<uint8_t>(data & 0xF);
 }
 
-void SN76489::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
+void Y8960DCSG::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
 {
 	auto reg = SN76489_DEBUG_MAP[address][0];
 	auto hi  = SN76489_DEBUG_MAP[address][1];
 
-	auto& sn76489 = OUTER(SN76489, debuggable);
+	auto& sn76489 = OUTER(Y8960DCSG, debuggable);
 	auto data = [&] -> uint16_t {
 		if (reg == one_of(0, 2, 4)) {
 			uint16_t d = sn76489.peekRegister(reg, time);
