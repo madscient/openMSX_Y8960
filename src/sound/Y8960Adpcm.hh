@@ -88,7 +88,6 @@ private:
 	int delta;
 	uint8_t reg7;
 	uint8_t reg15;
-	bool romBank;
 };
 SERIALIZE_CLASS_VERSION(Y8960Adpcm, 1);
 
