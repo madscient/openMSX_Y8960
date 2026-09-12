@@ -25,13 +25,47 @@ unofficial fork である。ここには upstream に存在しない、このフ
 
 | | |
 |---|---|
-| upstream | https://github.com/openMSX/openMSX |
-| 分岐の起点 | `master`（upstream 追従用にそのまま置いてある） |
+| upstream | https://github.com/openMSX/openMSX（remote 名 `upstream`） |
 | 作業ブランチ | `main` |
+| `origin/master` | 分岐の起点の記録。追従には使わない |
 | ライセンス | GPL-2.0-only（upstream と同じ） |
 
 upstream の文書で変更しているのはルートの `README` だけ。
 それ以外の変更はコードとビルド定義に限られる。
+
+### 追従はリベースで行う
+
+`main` は upstream のある一点の直系の子孫として保ち、マージコミットを作らない。
+`main` が今どこに載っているかは `git merge-base main upstream/master` で取れるので、
+この文書には書かない。
+
+リベースを選ぶ理由は、**衝突する面を先に機械で判定できる**こと。upstream と
+フォークがそれぞれ触ったファイルの集合を比べ、重なりが空ならリベースは黙って通る。
+重なったときはリベースが衝突で止まるので、気づかないまま壊れる余地がない。
+
+**前提**: フォークの変更が upstream の変更と別のファイルに収まる限り、この判定が
+効く。同じファイルに入るようになったら、止まった衝突を手で解くことになる。
+
+```sh
+git fetch upstream master
+base=$(git merge-base main upstream/master)
+
+# 触ったファイルの重なりを見る。出力が空なら衝突しない
+comm -12 <(git diff --name-only $base upstream/master | sort) \
+         <(git diff --name-only $base main | sort)
+
+git rebase --onto upstream/master $base main
+
+# フォークのコミットがそのまま載ったか。全行が "=" になること
+git range-diff $base..ORIG_HEAD upstream/master..main
+```
+
+載せ替えると `main` の履歴が変わるので、`origin/main` へは
+`git push --force-with-lease origin main` で進める。
+push の前に `doc/fork/tools/check-before-push.sh` を通すこと。
+
+**載せ替えたらビルドし直す。** upstream が触ったファイルによっては再ビルドの範囲が
+広い。手順は `doc/fork/build/README.md`。
 
 ## 外部リポジトリ
 
