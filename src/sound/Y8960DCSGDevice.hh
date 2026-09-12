@@ -2,14 +2,14 @@
 #define Y8960DCSGDEVICE_HH
 
 #include "MSXDevice.hh"
-#include "SN76489.hh"
+#include "Y8960DCSG.hh"
 #include "serialize_meta.hh"
 
 namespace openmsx {
 
 /** The Y8960's DCSG block on its I/O port.
   *
-  * One SN76489 per instance. The chip latches everything through a single
+  * One DCSG per instance. The chip latches everything through a single
   * write-only register, so the block occupies one port and the two circuits
   * are told apart by the address bit below it: 3Eh / 7FF0h reach the first,
   * 3Fh / 7FF1h the second.
@@ -33,7 +33,7 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	SN76489 sn76489;
+	Y8960DCSG dcsg;
 	const bool useIoEnabler;
 	bool ioEnabled;
 };

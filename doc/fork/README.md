@@ -20,6 +20,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `build/README.md` | ビルド環境。マシンごとの詰まりどころと手順 |
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
 | `tools/` | push 前点検と文書整合の検査スクリプト |
+| `upstream-touched.txt` | 変更してよい upstream のファイルの一覧と理由。点検器が突き合わせる |
 
 ## upstream との関係
 

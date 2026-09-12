@@ -1,0 +1,22 @@
+# upstream のファイルのうち、このフォークが変更してよいもの。
+#
+# check-before-push.sh がこの一覧と実際の差分を突き合わせる。増えていれば
+# 止まる。**増やすときは、ここに一行足す前に妥当性を考えること。**
+#
+# 判断の基準は「下流の都合か、openMSX の拡張点がその形をしているか」。
+# 前者なら、上流を変えずにフォーク側で済ませる道をまず探す。実例:
+# ADPCM (Y8960Adpcm) と DCSG (Y8960DCSG) はそれで上流から切り離した。
+#
+# 書式は「パス<空白>理由」。# から行末はコメント。
+
+README                              フォークである旨と帰属表示。GitHub のフロントページなので他に置き場が無い
+build/msvc/openmsx.vcxproj          ソース一覧。ファイルを足したら書く
+build/msvc/openmsx.vcxproj.filters  同上
+src/DeviceFactory.cc                デバイス型の登録。openMSX は if-else 連鎖で作る
+src/memory/RomFactory.cc            マッパー種別 Y8960 の登録
+src/memory/RomInfo.cc               同上
+src/memory/RomTypes.hh              同上
+src/meson.build                     ソース一覧
+src/sound/MSXMixer.cc               デバイスごとのゲインの枠。既定 1.0 なので他の構成の挙動は変わらない
+src/sound/MSXMixer.hh               同上
+src/sound/YM2413.cc                 コア名 NukeYKT-Banked の登録。選択肢が 1 つ増えるだけ
