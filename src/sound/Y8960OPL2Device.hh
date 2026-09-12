@@ -2,6 +2,7 @@
 #define Y8960OPL2DEVICE_HH
 
 #include "MSXDevice.hh"
+#include "Y8960AdpcmMemory.hh"
 #include "Y8960OPL2.hh"
 #include "serialize_meta.hh"
 
@@ -27,6 +28,11 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
+	/** ADPCM のサンプルメモリは 2 個の OPL2 が 1 個の Y8960-ADPCM-RAM を見る。
+	  * どちらの窓かは設定で決まる。分け方を選ぶレジスタが実機で決まったら、
+	  * writeIO() から adpcmMemory.setLayout() を呼べばよい。 */
+	Y8960AdpcmMemory& adpcmMemory;
+	const unsigned adpcmBlock;
 	Y8960OPL2 opl2;
 	byte registerLatch;
 	const bool useIoEnabler;
