@@ -76,17 +76,12 @@ MSXMixer::SoundDeviceInfo::SoundDeviceInfo(unsigned numChannels)
 }
 
 void MSXMixer::registerSound(SoundDevice& device, float volume,
-                             int balance, unsigned numChannels, bool externalOutput)
+                             int balance, unsigned numChannels)
 {
-	if (externalOutput) {
-		externalOutputCount++;
-	}
-
 	// TODO read volume/balance(mode) from config file
 	const std::string& name = device.getName();
 	SoundDeviceInfo info(numChannels);
 	info.device = &device;
-	info.externalOutput = externalOutput;
 	info.defaultVolume = volume;
 	info.volumeSetting = std::make_unique<IntegerSetting>(
 		commandController, tmpStrCat(name, "_volume"),
@@ -132,10 +127,6 @@ void MSXMixer::unregisterSound(SoundDevice& device)
 	}
 	move_pop_back(infos, it);
 	commandController.getCliComm().update(CliComm::UpdateType::SOUND_DEVICE, device.getName(), "remove");
-
-	if (it->externalOutput) {
-		externalOutputCount--;
-	}
 }
 
 void MSXMixer::setSynchronousMode(bool synchronous)
@@ -484,9 +475,6 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 		SoundDevice& device = *info.device;
 		auto l1 = info.left1;
 		auto r1 = info.right1;
-		bool enable = (outputSelect == OutputSelect::BOTH) ||
-		              (info.externalOutput ==
-		               (outputSelect == OutputSelect::EXTERNAL));
 		if (!device.isStereo()) {
 			// device generates mono output
 			if (l1 == r1) {
@@ -495,18 +483,14 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 					// generate in 'monoBuf' (because it was still empty)
 					// then multiply in-place
 					if (device.updateBuffer(samples, monoBufPtr, time)) {
-						if (enable) {
-							usedBuffers |= HAS_MONO_FLAG;
-							mul(monoBuf, l1);
-						}
+						usedBuffers |= HAS_MONO_FLAG;
+						mul(monoBuf, l1);
 					}
 				} else {
 					// generate in 'tmpBuf' (as mono data)
 					// then multiply-accumulate into 'monoBuf'
 					if (device.updateBuffer(samples, tmpBufPtr, time)) {
-						if (enable) {
-							mulAcc(monoBuf, tmpBufMono, l1);
-						}
+						mulAcc(monoBuf, tmpBufMono, l1);
 					}
 				}
 			} else {
@@ -515,18 +499,14 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 					// 'stereoBuf' (which is still empty) is first filled with mono-data,
 					// then in-place expanded to stereo-data
 					if (device.updateBuffer(samples, stereoBufPtr, time)) {
-						if (enable) {
-							usedBuffers |= HAS_STEREO_FLAG;
-							mulExpand(stereoBuf, l1, r1);
-						}
+						usedBuffers |= HAS_STEREO_FLAG;
+						mulExpand(stereoBuf, l1, r1);
 					}
 				} else {
 					// 'tmpBuf' is first filled with mono-data,
 					// then expanded to stereo and mul-acc into 'stereoBuf'
 					if (device.updateBuffer(samples, tmpBufPtr, time)) {
-						if (enable) {
-							mulExpandAcc(stereoBuf, tmpBufMono, l1, r1);
-						}
+						mulExpandAcc(stereoBuf, tmpBufMono, l1, r1);
 					}
 				}
 			}
@@ -542,18 +522,14 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 					// generate in 'stereoBuf' (because it was still empty)
 					// then multiply in-place
 					if (device.updateBuffer(samples, stereoBufPtr, time)) {
-						if (enable ) {
-							usedBuffers |= HAS_STEREO_FLAG;
-							mul(stereoBuf, l1);
-						}
+						usedBuffers |= HAS_STEREO_FLAG;
+						mul(stereoBuf, l1);
 					}
 				} else {
 					// generate in 'tmpBuf' (as stereo data)
 					// then multiply-accumulate into 'stereoBuf'
 					if (device.updateBuffer(samples, tmpBufPtr, time)) {
-						if (enable) {
-							mulAcc(stereoBuf, tmpBufStereo, l1);
-						}
+						mulAcc(stereoBuf, tmpBufStereo, l1);
 					}
 				}
 			} else {
@@ -563,18 +539,14 @@ void MSXMixer::generate(std::span<StereoFloat> output, EmuTime time)
 					// generate in 'stereoBuf' (because it was still empty)
 					// then mix in-place
 					if (device.updateBuffer(samples, stereoBufPtr, time)) {
-						if (enable) {
-							usedBuffers |= HAS_STEREO_FLAG;
-							mulMix2(stereoBuf, l1, l2, r1, r2);
-						}
+						usedBuffers |= HAS_STEREO_FLAG;
+						mulMix2(stereoBuf, l1, l2, r1, r2);
 					}
 				} else {
 					// 'tmpBuf' is first filled with stereo-data,
 					// then mixed into stereoBuf
 					if (device.updateBuffer(samples, tmpBufPtr, time)) {
-						if (enable) {
-							mulMix2Acc(stereoBuf, tmpBufStereo, l1, l2, r1, r2);
-						}
+						mulMix2Acc(stereoBuf, tmpBufStereo, l1, l2, r1, r2);
 					}
 				}
 			}
@@ -875,6 +847,18 @@ std::string MSXMixer::SoundDeviceInfoTopic::help(std::span<const TclObject> /*to
 	return "Shows a list of available sound devices.\n";
 }
 
+void MSXMixer::setDeviceGain(std::string_view name, float leftGain, float rightGain)
+{
+	auto it = std::ranges::find(infos, name, [](const SoundDeviceInfo& i) {
+		return std::string_view(i.device->getName()); });
+	if (it == infos.end()) {
+		throw CommandException("Unknown sound device '", name, "'");
+	}
+	it->gainLeft  = leftGain;
+	it->gainRight = rightGain;
+	updateVolumeParams(*it);
+}
+
 void MSXMixer::SoundDeviceInfoTopic::tabCompletion(std::vector<std::string>& tokens) const
 {
 	if (tokens.size() == 3) {
@@ -882,52 +866,6 @@ void MSXMixer::SoundDeviceInfoTopic::tabCompletion(std::vector<std::string>& tok
 			OUTER(MSXMixer, soundDeviceInfo).infos,
 			[](auto& info) -> std::string_view { return info.device->getName(); }));
 	}
-}
-
-void MSXMixer::setDeviceGain(std::string_view name, float leftGain, float rightGain)
-{
-	bool found = false;
-	for (auto& info : infos) {
-		if (name.compare(info.device->getName()) == 0) {
-			found = true;
-			info.gainLeft = leftGain;
-			info.gainRight = rightGain;
-			updateVolumeParams(info);
-		}
-	}
-
-	if (!found) {
-		throw CommandException("Unknown sound device '", name, "'");
-	}
-}
-
-void MSXMixer::setExternal(std::string_view name, bool external)
-{
-	bool found = false;
-	for (auto& info : infos) {
-		SoundDevice& device = *info.device;
-		std::string_view devName = device.getName();
-		if (name.compare(devName) == 0) {
-			found = true;
-			if (info.externalOutput != external) {
-				info.externalOutput = external;
-				if (external) {
-					externalOutputCount++;
-				} else {
-					externalOutputCount--;
-				}
-			}
-		}
-	}
-
-	if (!found) {
-		throw CommandException("Unknown sound device '", name, "'");
-	}
-}
-
-void MSXMixer::selectOutput(OutputSelect select)
-{
-	outputSelect = select;
 }
 
 } // namespace openmsx

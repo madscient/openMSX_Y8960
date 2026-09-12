@@ -51,9 +51,9 @@ public:
 		dynarray<ChannelSettings> channelSettings;
 		float defaultVolume = 0.f;
 		float left1 = 0.f, right1 = 0.f, left2 = 0.f, right2 = 0.f;
-		bool externalOutput;
-		/** Y8960 のミキサーが掛ける出力ゲイン。デバイス内部のパンや
-		  * ユーザー設定の volume/balance とは独立に、最後に掛かる。 */
+		/** Extra gain, on top of the device's own amplification and the
+		  * user's volume/balance settings. For a cartridge that has a
+		  * mixer of its own in front of its sound devices. */
 		float gainLeft = 1.0f, gainRight = 1.0f;
 	};
 
@@ -75,7 +75,7 @@ public:
 	 * 'regularly' called (see SoundDevice for more info).
 	 */
 	void registerSound(SoundDevice& device, float volume,
-	                   int balance, unsigned numChannels, bool externalOutput = false);
+	                   int balance, unsigned numChannels);
 
 	/**
 	 * Every SoundDevice must unregister before it is destructed
@@ -140,20 +140,15 @@ public:
 	// Returns the nominal host sample rate (not adjusted for speed setting)
 	[[nodiscard]] unsigned getSampleRate() const { return hostSampleRate; }
 
+	/** Set the extra gain of one sound device, see SoundDeviceInfo::gainLeft.
+	 * Throws when no sound device goes by that name. */
+	void setDeviceGain(std::string_view name, float leftGain, float rightGain);
+
 	[[nodiscard]] SoundDevice* findDevice(std::string_view name) const;
 	[[nodiscard]] const SoundDeviceInfo* findDeviceInfo(std::string_view name) const;
 	[[nodiscard]] const auto& getDeviceInfos() const { return infos; }
 
 	void reInit();
-
-	/** どの出力を鳴らすか。EXTERNAL は Y8960 のように、音声を本体に
-	  * 戻さず自分で出すカートリッジの側を指す。実機ではその 2 本の線を
-	  * 人が外で切り替えるかミックスするので、BOTH がミックスに当たる。 */
-	enum class OutputSelect { INTERNAL, EXTERNAL, BOTH };
-
-	void setDeviceGain(std::string_view name, float leftGain, float rightGain);
-	void setExternal(std::string_view name, bool external);
-	void selectOutput(OutputSelect select);
 
 private:
 	void updateVolumeParams(SoundDeviceInfo& info) const;
@@ -205,8 +200,6 @@ private:
 
 	unsigned muteCount = 1; // start muted
 	float tl0, tr0; // internal DC-filter state
-	int externalOutputCount = 0;
-	OutputSelect outputSelect = OutputSelect::INTERNAL;
 };
 
 } // namespace openmsx
