@@ -2,7 +2,7 @@
 #define Y8960OPL2_HH
 
 #include "ResampledSoundDevice.hh"
-#include "Y8950Adpcm.hh"
+#include "Y8960Adpcm.hh"
 
 #include "EmuTime.hh"
 #include "EmuTimer.hh"
@@ -19,16 +19,32 @@
 namespace openmsx {
 
 class DeviceConfig;
+class Y8960AdpcmMemory;
 
 class Y8960OPL2 final : private ResampledSoundDevice, private EmuTimerCallback
-                      , public Y8950Status
 {
 public:
 	static constexpr int CLOCK_FREQ     = 3579545;
 	static constexpr int CLOCK_FREQ_DIV = 72;
 
+	// Bitmask for register 0x04
+	static constexpr int R04_ST1          = 0x01; // Timer1 Start
+	static constexpr int R04_ST2          = 0x02; // Timer2 Start
+	static constexpr int R04_MASK_BUF_RDY = 0x08; // Mask 'Buffer Ready'
+	static constexpr int R04_MASK_EOS     = 0x10; // Mask 'End of sequence'
+	static constexpr int R04_MASK_T2      = 0x20; // Mask Timer2 flag
+	static constexpr int R04_MASK_T1      = 0x40; // Mask Timer1 flag
+	static constexpr int R04_IRQ_RESET    = 0x80; // IRQ RESET
+
+	// Bitmask for status register
+	static constexpr int STATUS_PCM_BSY = 0x01;
+	static constexpr int STATUS_EOS     = R04_MASK_EOS;
+	static constexpr int STATUS_BUF_RDY = R04_MASK_BUF_RDY;
+	static constexpr int STATUS_T2      = R04_MASK_T2;
+	static constexpr int STATUS_T1      = R04_MASK_T1;
+
 	Y8960OPL2(const std::string& name, const DeviceConfig& config,
-	          Y8950AdpcmRam& sampleRam, EmuTime time);
+	          Y8960AdpcmMemory& adpcmMemory, unsigned adpcmBlock, EmuTime time);
 	~Y8960OPL2();
 
 	void clearRam();
@@ -39,10 +55,10 @@ public:
 	[[nodiscard]] uint8_t readStatus(EmuTime time) const;
 	[[nodiscard]] uint8_t peekStatus(EmuTime time) const;
 
-	// Y8950Status, for ADPCM
-	void setStatus(uint8_t flags) override;
-	void resetStatus(uint8_t flags) override;
-	[[nodiscard]] uint8_t peekRawStatus() const override;
+	// called by the ADPCM block
+	void setStatus(uint8_t flags);
+	void resetStatus(uint8_t flags);
+	[[nodiscard]] uint8_t peekRawStatus() const;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
@@ -182,7 +198,7 @@ private:
 	};
 
 	MSXMotherBoard& motherBoard;
-	Y8950Adpcm adpcm;
+	Y8960Adpcm adpcm;
 
 	struct Debuggable final : SimpleDebuggable {
 		Debuggable(MSXMotherBoard& motherBoard, const std::string& name);
