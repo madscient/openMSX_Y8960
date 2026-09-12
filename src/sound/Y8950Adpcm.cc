@@ -50,58 +50,19 @@ static constexpr int STEP_BITS = 16;
 static constexpr int STEP_MASK = (1 << STEP_BITS) -1;
 
 
-Y8950OwnAdpcmRam::Y8950OwnAdpcmRam(const DeviceConfig& config,
-                                   const std::string& name, unsigned size_)
-	: ram(config, name + " RAM", "Y8950 sample RAM", size_)
-{
-}
-
-unsigned Y8950OwnAdpcmRam::size() const
-{
-	return narrow<unsigned>(ram.size());
-}
-
-uint8_t Y8950OwnAdpcmRam::read(unsigned addr) const
-{
-	return (addr < ram.size()) ? ram[addr] : 0;
-}
-
-void Y8950OwnAdpcmRam::write(unsigned addr, uint8_t value)
-{
-	if (addr < ram.size()) ram.write(addr, value);
-}
-
-void Y8950OwnAdpcmRam::clear()
-{
-	ram.clear(0xFF);
-}
-
-
-Y8950Adpcm::Y8950Adpcm(Y8950Status& host_, const DeviceConfig& config,
+Y8950Adpcm::Y8950Adpcm(Y8950& y8950_, const DeviceConfig& config,
                        const std::string& name, unsigned sampleRam)
 	: Schedulable(config.getScheduler())
-	, host(host_)
-	, ownRam(std::in_place, config, name, sampleRam)
-	, ram(*ownRam)
+	, y8950(y8950_)
+	, ram(config, name + " RAM", "Y8950 sample RAM", sampleRam)
 	, clock(config.getMotherBoard().getCurrentTime())
 {
 	clearRam();
 }
 
-Y8950Adpcm::Y8950Adpcm(Y8950Status& host_, const DeviceConfig& config,
-                       const std::string& /*name*/, Y8950AdpcmRam& sampleRam)
-	: Schedulable(config.getScheduler())
-	, host(host_)
-	, ram(sampleRam)
-	, clock(config.getMotherBoard().getCurrentTime())
-{
-	// Not cleared here: the memory is shared and the other block may
-	// already have put samples in it.
-}
-
 void Y8950Adpcm::clearRam()
 {
-	ram.clear();
+	ram.clear(0xFF);
 }
 
 void Y8950Adpcm::reset(EmuTime time)
@@ -123,7 +84,7 @@ void Y8950Adpcm::reset(EmuTime time)
 	restart(emu);
 	restart(aud);
 
-	host.setStatus(Y8950Status::STATUS_BUF_RDY);
+	y8950.setStatus(Y8950::STATUS_BUF_RDY);
 }
 
 bool Y8950Adpcm::isPlaying() const
@@ -186,7 +147,7 @@ void Y8950Adpcm::executeUntil(EmuTime time)
 {
 	assert(isPlaying());
 	sync(time); // should set STATUS_EOS
-	assert(host.peekRawStatus() & Y8950Status::STATUS_EOS);
+	assert(y8950.peekRawStatus() & Y8950::STATUS_EOS);
 	if (isPlaying() && (reg7 & R07_REPEAT)) {
 		schedule();
 	}
@@ -199,9 +160,9 @@ void Y8950Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 	case 0x07: // START/REC/MEM DATA/REPEAT/SP-OFF/-/-/RESET
 		reg7 = data;
 		if (reg7 & R07_START) {
-			host.setStatus(Y8950Status::STATUS_PCM_BSY);
+			y8950.setStatus(Y8950::STATUS_PCM_BSY);
 		} else {
-			host.resetStatus(Y8950Status::STATUS_PCM_BSY);
+			y8950.resetStatus(Y8950::STATUS_PCM_BSY);
 		}
 		if (reg7 & R07_RESET) {
 			reg7 = 0;
@@ -218,7 +179,7 @@ void Y8950Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 			readDelay = 2; // two dummy reads
 			if ((reg7 & 0xA0) == 0x20) {
 				// Memory read or write
-				host.setStatus(Y8950Status::STATUS_BUF_RDY);
+				y8950.setStatus(Y8950::STATUS_BUF_RDY);
 			}
 		} else {
 			// access via CPU
@@ -311,7 +272,7 @@ void Y8950Adpcm::writeData(uint8_t data)
 
 			// reset BRDY bit in status register,
 			// which means we are processing the write
-			host.resetStatus(Y8950Status::STATUS_BUF_RDY);
+			y8950.resetStatus(Y8950::STATUS_BUF_RDY);
 
 			// setup a timer that will callback us in 10
 			// master clock cycles for Y8950. In the
@@ -320,13 +281,13 @@ void Y8950Adpcm::writeData(uint8_t data)
 			// don't really do this; we simply reset and
 			// set the flag in zero time, so that the IRQ
 			// will work.
-			host.setStatus(Y8950Status::STATUS_BUF_RDY);
+			y8950.setStatus(Y8950::STATUS_BUF_RDY);
 
 			if (emu.memPtr > stopAddr) {
 				// we just received the last byte: set EOS
 				// verified on real HW:
 				//  in case of EOS, BUF_RDY is set as well
-				host.setStatus(Y8950Status::STATUS_EOS);
+				y8950.setStatus(Y8950::STATUS_EOS);
 				// Eugeny tested that pointer wraps when
 				// continue writing after EOS
 				emu.memPtr = startAddr;
@@ -338,7 +299,7 @@ void Y8950Adpcm::writeData(uint8_t data)
 
 		// Reset BRDY bit in status register, which means we
 		// are full of data
-		host.resetStatus(Y8950Status::STATUS_BUF_RDY);
+		y8950.resetStatus(Y8950::STATUS_BUF_RDY);
 	}
 }
 
@@ -395,7 +356,7 @@ void Y8950Adpcm::resetStatus()
 	if (((reg7 & R07_MODE & ~R07_REC) == R07_MEMORY_DATA) ||
 	    ((reg7 & R07_MODE) == 0)){
 		// transfer to or from sample ram, or no function
-		host.setStatus(Y8950Status::STATUS_BUF_RDY);
+		y8950.setStatus(Y8950::STATUS_BUF_RDY);
 	}
 }
 
@@ -414,16 +375,16 @@ uint8_t Y8950Adpcm::readData()
 		if (readDelay) {
 			// two dummy reads
 			--readDelay;
-			host.setStatus(Y8950Status::STATUS_BUF_RDY);
+			y8950.setStatus(Y8950::STATUS_BUF_RDY);
 		} else if (emu.memPtr > stopAddr) {
 			// set EOS bit in status register
-			host.setStatus(Y8950Status::STATUS_EOS);
+			y8950.setStatus(Y8950::STATUS_EOS);
 		} else {
 			emu.memPtr += 2; // two nibbles at a time
 
 			// reset BRDY bit in status register, which means we
 			// are reading the memory now
-			host.resetStatus(Y8950Status::STATUS_BUF_RDY);
+			y8950.resetStatus(Y8950::STATUS_BUF_RDY);
 
 			// setup a timer that will callback us in 10 master
 			// clock cycles for Y8950. In the callback set the BRDY
@@ -432,7 +393,7 @@ uint8_t Y8950Adpcm::readData()
 			// set the flag in zero time, so that the IRQ will work.
 
 			// set BRDY bit in status register
-			host.setStatus(Y8950Status::STATUS_BUF_RDY);
+			y8950.setStatus(Y8950::STATUS_BUF_RDY);
 		}
 	}
 	return result;
@@ -458,17 +419,17 @@ uint8_t Y8950Adpcm::peekData() const
 void Y8950Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (!romBank) {
+	if ((addr < ram.size()) && !romBank) {
 		ram.write(addr, value);
 	}
 }
 uint8_t Y8950Adpcm::readMemory(unsigned memPtr) const
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (romBank) {
+	if (romBank || (addr >= ram.size())) {
 		return 0; // checked on a real machine
 	} else {
-		return ram.read(addr);
+		return ram[addr];
 	}
 }
 
@@ -507,7 +468,7 @@ int Y8950Adpcm::calcSample(bool doEmu)
 					pd.adpcm_data = reg15;
 					// set BRDY bit, ready to accept new data
 					if (doEmu) {
-						host.setStatus(Y8950Status::STATUS_BUF_RDY);
+						y8950.setStatus(Y8950::STATUS_BUF_RDY);
 					}
 				}
 				return uint8_t(pd.adpcm_data >> 4);
@@ -537,7 +498,7 @@ int Y8950Adpcm::calcSample(bool doEmu)
 			// I can't remember it :-(
 			// This is different from e.g. the MAME implementation.
 			if (doEmu) {
-				host.setStatus(Y8950Status::STATUS_EOS);
+				y8950.setStatus(Y8950::STATUS_EOS);
 			}
 			if (reg7 & R07_REPEAT) {
 				restart(pd);
@@ -565,10 +526,8 @@ template<typename Archive>
 void Y8950Adpcm::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<Schedulable>(*this);
-	if (ownRam) {
-		ar.serialize("ram", ownRam->getRam());
-	}
-	ar.serialize("startAddr",    startAddr,
+	ar.serialize("ram",          ram,
+	             "startAddr",    startAddr,
 	             "stopAddr",     stopAddr,
 	             "addrMask",     addrMask,
 	             "volume",       volume,

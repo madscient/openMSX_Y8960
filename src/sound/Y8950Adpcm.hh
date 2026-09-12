@@ -7,97 +7,17 @@
 #include "serialize_meta.hh"
 
 #include <cstdint>
-#include <optional>
-#include <string>
 
 namespace openmsx {
 
 class DeviceConfig;
-
-/** What Y8950Adpcm needs from the chip that owns it.
-  * The Y8960's OPL2 block has the same status register as the Y8950, so it
-  * can host this same ADPCM implementation without duplicating it.
-  */
-class Y8950Status
-{
-public:
-	// Bitmask for register 0x04
-	static constexpr int R04_ST1          = 0x01; // Timer1 Start
-	static constexpr int R04_ST2          = 0x02; // Timer2 Start
-	static constexpr int R04_MASK_BUF_RDY = 0x08; // Mask 'Buffer Ready'
-	static constexpr int R04_MASK_EOS     = 0x10; // Mask 'End of sequence'
-	static constexpr int R04_MASK_T2      = 0x20; // Mask Timer2 flag
-	static constexpr int R04_MASK_T1      = 0x40; // Mask Timer1 flag
-	static constexpr int R04_IRQ_RESET    = 0x80; // IRQ RESET
-
-	// Bitmask for status register
-	static constexpr int STATUS_PCM_BSY = 0x01;
-	static constexpr int STATUS_EOS     = R04_MASK_EOS;
-	static constexpr int STATUS_BUF_RDY = R04_MASK_BUF_RDY;
-	static constexpr int STATUS_T2      = R04_MASK_T2;
-	static constexpr int STATUS_T1      = R04_MASK_T1;
-
-	virtual void setStatus(uint8_t flags) = 0;
-	virtual void resetStatus(uint8_t flags) = 0;
-	[[nodiscard]] virtual uint8_t peekRawStatus() const = 0;
-
-protected:
-	~Y8950Status() = default;
-};
-
-/** The sample memory a Y8950Adpcm block reads and writes.
-  *
-  * The Y8950 owns its memory, but the Y8960's two OPL2 blocks address one
-  * array that they either share or divide, so the memory has to be able to
-  * live outside the block.
-  *
-  * Addresses at or past size() read as 0 and writes to them are dropped,
-  * which is what a real chip does where the address space is wider than the
-  * memory behind it.
-  */
-class Y8950AdpcmRam
-{
-public:
-	[[nodiscard]] virtual unsigned size() const = 0;
-	[[nodiscard]] virtual uint8_t read(unsigned addr) const = 0;
-	virtual void write(unsigned addr, uint8_t value) = 0;
-	virtual void clear() = 0;
-
-protected:
-	~Y8950AdpcmRam() = default;
-};
-
-/** Sample memory that the ADPCM block itself owns, the way the Y8950 has it. */
-class Y8950OwnAdpcmRam final : public Y8950AdpcmRam
-{
-public:
-	Y8950OwnAdpcmRam(const DeviceConfig& config, const std::string& name,
-	                 unsigned size);
-
-	[[nodiscard]] unsigned size() const override;
-	[[nodiscard]] uint8_t read(unsigned addr) const override;
-	void write(unsigned addr, uint8_t value) override;
-	void clear() override;
-
-	/** The savestate keeps this array inside the ADPCM block, where it has
-	  * always been, so Y8950Adpcm::serialize() reaches it directly. */
-	[[nodiscard]] TrackedRam& getRam() { return ram; }
-
-private:
-	TrackedRam ram;
-};
+class Y8950;
 
 class Y8950Adpcm final : public Schedulable
 {
 public:
-	/** The block owns its sample memory (Y8950 / MSX-AUDIO). */
-	Y8950Adpcm(Y8950Status& host, const DeviceConfig& config,
+	Y8950Adpcm(Y8950& y8950, const DeviceConfig& config,
 	           const std::string& name, unsigned sampleRam);
-
-	/** The block reads and writes sample memory owned elsewhere
-	  * (the Y8960, whose two blocks are windows into one array). */
-	Y8950Adpcm(Y8950Status& host, const DeviceConfig& config,
-	           const std::string& name, Y8950AdpcmRam& sampleRam);
 
 	void clearRam();
 	void reset(EmuTime time);
@@ -141,9 +61,8 @@ private:
 	[[nodiscard]] int calcSample(bool doEmu);
 
 private:
-	Y8950Status& host;
-	std::optional<Y8950OwnAdpcmRam> ownRam; // unset when the memory is shared
-	Y8950AdpcmRam& ram;
+	Y8950& y8950;
+	TrackedRam ram;
 
 	// copy/pasted from Y8950.hh
 	static constexpr int CLOCK_FREQ     = 3579545;
