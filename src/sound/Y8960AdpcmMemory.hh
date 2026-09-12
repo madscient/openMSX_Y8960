@@ -3,10 +3,8 @@
 
 #include "MSXDevice.hh"
 #include "TrackedRam.hh"
-#include "Y8950Adpcm.hh"
 #include "serialize_meta.hh"
 
-#include <array>
 #include <cstdint>
 
 namespace openmsx {
@@ -43,9 +41,14 @@ public:
 
 	void powerUp(EmuTime time) override;
 
-	/** The memory as one OPL2 block sees it. The reference stays valid for
-	  * the life of this device; what it spans follows the layout. */
-	[[nodiscard]] Y8950AdpcmRam& getBlock(unsigned index);
+	/** The memory as one OPL2 block sees it. How much a block can reach and
+	  * where its window starts both follow the layout. Addresses at or past
+	  * size() read as 0 and writes to them are dropped, which is what a real
+	  * chip does where the address space is wider than the memory behind it. */
+	[[nodiscard]] unsigned size(unsigned block) const;
+	[[nodiscard]] uint8_t read(unsigned block, unsigned addr) const;
+	void write(unsigned block, unsigned addr, uint8_t value);
+	void clear(unsigned block);
 
 	void setLayout(Layout newLayout) { layout = newLayout; }
 	[[nodiscard]] Layout getLayout() const { return layout; }
@@ -54,27 +57,10 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	/** One block's window into the memory. */
-	class Block final : public Y8950AdpcmRam
-	{
-	public:
-		Block(Y8960AdpcmMemory& memory, unsigned index);
-
-		[[nodiscard]] unsigned size() const override;
-		[[nodiscard]] uint8_t read(unsigned addr) const override;
-		void write(unsigned addr, uint8_t value) override;
-		void clear() override;
-
-	private:
-		[[nodiscard]] unsigned offset() const;
-
-		Y8960AdpcmMemory& memory;
-		const unsigned index;
-	};
+	[[nodiscard]] unsigned offset(unsigned block) const;
 
 	TrackedRam ram;
 	Layout layout;
-	std::array<Block, BlockCount> blocks;
 };
 SERIALIZE_CLASS_VERSION(Y8960AdpcmMemory, 1);
 

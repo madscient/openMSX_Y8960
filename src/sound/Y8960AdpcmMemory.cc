@@ -13,14 +13,7 @@ Y8960AdpcmMemory::Y8960AdpcmMemory(const DeviceConfig& config)
 	: MSXDevice(config)
 	, ram(config, getName(), "Y8960 ADPCM sample RAM", Size)
 	, layout(Layout::Shared)
-	, blocks{{{*this, 0}, {*this, 1}}}
 {
-}
-
-Y8950AdpcmRam& Y8960AdpcmMemory::getBlock(unsigned index)
-{
-	assert(index < BlockCount);
-	return blocks[index];
 }
 
 void Y8960AdpcmMemory::powerUp(EmuTime /*time*/)
@@ -28,44 +21,39 @@ void Y8960AdpcmMemory::powerUp(EmuTime /*time*/)
 	ram.clear(0xFF);
 }
 
-Y8960AdpcmMemory::Block::Block(Y8960AdpcmMemory& memory_, unsigned index_)
-	: memory(memory_)
-	, index(index_)
+unsigned Y8960AdpcmMemory::size(unsigned block) const
 {
-}
-
-unsigned Y8960AdpcmMemory::Block::size() const
-{
-	switch (memory.layout) {
+	assert(block < BlockCount);
+	switch (layout) {
 		using enum Layout;
 	case Shared: return Size;
-	case First:  return (index == 0) ? Size : 0;
-	case Second: return (index == 0) ? 0 : Size;
+	case First:  return (block == 0) ? Size : 0;
+	case Second: return (block == 0) ? 0 : Size;
 	case Split:  return Size / 2;
 	}
 	UNREACHABLE;
 }
 
-unsigned Y8960AdpcmMemory::Block::offset() const
+unsigned Y8960AdpcmMemory::offset(unsigned block) const
 {
-	return ((memory.layout == Layout::Split) && (index == 1)) ? (Size / 2) : 0;
+	return ((layout == Layout::Split) && (block == 1)) ? (Size / 2) : 0;
 }
 
-uint8_t Y8960AdpcmMemory::Block::read(unsigned addr) const
+uint8_t Y8960AdpcmMemory::read(unsigned block, unsigned addr) const
 {
-	if (addr >= size()) return 0;
-	return memory.ram[offset() + addr];
+	if (addr >= size(block)) return 0;
+	return ram[offset(block) + addr];
 }
 
-void Y8960AdpcmMemory::Block::write(unsigned addr, uint8_t value)
+void Y8960AdpcmMemory::write(unsigned block, unsigned addr, uint8_t value)
 {
-	if (addr >= size()) return;
-	memory.ram.write(offset() + addr, value);
+	if (addr >= size(block)) return;
+	ram.write(offset(block) + addr, value);
 }
 
-void Y8960AdpcmMemory::Block::clear()
+void Y8960AdpcmMemory::clear(unsigned block)
 {
-	auto window = memory.ram.getWriteBackdoor().subspan(offset(), size());
+	auto window = ram.getWriteBackdoor().subspan(offset(block), size(block));
 	std::ranges::fill(window, 0xFF);
 }
 

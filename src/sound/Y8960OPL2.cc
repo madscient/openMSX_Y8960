@@ -6,8 +6,6 @@
 
 #include "Y8960OPL2.hh"
 
-#include "Y8950Periphery.hh"
-
 #include "DeviceConfig.hh"
 #include "MSXMotherBoard.hh"
 
@@ -506,10 +504,10 @@ void Y8960OPL2::Channel::keyOff(KeyPart part)
 static constexpr auto INPUT_RATE = unsigned(cstd::round(Y8960OPL2::CLOCK_FREQ / double(Y8960OPL2::CLOCK_FREQ_DIV)));
 
 Y8960OPL2::Y8960OPL2(const std::string& name_, const DeviceConfig& config,
-                     Y8950AdpcmRam& sampleRam, EmuTime time)
+                     Y8960AdpcmMemory& adpcmMemory, unsigned adpcmBlock, EmuTime time)
 	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 OPL2", 9 + 5 + 1, INPUT_RATE, false)
 	, motherBoard(config.getMotherBoard())
-	, adpcm(*this, config, name_, sampleRam)
+	, adpcm(*this, config, adpcmMemory, adpcmBlock)
 	, debuggable(motherBoard, getName())
 	, timer1(EmuTimer::createOPL3_1(motherBoard.getScheduler(), *this))
 	, timer2(EmuTimer::createOPL3_2(motherBoard.getScheduler(), *this))
@@ -1175,7 +1173,7 @@ uint8_t Y8960OPL2::readStatus(EmuTime time) const
 
 uint8_t Y8960OPL2::peekStatus(EmuTime time) const
 {
-	const_cast<Y8950Adpcm&>(adpcm).sync(time);
+	const_cast<Y8960Adpcm&>(adpcm).sync(time);
 	return (status & (0x87 | statusMask)) | 0x06; // bit 1 and 2 are always 1
 }
 
