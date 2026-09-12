@@ -2,11 +2,14 @@
 
 #include "DeviceConfig.hh"
 #include "MSXException.hh"
+#include "MSXMixer.hh"
 #include "MSXMotherBoard.hh"
+#include "SoundDevice.hh"
 #include "XMLElement.hh"
 #include "serialize.hh"
 
 #include "StringOp.hh"
+#include "stl.hh"
 #include "xrange.hh"
 
 #include <algorithm>
@@ -14,15 +17,15 @@
 
 namespace openmsx {
 
-using OutputSelect = MSXMixer::OutputSelect;
+using Output = Y8960Mixer::Output;
 
-[[nodiscard]] static OutputSelect getDefaultOutput(const DeviceConfig& config)
+[[nodiscard]] static Output getDefaultOutput(const DeviceConfig& config)
 {
 	auto value = config.getChildData("default_output", "y8960");
 	StringOp::casecmp cmp; // case-insensitive
-	if (cmp(value, "y8960")) return OutputSelect::EXTERNAL;
-	if (cmp(value, "msx"))   return OutputSelect::INTERNAL;
-	if (cmp(value, "mix"))   return OutputSelect::BOTH;
+	if (cmp(value, "y8960")) return Output::Y8960;
+	if (cmp(value, "msx"))   return Output::Msx;
+	if (cmp(value, "mix"))   return Output::Mix;
 	throw MSXException(
 		"Illegal default_output in the Y8960 mixer configuration: '", value,
 		"', expected 'y8960', 'msx' or 'mix'.");
@@ -43,14 +46,26 @@ Y8960Mixer::Y8960Mixer(const DeviceConfig& config)
 		channelDevices[num].push_back(idRef);
 	}
 
-	outputSetting = std::make_unique<EnumSetting<OutputSelect>>(
+	// Report a channel that names something which is not a sound device
+	// here, rather than leaving it silently unmixed.
+	auto& mixer = getMotherBoard().getMSXMixer();
+	for (const auto& devices : channelDevices) {
+		for (std::string_view device : devices) {
+			if (!mixer.findDevice(device)) {
+				throw MSXException("Unknown sound device '", device,
+				                   "' in the Y8960 mixer configuration.");
+			}
+		}
+	}
+
+	outputSetting = std::make_unique<EnumSetting<Output>>(
 		getCommandController(), getName() + "_output",
 		"Which sound output to listen to: the Y8960's own, the MSX's, or both.",
 		getDefaultOutput(config),
-		EnumSetting<OutputSelect>::Map{
-			{"y8960", OutputSelect::EXTERNAL},
-			{"msx",   OutputSelect::INTERNAL},
-			{"mix",   OutputSelect::BOTH    }});
+		EnumSetting<Output>::Map{
+			{"y8960", Output::Y8960},
+			{"msx",   Output::Msx  },
+			{"mix",   Output::Mix  }});
 	outputSetting->attach(*this);
 
 	reset(getCurrentTime());
@@ -59,24 +74,23 @@ Y8960Mixer::Y8960Mixer(const DeviceConfig& config)
 Y8960Mixer::~Y8960Mixer()
 {
 	outputSetting->detach(*this);
-	getMotherBoard().getMSXMixer().selectOutput(OutputSelect::INTERNAL);
+
+	// Hand every device back at unity. Without this, removing the cartridge
+	// while listening to its output alone would leave the MSX muted.
+	auto& mixer = getMotherBoard().getMSXMixer();
+	for (const auto& info : mixer.getDeviceInfos()) {
+		mixer.setDeviceGain(info.device->getName(), 1.0f, 1.0f);
+	}
 }
 
 void Y8960Mixer::reset(EmuTime /*time*/)
 {
-	updateSelector();
-
 	registerLatch = 0;
 	std::ranges::fill(regs, 0);
 
 	masterGain = Gain{.left = 1.0f, .right = 1.0f};
 	std::ranges::fill(channelGain, Gain{.left = 1.0f, .right = 1.0f});
 
-	for (const auto& devices : channelDevices) {
-		for (std::string_view device : devices) {
-			getMotherBoard().getMSXMixer().setExternal(device, true);
-		}
-	}
 	applyAllGains();
 }
 
@@ -105,7 +119,7 @@ void Y8960Mixer::setChannelGain(int channel, float left, float right)
 {
 	assert(channel >= 0 && channel < ChannelCount);
 	channelGain[channel] = Gain{.left = left, .right = right};
-	applyGain(channel);
+	applyAllGains();
 }
 
 void Y8960Mixer::setMasterGain(float left, float right)
@@ -114,28 +128,39 @@ void Y8960Mixer::setMasterGain(float left, float right)
 	applyAllGains();
 }
 
-void Y8960Mixer::applyGain(int channel)
+std::optional<int> Y8960Mixer::findChannel(std::string_view name) const
 {
-	const auto& g = channelGain[channel];
-	for (std::string_view device : channelDevices[channel]) {
-		getMotherBoard().getMSXMixer().setDeviceGain(
-			device, g.left * masterGain.left, g.right * masterGain.right);
+	for (auto ch : xrange(ChannelCount)) {
+		if (contains(channelDevices[ch], name)) return ch;
 	}
+	return {};
 }
 
 void Y8960Mixer::applyAllGains()
 {
-	for (auto ch : xrange(ChannelCount)) applyGain(ch);
-}
+	// Silencing one of the two outputs is a gain of zero on the devices
+	// behind it. The cartridge's own devices are the ones its channels
+	// name; whatever else is registered belongs to the MSX.
+	auto output = outputSetting->getEnum();
+	float y8960Gain = (output != Output::Msx)   ? 1.0f : 0.0f;
+	float msxGain   = (output != Output::Y8960) ? 1.0f : 0.0f;
 
-void Y8960Mixer::updateSelector()
-{
-	getMotherBoard().getMSXMixer().selectOutput(outputSetting->getEnum());
+	auto& mixer = getMotherBoard().getMSXMixer();
+	for (const auto& info : mixer.getDeviceInfos()) {
+		std::string_view name = info.device->getName();
+		if (auto channel = findChannel(name)) {
+			const auto& g = channelGain[*channel];
+			mixer.setDeviceGain(name, g.left  * masterGain.left  * y8960Gain,
+			                          g.right * masterGain.right * y8960Gain);
+		} else {
+			mixer.setDeviceGain(name, msxGain, msxGain);
+		}
+	}
 }
 
 void Y8960Mixer::update(const Setting& /*setting*/) noexcept
 {
-	updateSelector();
+	applyAllGains();
 }
 
 template<typename Archive>

@@ -3,11 +3,12 @@
 
 #include "EnumSetting.hh"
 #include "MSXDevice.hh"
-#include "MSXMixer.hh"
 #include "serialize_meta.hh"
 
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -37,6 +38,11 @@ public:
 	static constexpr int ChannelCount = 10;
 	static constexpr int RegCount = ChannelCount * 2;
 
+	/** Which of the two outputs is being listened to. The cartridge does
+	  * not feed its audio back into the MSX, so on real hardware this is
+	  * a choice someone makes outside the machine. */
+	enum class Output : uint8_t { Msx, Y8960, Mix };
+
 	explicit Y8960Mixer(const DeviceConfig& config);
 	~Y8960Mixer() override;
 
@@ -57,9 +63,8 @@ public:
 private:
 	struct Gain { float left, right; };
 
-	void applyGain(int channel);
+	[[nodiscard]] std::optional<int> findChannel(std::string_view name) const;
 	void applyAllGains();
-	void updateSelector();
 	void update(const Setting& setting) noexcept override;
 
 private:
@@ -68,7 +73,7 @@ private:
 	Gain masterGain;
 	std::array<byte, RegCount> regs;
 	byte registerLatch;
-	std::unique_ptr<EnumSetting<MSXMixer::OutputSelect>> outputSetting;
+	std::unique_ptr<EnumSetting<Output>> outputSetting;
 };
 SERIALIZE_CLASS_VERSION(Y8960Mixer, 2);
 
