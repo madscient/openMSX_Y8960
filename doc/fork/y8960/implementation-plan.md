@@ -336,6 +336,32 @@ B6h-B7h のミキサー（§3.7）と同じ流儀である。
 `Block::size()` / `Block::offset()` の 2 関数で閉じる。XML にもテストにも
 波及しない。総容量を可変にしたくなった場合だけ XML に波及する。
 
+### 3.4.2 DCSG も上流から切り離した【2026-09-12】
+
+Y8960 の DCSG は「SN76489 相当 ×2、拡張なし」（`hardware-notes.md` §6）で、
+**挙動の差は 1 つも無い**。上流の `SN76489` を使いたかったが、あのクラスは
+サウンドデバイス名を `"SN76489"` と自分で決めており、**1 マシンに 2 個置くと
+名前が衝突する**。
+
+当初はコンストラクタに名前を渡すよう上流を書き換えていた。**それが
+上流の既存機種の名前を変えていた。**
+
+| 構成 | 書き換え前 | 書き換え後（誤） |
+|---|---|---|
+| ColecoVision / ColecoVision_SGM / Sega_SG-1000 | `SN76489` | `PSG` |
+| Musical Memory Mapper | `SN76489` | `Musical Memory Mapper` |
+
+サウンドデバイス名は `<名前>_volume` / `_balance` という**設定キー**であり
+デバッガブル名でもあるので、これらの機種では利用者が保存した音量設定が
+拾われなくなる。名前が要るのは下流の都合なので、`src/sound/Y8960DCSG.{cc,hh}`
+としてフォークし、`SN76489.{cc,hh}` / `SNPSG.cc` / `MusicalMemoryMapper.cc` を
+素に戻した（**確認済み**: `-ext Musical_Memory_Mapper` の
+`machine_info sounddevice` が `SN76489` に戻り、Y8960 側は
+`Y8960 DCSG 0` / `Y8960 DCSG 1` のまま）。
+
+**代償**: ADPCM と同じで、上流の `SN76489` への修正は自動では届かない
+（386 + 121 行）。フォークは上流と行単位で近いまま保つ。
+
 ### 3.5 OPLLEX は既存実装を使う（作らない）
 
 `YM2413NukeYKTBanked` が既にある。設計を確認した（**確認済み**）:
@@ -945,16 +971,17 @@ OPLL と OPL2 の回路の対応、トンネルの向きが確定して実装済
 含んでいることを確かめた。ローカルの古い参照を見て言っているのではない）。
 
 上流が動いたら、**変更している upstream のファイルだけ**が衝突の対象になる。
-2026-09-12 時点で 15 ファイル（**確認済み**: `git diff --stat upstream/master`）。
-**`src/sound/Y8950*` は素に戻した**（§3.4.1）。
+2026-09-12 時点で **11 ファイル**（**確認済み**: `git diff --name-status upstream/master`）。
+**一覧と理由は `doc/fork/upstream-touched.txt` にあり、`check-before-push.sh` が
+実際の差分と突き合わせる。** 増えていれば push の前に止まる。
+下の表は分類で、正は一覧ファイルのほう。
 
 | 目的 | ファイル |
 |---|---|
 | デバイスとマッパーの登録 | `src/DeviceFactory.cc`、`src/memory/RomFactory.cc`、`RomInfo.cc`、`RomTypes.hh` |
 | ビルド定義 | `src/meson.build`、`build/msvc/openmsx.vcxproj`、`同 .filters` |
 | YM2413 コア名 `NukeYKT-Banked` の登録 | `src/sound/YM2413.cc` |
-| 出力の 3 値切り替えとデバイスゲイン | `src/sound/MSXMixer.{cc,hh}` |
-| `SN76489` のコンストラクタに名前を渡す（デバッガブルの名前用） | `src/sound/SN76489.{cc,hh}`、`SNPSG.cc`、`src/memory/MusicalMemoryMapper.cc` |
+| デバイスごとのゲインの枠 | `src/sound/MSXMixer.{cc,hh}`（§3.7.1） |
 | フォークである旨と帰属表示 | ルートの `README` |
 
 **衝突面はできるだけ減らしておく。** 上流のファイルを触ったまま放置すると、
@@ -1068,6 +1095,23 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-09-12 (4) — DCSG をフォークし、上流の漂流を検知する網を張った
+
+- **(C) を片付けた。** `SN76489` を `Y8960DCSG` としてフォークし、
+  `SN76489.{cc,hh}` / `SNPSG.cc` / `MusicalMemoryMapper.cc` を素に戻した（§3.4.2）
+- **上流の既存機種の名前が戻ったことを実測した**（**確認済み**:
+  `-ext Musical_Memory_Mapper` で `machine_info sounddevice` が `SN76489`。
+  書き換えが入っていた間は `Musical Memory Mapper` になっていた）。
+  Y8960 側は `Y8960 DCSG 0` / `Y8960 DCSG 1` のまま
+- **`doc/fork/upstream-touched.txt` を作り、`check-before-push.sh` に
+  突き合わせを足した。** 上流のファイルが一覧より増えていれば push の前に
+  止まる。今回のような漂流に、次は気づく側から入れる
+- **その網が落ちることも実測した**（一覧から 1 行消す / 上流ファイルを触る /
+  一覧に余計な行を足す の 3 通りで、それぞれ `+` `+` `-` を報告して NG）
+- 上流を変更しているファイルは **15 → 11 件**
+- 回帰一式（ADPCM×2、ミキサー×3、波形、パンポット、マッパー×2、タイマー、
+  enabler2）すべて通過。DCSG は enabler2 が 5 か所で値を見ている
+
 ### 2026-09-12 (3) — 上流の変更の妥当性を洗い直し、ミキサーを縮小した
 
 - **同じ物差しを他の音源にも当てた。** 上流を変更している 15 ファイルを読み、
@@ -1089,8 +1133,7 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
   （`tests/mixer-remove.tcl`）。ゲインは上流のミキサーが持っていて
   カートリッジより長生きするので、戻す責任が下流に移ったため。
   **デストラクタの復元を外すと落ちることも実測した**（restored が peak 0）
-- 残り: (C) の `SN76489` を Y8960 側にフォークする。ColecoVision / SG-1000 /
-  Musical Memory Mapper のサウンドデバイス名が上流と変わってしまっている
+- 残り: (C) の `SN76489` を Y8960 側にフォークする（→ 同日 (4) で実施）
 
 ### 2026-09-12 (2) — ADPCM を上流から切り離してフォークした
 

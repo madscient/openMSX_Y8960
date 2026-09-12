@@ -135,7 +135,39 @@ else
 	echo "  OK"
 fi
 
-echo "== 5. 文書の整合 =="
+echo "== 5. 上流のファイルへの変更 =="
+# 上流を変えるのは、下流の都合ではなく openMSX の拡張点がその形をしている
+# ときだけにする。増えたことに push の前に気づくための網であって、
+# 一覧そのものは doc/fork/upstream-touched.txt にある。
+#
+# 突き合わせは awk で行う。プロセス置換や comm を使うと sh の実装に依存する。
+if git rev-parse --verify -q upstream/master >/dev/null; then
+	expected=$(sed 's/#.*//' doc/fork/upstream-touched.txt | awk 'NF {print $1}' | sort)
+	actual=$(git diff --name-status upstream/master | awk '$1 == "M" {print $2}' | sort)
+	if [ "$expected" = "$actual" ]; then
+		echo "  OK ($(printf '%s
+' "$actual" | awk 'NF' | wc -l | tr -d ' ') 件)"
+	else
+		{
+			printf '%s
+' "$expected" | awk 'NF {print "e " $0}'
+			printf '%s
+' "$actual"   | awk 'NF {print "a " $0}'
+		} | awk '{ seen[$2] = seen[$2] $1 }
+		    END {
+		        for (f in seen) {
+		            if (seen[f] == "a") print "    + " f "  一覧に無いのに変更されている"
+		            if (seen[f] == "e") print "    - " f "  一覧に在るのに変更されていない"
+		        }
+		    }' | sort
+		echo "  NG: doc/fork/upstream-touched.txt と食い違う"
+		fail=1
+	fi
+else
+	echo "  飛ばす（upstream/master が無い。git fetch upstream で取れる）"
+fi
+
+echo "== 6. 文書の整合 =="
 if python doc/fork/tools/check-docs.py; then
 	:
 else
