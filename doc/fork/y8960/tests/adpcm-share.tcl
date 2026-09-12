@@ -21,6 +21,10 @@
 # - **鳴っていることと止まっていることの対比**。playing が鳴っていて stopped が
 #   無音なら、その音が ADPCM から出たものだと言える
 #
+# ついでに **rommode が無いこと**も見ている。Y8950 では 08h の b0 が ADPCM を
+# ROM 側に切り替えるが、Y8960 には ADPCM の ROM が無い。ビットを立てたまま
+# 書いて読み返せるかどうかで、無視されていることが分かる。
+#
 # 三角波の作り方と周波数の根拠は adpcm-play.tcl を見ること。
 #
 # **この試験が共有していないときに落ちること**は、2 個の OPL2 を別々の
@@ -107,6 +111,21 @@ proc run_test {} {
 	check "OPL2-1 wrote byte 0x20000" [ram 0x20000] 0x5A
 	check "OPL2-1 wrote byte 0x20001" [ram 0x20001] 0xA5
 	check "OPL2-0's data is still there" [ram 0] 0x77
+
+	# --- rommode は Y8960 に無い ---
+	#
+	# Y8950 では 08h の b0 が ADPCM を ROM 側に切り替え、RAM への書き込みが
+	# 捨てられて読みは 0 になる。Y8960 には ADPCM の ROM が無いので、
+	# このビットを立てても RAM のままでなければならない。
+	r0 0x08 0x01                 ;# ROM ビット（実機には無い）
+	set_range r0 0x30000 0x30010
+	r0 0x07 0x60
+	debug write ioports 0xC0 0x0F
+	debug write ioports 0xC1 0x3C
+	r0 0x07 0x00
+	r0 0x08 0x00
+
+	check "the ROM bit does not take the RAM away" [ram 0x30000] 0x3C
 
 	if {$fails > 0} {
 		puts $log "RESULT: FAILED $fails"

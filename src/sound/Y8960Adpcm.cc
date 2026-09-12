@@ -81,7 +81,6 @@ void Y8960Adpcm::reset(EmuTime time)
 	reg7 = 0;
 	reg15 = 0;
 	readDelay = 0;
-	romBank = false;
 	writeReg(0x12, 255, time); // volume
 
 	restart(emu);
@@ -196,7 +195,9 @@ void Y8960Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 		break;
 
 	case 0x08: // CSM/KEY BOARD SPLIT/-/-/SAMPLE/DA AD/64K/ROM
-		romBank = data & R08_ROM;
+		// R08_ROM is ignored. The Y8950 uses it to read samples from ROM
+		// instead of RAM; the Y8960 has only the SRAM behind its ADPCM,
+		// so there is nothing for the bit to select.
 		addrMask = data & R08_64K ? (1 << 16) - 1 : (1 << 18) - 1;
 		break;
 
@@ -422,19 +423,13 @@ uint8_t Y8960Adpcm::peekData() const
 void Y8960Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (!romBank) {
-		memory.write(block, addr, value);
-	}
+	memory.write(block, addr, value);
 }
 uint8_t Y8960Adpcm::readMemory(unsigned memPtr) const
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (romBank) {
-		return 0; // checked on a real machine
-	} else {
-		// past the end of this block's window reads as 0
-		return memory.read(block, addr);
-	}
+	// past the end of this block's window reads as 0
+	return memory.read(block, addr);
 }
 
 int Y8960Adpcm::calcSample()
@@ -533,7 +528,6 @@ void Y8960Adpcm::serialize(Archive& ar, unsigned /*version*/)
 	             "delta",        delta,
 	             "reg7",         reg7,
 	             "reg15",        reg15,
-	             "romBank",      romBank,
 
 	             "memPtr",       emu.memPtr,
 	             "nowStep",      emu.nowStep,
