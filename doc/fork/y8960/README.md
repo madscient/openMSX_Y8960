@@ -30,6 +30,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
 | `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-passthrough.py` | 上記 WAV の判定 |
+| `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
+| `tests/check-mixer-remove.py` | 上記 WAV の判定 |
 | `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
 | `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
@@ -86,6 +88,8 @@ Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(p
 py $T/check-mixer-output.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-passthrough.tcl"
 py $T/check-mixer-passthrough.py "$OUT"
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-remove.tcl"
+py $T/check-mixer-remove.py "$OUT"
 
 # 8. バンクメモリ。判定は出力ファイルの最終行の RESULT を見る
 #    （openmsx は Tcl の exit の値を終了コードにしない）
