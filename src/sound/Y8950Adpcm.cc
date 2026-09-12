@@ -50,19 +50,58 @@ static constexpr int STEP_BITS = 16;
 static constexpr int STEP_MASK = (1 << STEP_BITS) -1;
 
 
+Y8950OwnAdpcmRam::Y8950OwnAdpcmRam(const DeviceConfig& config,
+                                   const std::string& name, unsigned size_)
+	: ram(config, name + " RAM", "Y8950 sample RAM", size_)
+{
+}
+
+unsigned Y8950OwnAdpcmRam::size() const
+{
+	return narrow<unsigned>(ram.size());
+}
+
+uint8_t Y8950OwnAdpcmRam::read(unsigned addr) const
+{
+	return (addr < ram.size()) ? ram[addr] : 0;
+}
+
+void Y8950OwnAdpcmRam::write(unsigned addr, uint8_t value)
+{
+	if (addr < ram.size()) ram.write(addr, value);
+}
+
+void Y8950OwnAdpcmRam::clear()
+{
+	ram.clear(0xFF);
+}
+
+
 Y8950Adpcm::Y8950Adpcm(Y8950Status& host_, const DeviceConfig& config,
                        const std::string& name, unsigned sampleRam)
 	: Schedulable(config.getScheduler())
 	, host(host_)
-	, ram(config, name + " RAM", "Y8950 sample RAM", sampleRam)
+	, ownRam(std::in_place, config, name, sampleRam)
+	, ram(*ownRam)
 	, clock(config.getMotherBoard().getCurrentTime())
 {
 	clearRam();
 }
 
+Y8950Adpcm::Y8950Adpcm(Y8950Status& host_, const DeviceConfig& config,
+                       const std::string& /*name*/, Y8950AdpcmRam& sampleRam)
+	: Schedulable(config.getScheduler())
+	, host(host_)
+	, ram(sampleRam)
+	, clock(config.getMotherBoard().getCurrentTime())
+{
+	// Not cleared here: the memory is shared and the other block may
+	// already have put samples in it.
+}
+
 void Y8950Adpcm::clearRam()
 {
-	ram.clear(0xFF);
+	ram.clear();
 }
 
 void Y8950Adpcm::reset(EmuTime time)
@@ -419,17 +458,17 @@ uint8_t Y8950Adpcm::peekData() const
 void Y8950Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if ((addr < ram.size()) && !romBank) {
+	if (!romBank) {
 		ram.write(addr, value);
 	}
 }
 uint8_t Y8950Adpcm::readMemory(unsigned memPtr) const
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (romBank || (addr >= ram.size())) {
+	if (romBank) {
 		return 0; // checked on a real machine
 	} else {
-		return ram[addr];
+		return ram.read(addr);
 	}
 }
 
@@ -526,8 +565,10 @@ template<typename Archive>
 void Y8950Adpcm::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<Schedulable>(*this);
-	ar.serialize("ram",          ram,
-	             "startAddr",    startAddr,
+	if (ownRam) {
+		ar.serialize("ram", ownRam->getRam());
+	}
+	ar.serialize("startAddr",    startAddr,
 	             "stopAddr",     stopAddr,
 	             "addrMask",     addrMask,
 	             "volume",       volume,

@@ -1,13 +1,42 @@
 #include "Y8960OPL2Device.hh"
 
+#include "MSXException.hh"
+#include "MSXMotherBoard.hh"
 #include "serialize.hh"
+
+#include "narrow.hh"
 
 namespace openmsx {
 
+[[nodiscard]] static Y8960AdpcmMemory& getAdpcmMemory(const DeviceConfig& config)
+{
+	auto devName = config.getChildData("adpcm_memory", "");
+	auto* device = dynamic_cast<Y8960AdpcmMemory*>(
+		config.getMotherBoard().findDevice(devName));
+	if (!device) {
+		throw MSXException("Y8960-OPL2 needs an <adpcm_memory> naming a "
+		                   "Y8960-ADPCM-RAM device that is created before it, "
+		                   "got '", devName, "'.");
+	}
+	return *device;
+}
+
+[[nodiscard]] static unsigned getAdpcmBlock(const DeviceConfig& config)
+{
+	int block = config.getChildDataAsInt("adpcm_block", -1);
+	if ((block < 0) || (block >= int(Y8960AdpcmMemory::BlockCount))) {
+		throw MSXException("Y8960-OPL2 needs an <adpcm_block> of 0..",
+		                   Y8960AdpcmMemory::BlockCount - 1, ".");
+	}
+	return narrow<unsigned>(block);
+}
+
 Y8960OPL2Device::Y8960OPL2Device(const DeviceConfig& config)
 	: MSXDevice(config)
+	, adpcmMemory(getAdpcmMemory(config))
+	, adpcmBlock(getAdpcmBlock(config))
 	, opl2(getName(), config,
-	       config.getChildDataAsInt("sampleram", 256) * 1024,
+	       adpcmMemory.getBlock(adpcmBlock),
 	       getCurrentTime())
 	, registerLatch(0)
 	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
