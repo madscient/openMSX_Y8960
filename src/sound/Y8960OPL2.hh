@@ -28,7 +28,7 @@ public:
 	static constexpr int CLOCK_FREQ_DIV = 72;
 
 	Y8960OPL2(const std::string& name, const DeviceConfig& config,
-	          unsigned sampleRam, EmuTime time);
+	          Y8950AdpcmRam& sampleRam, EmuTime time);
 	~Y8960OPL2();
 
 	void clearRam();

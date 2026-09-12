@@ -7,6 +7,8 @@
 #include "serialize_meta.hh"
 
 #include <cstdint>
+#include <optional>
+#include <string>
 
 namespace openmsx {
 
@@ -43,11 +45,59 @@ protected:
 	~Y8950Status() = default;
 };
 
+/** The sample memory a Y8950Adpcm block reads and writes.
+  *
+  * The Y8950 owns its memory, but the Y8960's two OPL2 blocks address one
+  * array that they either share or divide, so the memory has to be able to
+  * live outside the block.
+  *
+  * Addresses at or past size() read as 0 and writes to them are dropped,
+  * which is what a real chip does where the address space is wider than the
+  * memory behind it.
+  */
+class Y8950AdpcmRam
+{
+public:
+	[[nodiscard]] virtual unsigned size() const = 0;
+	[[nodiscard]] virtual uint8_t read(unsigned addr) const = 0;
+	virtual void write(unsigned addr, uint8_t value) = 0;
+	virtual void clear() = 0;
+
+protected:
+	~Y8950AdpcmRam() = default;
+};
+
+/** Sample memory that the ADPCM block itself owns, the way the Y8950 has it. */
+class Y8950OwnAdpcmRam final : public Y8950AdpcmRam
+{
+public:
+	Y8950OwnAdpcmRam(const DeviceConfig& config, const std::string& name,
+	                 unsigned size);
+
+	[[nodiscard]] unsigned size() const override;
+	[[nodiscard]] uint8_t read(unsigned addr) const override;
+	void write(unsigned addr, uint8_t value) override;
+	void clear() override;
+
+	/** The savestate keeps this array inside the ADPCM block, where it has
+	  * always been, so Y8950Adpcm::serialize() reaches it directly. */
+	[[nodiscard]] TrackedRam& getRam() { return ram; }
+
+private:
+	TrackedRam ram;
+};
+
 class Y8950Adpcm final : public Schedulable
 {
 public:
+	/** The block owns its sample memory (Y8950 / MSX-AUDIO). */
 	Y8950Adpcm(Y8950Status& host, const DeviceConfig& config,
 	           const std::string& name, unsigned sampleRam);
+
+	/** The block reads and writes sample memory owned elsewhere
+	  * (the Y8960, whose two blocks are windows into one array). */
+	Y8950Adpcm(Y8950Status& host, const DeviceConfig& config,
+	           const std::string& name, Y8950AdpcmRam& sampleRam);
 
 	void clearRam();
 	void reset(EmuTime time);
@@ -92,7 +142,8 @@ private:
 
 private:
 	Y8950Status& host;
-	TrackedRam ram;
+	std::optional<Y8950OwnAdpcmRam> ownRam; // unset when the memory is shared
+	Y8950AdpcmRam& ram;
 
 	// copy/pasted from Y8950.hh
 	static constexpr int CLOCK_FREQ     = 3579545;

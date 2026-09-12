@@ -89,7 +89,7 @@ push の前に `doc/fork/tools/check-before-push.sh` を通すこと。
 | MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定）。割り込みが CPU に届くことを実測済み |
 | デジタルミキサー | 音源ごとの左右ゲインと全体の左右ゲインの器のみ。**B6h-B7h はゲインに繋いでいない**（レジスタアレイの中身が未定のため） |
 | 出力の切り替え | 実装済み。`y8960-mixer_output` で y8960 / msx / mix |
-| OPL2 + ADPCM-B ×2 | 実装済み（OPL2 波形選択つき）。ADPCM の発音を実測済み |
+| OPL2 + ADPCM-B ×2 | 実装済み（OPL2 波形選択つき）。ADPCM の発音と、2 回路での 256KB 共有を実測済み |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の 2 ビット） |
 | I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0/b1、DCSG b2/b3、SSGS b4、タイマー b7） |
 | メモリマップド I/O のトンネル | 実装済み（7FEAh-7FF5h。窓を `rammode` で閉じるのは未実装） |

@@ -51,19 +51,26 @@
       </sound>
       <ym2413-core>NukeYKT-Banked</ym2413-core>
     </Y8960-OPLL>
+    <!-- ADPCM のサンプルメモリ 256KB。2 個の OPL2 がこれを共有する。
+         SRAM の 40000h-7FFFFh にあたる。共有か、片方に全部寄せるか、
+         128KB ずつに割るかを選べるはずだが、選ぶ手段が実機に無いので
+         常に共有。OPL2 より先に置くこと（OPL2 が構築時に参照する） -->
+    <Y8960-ADPCM-RAM id="Y8960 ADPCM RAM"/>
     <!-- OPL2 + ADPCM-B。直接 I/O は低位側が 1 番目 (C0h)、メモリマップド I/O は
          高位側が 1 番目 (7FEEh) で、並びが逆になる。どちらも過去の実装との
          互換のためで、一方から他方は導けない（hra1129 さん、2026-09-09） -->
     <Y8960-OPL2 id="Y8960 OPL2 0">
       <io base="0xC0" num="2"/>
-      <sampleram>256</sampleram>
+      <adpcm_memory>Y8960 ADPCM RAM</adpcm_memory>
+      <adpcm_block>0</adpcm_block>
       <sound>
         <volume>12000</volume>
       </sound>
     </Y8960-OPL2>
     <Y8960-OPL2 id="Y8960 OPL2 1">
       <io base="0xC2" num="2"/>
-      <sampleram>256</sampleram>
+      <adpcm_memory>Y8960 ADPCM RAM</adpcm_memory>
+      <adpcm_block>1</adpcm_block>
       <sound>
         <volume>12000</volume>
       </sound>
