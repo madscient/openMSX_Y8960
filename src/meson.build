@@ -420,6 +420,7 @@ sources = files(
     'sound/Y8950Periphery.cc',
     'sound/Y8960Adpcm.cc',
     'sound/Y8960AdpcmMemory.cc',
+    'sound/Y8960DCSG.cc',
     'sound/Y8960DCSGDevice.cc',
     'sound/Y8960Mixer.cc',
     'sound/Y8960OPL2.cc',
