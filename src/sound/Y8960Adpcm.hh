@@ -1,9 +1,8 @@
-#ifndef Y8950ADPCM_HH
-#define Y8950ADPCM_HH
+#ifndef Y8960ADPCM_HH
+#define Y8960ADPCM_HH
 
 #include "Clock.hh"
 #include "Schedulable.hh"
-#include "TrackedRam.hh"
 #include "serialize_meta.hh"
 
 #include <cstdint>
@@ -11,13 +10,20 @@
 namespace openmsx {
 
 class DeviceConfig;
-class Y8950;
+class Y8960AdpcmMemory;
+class Y8960OPL2;
 
-class Y8950Adpcm final : public Schedulable
+/** The ADPCM-B block of the Y8960's OPL2EX.
+  *
+  * A copy of Y8950Adpcm, which the Y8960 cannot use as it stands: its two
+  * blocks read and write one sample memory that they share or divide
+  * between them, so the memory cannot be a member of the block.
+  */
+class Y8960Adpcm final : public Schedulable
 {
 public:
-	Y8950Adpcm(Y8950& y8950, const DeviceConfig& config,
-	           const std::string& name, unsigned sampleRam);
+	Y8960Adpcm(Y8960OPL2& opl2, const DeviceConfig& config,
+	           Y8960AdpcmMemory& memory, unsigned block);
 
 	void clearRam();
 	void reset(EmuTime time);
@@ -61,10 +67,11 @@ private:
 	[[nodiscard]] int calcSample(bool doEmu);
 
 private:
-	Y8950& y8950;
-	TrackedRam ram;
+	Y8960OPL2& opl2;
+	Y8960AdpcmMemory& memory;
+	const unsigned block;
 
-	// copy/pasted from Y8950.hh
+	// copy/pasted from Y8960OPL2.hh
 	static constexpr int CLOCK_FREQ     = 3579545;
 	static constexpr int CLOCK_FREQ_DIV = 72;
 	Clock<CLOCK_FREQ, CLOCK_FREQ_DIV> clock;
@@ -83,7 +90,7 @@ private:
 	uint8_t reg15;
 	bool romBank;
 };
-SERIALIZE_CLASS_VERSION(Y8950Adpcm, 2);
+SERIALIZE_CLASS_VERSION(Y8960Adpcm, 1);
 
 } // namespace openmsx
 

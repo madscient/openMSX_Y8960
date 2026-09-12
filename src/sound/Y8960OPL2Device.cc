@@ -35,9 +35,7 @@ Y8960OPL2Device::Y8960OPL2Device(const DeviceConfig& config)
 	: MSXDevice(config)
 	, adpcmMemory(getAdpcmMemory(config))
 	, adpcmBlock(getAdpcmBlock(config))
-	, opl2(getName(), config,
-	       adpcmMemory.getBlock(adpcmBlock),
-	       getCurrentTime())
+	, opl2(getName(), config, adpcmMemory, adpcmBlock, getCurrentTime())
 	, registerLatch(0)
 	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
 	, ioEnabled(!useIoEnabler)

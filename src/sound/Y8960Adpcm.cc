@@ -8,9 +8,10 @@
 // we both get cycle accurate emulation behaviour and still sound generation at
 // 100% realtime speed (which is most of the time better for sound quality).
 
-#include "Y8950Adpcm.hh"
+#include "Y8960Adpcm.hh"
 
-#include "Y8950.hh"
+#include "Y8960AdpcmMemory.hh"
+#include "Y8960OPL2.hh"
 
 #include "Clock.hh"
 #include "DeviceConfig.hh"
@@ -50,22 +51,24 @@ static constexpr int STEP_BITS = 16;
 static constexpr int STEP_MASK = (1 << STEP_BITS) -1;
 
 
-Y8950Adpcm::Y8950Adpcm(Y8950& y8950_, const DeviceConfig& config,
-                       const std::string& name, unsigned sampleRam)
+Y8960Adpcm::Y8960Adpcm(Y8960OPL2& opl2_, const DeviceConfig& config,
+                       Y8960AdpcmMemory& memory_, unsigned block_)
 	: Schedulable(config.getScheduler())
-	, y8950(y8950_)
-	, ram(config, name + " RAM", "Y8950 sample RAM", sampleRam)
+	, opl2(opl2_)
+	, memory(memory_)
+	, block(block_)
 	, clock(config.getMotherBoard().getCurrentTime())
 {
-	clearRam();
+	// The memory is not cleared here: it is shared, and the other block
+	// may already have put samples in it.
 }
 
-void Y8950Adpcm::clearRam()
+void Y8960Adpcm::clearRam()
 {
-	ram.clear(0xFF);
+	memory.clear(block);
 }
 
-void Y8950Adpcm::reset(EmuTime time)
+void Y8960Adpcm::reset(EmuTime time)
 {
 	removeSyncPoint();
 
@@ -84,19 +87,19 @@ void Y8950Adpcm::reset(EmuTime time)
 	restart(emu);
 	restart(aud);
 
-	y8950.setStatus(Y8950::STATUS_BUF_RDY);
+	opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 }
 
-bool Y8950Adpcm::isPlaying() const
+bool Y8960Adpcm::isPlaying() const
 {
 	return (reg7 & 0xC0) == 0x80;
 }
-bool Y8950Adpcm::isMuted() const
+bool Y8960Adpcm::isMuted() const
 {
 	return !isPlaying() || (reg7 & R07_SP_OFF);
 }
 
-void Y8950Adpcm::restart(PlayData& pd) const
+void Y8960Adpcm::restart(PlayData& pd) const
 {
 	pd.memPtr = startAddr;
 	pd.nowStep = (1 << STEP_BITS) - delta;
@@ -108,7 +111,7 @@ void Y8950Adpcm::restart(PlayData& pd) const
 	pd.adpcm_data = 0; // dummy, avoid UMR in serialize
 }
 
-void Y8950Adpcm::sync(EmuTime time)
+void Y8960Adpcm::sync(EmuTime time)
 {
 	if (isPlaying()) { // optimization, also correct without this test
 		unsigned ticks = clock.getTicksTill(time);
@@ -119,7 +122,7 @@ void Y8950Adpcm::sync(EmuTime time)
 	clock.advance(time);
 }
 
-void Y8950Adpcm::schedule()
+void Y8960Adpcm::schedule()
 {
 	assert(isPlaying());
 	if ((stopAddr > startAddr) && (delta != 0)) {
@@ -128,7 +131,7 @@ void Y8950Adpcm::schedule()
 		//      register
 		if (reg7 & R07_MEMORY_DATA) {
 			// we already did a sync(time), so clock is up-to-date
-			Clock<Y8950::CLOCK_FREQ, Y8950::CLOCK_FREQ_DIV> stop(clock);
+			Clock<Y8960OPL2::CLOCK_FREQ, Y8960OPL2::CLOCK_FREQ_DIV> stop(clock);
 			uint64_t samples = stopAddr - emu.memPtr + 1;
 			uint64_t length = (samples << STEP_BITS) +
 					((1 << STEP_BITS) - emu.nowStep) +
@@ -143,26 +146,26 @@ void Y8950Adpcm::schedule()
 	}
 }
 
-void Y8950Adpcm::executeUntil(EmuTime time)
+void Y8960Adpcm::executeUntil(EmuTime time)
 {
 	assert(isPlaying());
 	sync(time); // should set STATUS_EOS
-	assert(y8950.peekRawStatus() & Y8950::STATUS_EOS);
+	assert(opl2.peekRawStatus() & Y8960OPL2::STATUS_EOS);
 	if (isPlaying() && (reg7 & R07_REPEAT)) {
 		schedule();
 	}
 }
 
-void Y8950Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
+void Y8960Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 {
 	sync(time); // TODO only when needed
 	switch (rg) {
 	case 0x07: // START/REC/MEM DATA/REPEAT/SP-OFF/-/-/RESET
 		reg7 = data;
 		if (reg7 & R07_START) {
-			y8950.setStatus(Y8950::STATUS_PCM_BSY);
+			opl2.setStatus(Y8960OPL2::STATUS_PCM_BSY);
 		} else {
-			y8950.resetStatus(Y8950::STATUS_PCM_BSY);
+			opl2.resetStatus(Y8960OPL2::STATUS_PCM_BSY);
 		}
 		if (reg7 & R07_RESET) {
 			reg7 = 0;
@@ -179,7 +182,7 @@ void Y8950Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 			readDelay = 2; // two dummy reads
 			if ((reg7 & 0xA0) == 0x20) {
 				// Memory read or write
-				y8950.setStatus(Y8950::STATUS_BUF_RDY);
+				opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 			}
 		} else {
 			// access via CPU
@@ -256,7 +259,7 @@ void Y8950Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 	}
 }
 
-void Y8950Adpcm::writeData(uint8_t data)
+void Y8960Adpcm::writeData(uint8_t data)
 {
 	reg15 = data;
 	if ((reg7 & R07_MODE) == 0x60) {
@@ -272,7 +275,7 @@ void Y8950Adpcm::writeData(uint8_t data)
 
 			// reset BRDY bit in status register,
 			// which means we are processing the write
-			y8950.resetStatus(Y8950::STATUS_BUF_RDY);
+			opl2.resetStatus(Y8960OPL2::STATUS_BUF_RDY);
 
 			// setup a timer that will callback us in 10
 			// master clock cycles for Y8950. In the
@@ -281,13 +284,13 @@ void Y8950Adpcm::writeData(uint8_t data)
 			// don't really do this; we simply reset and
 			// set the flag in zero time, so that the IRQ
 			// will work.
-			y8950.setStatus(Y8950::STATUS_BUF_RDY);
+			opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 
 			if (emu.memPtr > stopAddr) {
 				// we just received the last byte: set EOS
 				// verified on real HW:
 				//  in case of EOS, BUF_RDY is set as well
-				y8950.setStatus(Y8950::STATUS_EOS);
+				opl2.setStatus(Y8960OPL2::STATUS_EOS);
 				// Eugeny tested that pointer wraps when
 				// continue writing after EOS
 				emu.memPtr = startAddr;
@@ -299,11 +302,11 @@ void Y8950Adpcm::writeData(uint8_t data)
 
 		// Reset BRDY bit in status register, which means we
 		// are full of data
-		y8950.resetStatus(Y8950::STATUS_BUF_RDY);
+		opl2.resetStatus(Y8960OPL2::STATUS_BUF_RDY);
 	}
 }
 
-uint8_t Y8950Adpcm::readReg(uint8_t rg, EmuTime time)
+uint8_t Y8960Adpcm::readReg(uint8_t rg, EmuTime time)
 {
 	sync(time); // TODO only when needed
 	uint8_t result = (rg == 0x0F)
@@ -312,13 +315,13 @@ uint8_t Y8950Adpcm::readReg(uint8_t rg, EmuTime time)
 	return result;
 }
 
-uint8_t Y8950Adpcm::peekReg(uint8_t rg, EmuTime time) const
+uint8_t Y8960Adpcm::peekReg(uint8_t rg, EmuTime time) const
 {
-	const_cast<Y8950Adpcm*>(this)->sync(time); // TODO only when needed
+	const_cast<Y8960Adpcm*>(this)->sync(time); // TODO only when needed
 	return peekReg(rg);
 }
 
-uint8_t Y8950Adpcm::peekReg(uint8_t rg) const
+uint8_t Y8960Adpcm::peekReg(uint8_t rg) const
 {
 	switch (rg) {
 	case 0x0F: // ADPCM-DATA
@@ -335,7 +338,7 @@ uint8_t Y8950Adpcm::peekReg(uint8_t rg) const
 	}
 }
 
-void Y8950Adpcm::resetStatus()
+void Y8960Adpcm::resetStatus()
 {
 	// If the BUF_RDY mask is cleared (e.g. by writing the value 0x80 to
 	// register R#4). Reading the status register still has the BUF_RDY
@@ -356,11 +359,11 @@ void Y8950Adpcm::resetStatus()
 	if (((reg7 & R07_MODE & ~R07_REC) == R07_MEMORY_DATA) ||
 	    ((reg7 & R07_MODE) == 0)){
 		// transfer to or from sample ram, or no function
-		y8950.setStatus(Y8950::STATUS_BUF_RDY);
+		opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 	}
 }
 
-uint8_t Y8950Adpcm::readData()
+uint8_t Y8960Adpcm::readData()
 {
 	if ((reg7 & R07_MODE) == R07_MEMORY_DATA) {
 		// external memory read
@@ -375,16 +378,16 @@ uint8_t Y8950Adpcm::readData()
 		if (readDelay) {
 			// two dummy reads
 			--readDelay;
-			y8950.setStatus(Y8950::STATUS_BUF_RDY);
+			opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 		} else if (emu.memPtr > stopAddr) {
 			// set EOS bit in status register
-			y8950.setStatus(Y8950::STATUS_EOS);
+			opl2.setStatus(Y8960OPL2::STATUS_EOS);
 		} else {
 			emu.memPtr += 2; // two nibbles at a time
 
 			// reset BRDY bit in status register, which means we
 			// are reading the memory now
-			y8950.resetStatus(Y8950::STATUS_BUF_RDY);
+			opl2.resetStatus(Y8960OPL2::STATUS_BUF_RDY);
 
 			// setup a timer that will callback us in 10 master
 			// clock cycles for Y8950. In the callback set the BRDY
@@ -393,13 +396,13 @@ uint8_t Y8950Adpcm::readData()
 			// set the flag in zero time, so that the IRQ will work.
 
 			// set BRDY bit in status register
-			y8950.setStatus(Y8950::STATUS_BUF_RDY);
+			opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 		}
 	}
 	return result;
 }
 
-uint8_t Y8950Adpcm::peekData() const
+uint8_t Y8960Adpcm::peekData() const
 {
 	if ((reg7 & R07_MODE) == R07_MEMORY_DATA) {
 		// external memory read
@@ -416,24 +419,25 @@ uint8_t Y8950Adpcm::peekData() const
 	}
 }
 
-void Y8950Adpcm::writeMemory(unsigned memPtr, uint8_t value)
+void Y8960Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if ((addr < ram.size()) && !romBank) {
-		ram.write(addr, value);
+	if (!romBank) {
+		memory.write(block, addr, value);
 	}
 }
-uint8_t Y8950Adpcm::readMemory(unsigned memPtr) const
+uint8_t Y8960Adpcm::readMemory(unsigned memPtr) const
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	if (romBank || (addr >= ram.size())) {
+	if (romBank) {
 		return 0; // checked on a real machine
 	} else {
-		return ram[addr];
+		// past the end of this block's window reads as 0
+		return memory.read(block, addr);
 	}
 }
 
-int Y8950Adpcm::calcSample()
+int Y8960Adpcm::calcSample()
 {
 	// called by audio thread
 	if (!isPlaying()) return 0;
@@ -441,7 +445,7 @@ int Y8950Adpcm::calcSample()
 	return (reg7 & R07_SP_OFF) ? 0 : output;
 }
 
-int Y8950Adpcm::calcSample(bool doEmu)
+int Y8960Adpcm::calcSample(bool doEmu)
 {
 	// values taken from ymdelta.c by Tatsuyuki Satoh.
 	static constexpr std::array<int, 16> F1 = {
@@ -468,7 +472,7 @@ int Y8950Adpcm::calcSample(bool doEmu)
 					pd.adpcm_data = reg15;
 					// set BRDY bit, ready to accept new data
 					if (doEmu) {
-						y8950.setStatus(Y8950::STATUS_BUF_RDY);
+						opl2.setStatus(Y8960OPL2::STATUS_BUF_RDY);
 					}
 				}
 				return uint8_t(pd.adpcm_data >> 4);
@@ -498,7 +502,7 @@ int Y8950Adpcm::calcSample(bool doEmu)
 			// I can't remember it :-(
 			// This is different from e.g. the MAME implementation.
 			if (doEmu) {
-				y8950.setStatus(Y8950::STATUS_EOS);
+				opl2.setStatus(Y8960OPL2::STATUS_EOS);
 			}
 			if (reg7 & R07_REPEAT) {
 				restart(pd);
@@ -516,18 +520,11 @@ int Y8950Adpcm::calcSample(bool doEmu)
 }
 
 
-// version 1:
-//  Initial version
-// version 2:
-//  - Split PlayData in emu and audio part (though this doesn't add new state
-//    to the savestate).
-//  - Added clock object.
 template<typename Archive>
-void Y8950Adpcm::serialize(Archive& ar, unsigned version)
+void Y8960Adpcm::serialize(Archive& ar, unsigned /*version*/)
 {
 	ar.template serializeBase<Schedulable>(*this);
-	ar.serialize("ram",          ram,
-	             "startAddr",    startAddr,
+	ar.serialize("startAddr",    startAddr,
 	             "stopAddr",     stopAddr,
 	             "addrMask",     addrMask,
 	             "volume",       volume,
@@ -538,7 +535,7 @@ void Y8950Adpcm::serialize(Archive& ar, unsigned version)
 	             "reg15",        reg15,
 	             "romBank",      romBank,
 
-	             "memPntr",      emu.memPtr, // keep 'memPntr' for bw compat
+	             "memPtr",       emu.memPtr,
 	             "nowStep",      emu.nowStep,
 	             "out",          emu.out,
 	             "output",       emu.output,
@@ -552,19 +549,8 @@ void Y8950Adpcm::serialize(Archive& ar, unsigned version)
 		aud = emu;
 	}
 
-	if (ar.versionBelow(version, 2)) {
-		clock.reset(getCurrentTime());
-
-		// reschedule, because automatically deserialized sync-point
-		// can be off, because clock.getTime() != getCurrentTime()
-		removeSyncPoint();
-		if (isPlaying()) {
-			schedule();
-		}
-	} else {
-		ar.serialize("clock", clock);
-	}
+	ar.serialize("clock", clock);
 }
-INSTANTIATE_SERIALIZE_METHODS(Y8950Adpcm);
+INSTANTIATE_SERIALIZE_METHODS(Y8960Adpcm);
 
 } // namespace openmsx
