@@ -18,8 +18,9 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `y8960/implementation-plan.md` | 実装計画・決定・実行経緯 |
 | `y8960/tests/` | 手で回す検証スクリプト |
 | `build/README.md` | ビルド環境。マシンごとの詰まりどころと手順 |
+| `release/README.md` | GitHub Releases に出すときの決まりと手順 |
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
-| `tools/` | push 前点検と文書整合の検査スクリプト |
+| `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト |
 | `upstream-touched.txt` | 変更してよい upstream のファイルの一覧と理由。点検器が突き合わせる |
 
 ## upstream との関係
@@ -32,7 +33,9 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | ライセンス | GPL-2.0-only（upstream と同じ） |
 
 upstream の文書で変更しているのはルートの `README` だけ。
-それ以外の変更はコードとビルド定義に限られる。
+それ以外の変更はコードとビルド定義、およびルートの `.gitattributes`
+（本ディレクトリと `CLAUDE.md` をソースアーカイブから外す）に限られる。
+一覧は `upstream-touched.txt`。
 
 ### 追従はリベースで行う
 

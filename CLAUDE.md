@@ -100,3 +100,12 @@ fork に push したオブジェクトは**親リポジトリから SHA で辿�
 点検は push の前にしか意味が無い。
 
 振り返りと、そこで入れた対策の一覧は `doc/fork/retrospective.md`。
+
+## 8. リリース
+
+決まりと手順は `doc/fork/release/README.md`。**タグは lightweight で作る。**
+annotated にすると `build/version.py` がビルド中に例外で止まる。
+
+`CLAUDE.md` と `doc/fork/` は配布物に入れない。ソースアーカイブからは
+`.gitattributes` の `export-ignore` で外している。`doc/fork/` に置いたものは
+すべてソースアーカイブに入らないので、ビルドに要るものをここに置かない。

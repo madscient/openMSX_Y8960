@@ -9,6 +9,7 @@
 #
 # 書式は「パス<空白>理由」。# から行末はコメント。
 
+.gitattributes                      CLAUDE.md と doc/fork をソースアーカイブから外す export-ignore。git archive が読むのはこのファイルだけ
 README                              フォークである旨と帰属表示。GitHub のフロントページなので他に置き場が無い
 build/msvc/openmsx.vcxproj          ソース一覧。ファイルを足したら書く
 build/msvc/openmsx.vcxproj.filters  同上
