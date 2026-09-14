@@ -11,3 +11,6 @@ Contrib/reverse_engineering_tools/kanji/ktst31.dsk binary
 "Contrib/reverse_engineering_tools/kanji/ktst31 [RUN'CAS-'].wav" binary
 "Contrib/reverse_engineering_tools/kanji/ktst31 [RUN'CAS-'] [2400bps].wav" binary
 "Contrib/reverse_engineering_tools/kanji/ktst31 [RUN'CAS-'].cas" binary
+# このフォークの開発者・AI 向け文書。リリースに付くソースアーカイブには入れない
+CLAUDE.md export-ignore
+doc/fork export-ignore

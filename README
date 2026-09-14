@@ -6,25 +6,47 @@ It adds emulation of the Y8960 Cartridge, a sound cartridge for the MSX
 designed by HRA! (hra1129). The hardware itself is still work in progress,
 so the emulation follows a moving target and is expected to change.
 
-Upstream openMSX does not contain any of this. Report problems here, not to
-the openMSX developers.
+Upstream openMSX does not contain any of this. Report problems to this fork,
+not to the openMSX developers.
 
+    this fork: https://github.com/madscient/openMSX_Y8960
     upstream:  https://github.com/openMSX/openMSX
 
 What is added
 -------------
 
-    Y8960-OPLL      YM2413 with a per-channel preset tone bank
-    Y8960-MIXER     the cartridge's digital mixer
-    MSX-TIMER       the cartridge's timer block
-    Y8960 ROM type  SCC plus the cartridge's mapper
-    PSG chip_select two SSG circuits sharing one register space
-    share/extensions/HRA_Y8960.xml
+The cartridge is the extension HRA_Y8960 (share/extensions/HRA_Y8960.xml):
 
-    Not implemented yet: the OPL2 + ADPCM-B block.
+    openmsx -machine <machine> -ext HRA_Y8960
 
-Notes for this fork are under doc/fork/. They are written in Japanese and
-are aimed at developers, not at end users.
+It is built from these devices:
+
+    Y8960-OPLL       2x YM2413 with a per-channel preset tone bank
+    Y8960-OPL2       2x YM3812 with waveform select, each with an ADPCM-B
+    Y8960-ADPCM-RAM  the 256KB ADPCM sample memory the two OPL2 share
+    Y8960-SSGS       two YM2149-compatible SSGs with 4-bit panpots
+    Y8960-DCSG       2x SN76489-compatible DCSG
+    MSX-TIMER        the cartridge's timer
+    Y8960-MIXER      the cartridge's digital mixer and output switch
+    Y8960 ROM type   SCC, the cartridge's mapper, its I/O enablers and the
+                     memory-mapped access to the sound chips
+
+The cartridge does not feed its sound back into the MSX, so by default only
+the Y8960's own output is heard. The setting y8960-mixer_output selects
+y8960, msx or mix.
+
+Known limitations:
+
+    - The mixer registers (B6h-B7h) keep the values written to them but do
+      not change the gains yet: their layout is not specified.
+    - The mapper keeps ROM (banks 0-15) and 128KB of RAM (banks 16-31) as
+      separate spaces, whereas the FPGA design has one 256KB space. This
+      waits for the hardware specification to settle.
+    - There is no real hardware to compare with. The behaviour follows the
+      specification and the FPGA sources as they were read.
+
+Notes for this fork are under doc/fork/ in the repository. They are written
+in Japanese and are aimed at developers, not at end users.
 
 Credits
 -------
