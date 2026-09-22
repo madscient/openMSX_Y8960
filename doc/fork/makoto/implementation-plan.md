@@ -42,7 +42,9 @@ Makoto は YM2608（OPNA）を 1 個載せた MSX 用のサウンドカートリ
 | `src/sound/YM2608.{hh,cc}` | ymfm の `ym2608` を包むサウンドデバイス。タイマー、IRQ、デバッガブル、サンプルメモリ、リズム ROM |
 | `src/3rdparty/ymfm/` | ymfm のうち OPN・SSG・ADPCM に要るファイル。BSD-3-Clause（`LICENSE` を同じ場所に置いた） |
 | `share/extensions/Makoto.xml` | 拡張の定義 |
+| `README`（先頭の節） | エンドユーザー向けの案内。フォークである旨、使い方、リズム ROM の置き方、帰属表示 |
 | `doc/fork/makoto/tests/smoke.tcl` | 手で回す検証スクリプト |
+| `doc/fork/makoto/tests/rhythm.tcl` | リズム音が鳴るかを録音で見る。ROM の有無で結果が変わる |
 
 ## 決定
 
@@ -51,7 +53,8 @@ Makoto は YM2608（OPNA）を 1 個載せた MSX 用のサウンドカートリ
 ユーザーが選んだ。Y8960 対応（`main`）とは別のブランチにし、upstream の上には
 Makoto のコードとこの文書だけを載せる。`main` にあるフォークの基盤
 （`CLAUDE.md`、`README` のフォーク表記、`doc/fork/` の build・release・tools、
-`.gitattributes`）は持ち込まない。
+`.gitattributes`）は持ち込まない。ただし README の先頭の節は、このブランチ用に
+書き起こした（下の「エンドユーザー向けの案内」）。
 
 - **前提**: Makoto のビルドに Y8960 が要らない限り成立する
 - **失うもの**: push 前の点検器（`check-before-push.sh`）とリリース手順が
@@ -59,7 +62,8 @@ Makoto のコードとこの文書だけを載せる。`main` にあるフォー
 - **統合する場合の値段**: `main` と一緒にしたくなったら、`DeviceFactory.cc`、
   `src/meson.build`、`build/msvc/openmsx.vcxproj(.filters)` の 4 ファイルで衝突を
   解く。どれも列挙に 1 行ずつ足した衝突で、機械的に解ける（**推測**: 両ブランチの
-  差分がどちらも行の追加だけであることから）
+  差分がどちらも行の追加だけであることから）。これに加えて `README` の先頭の節が
+  両ブランチで違うので、手で 1 つにまとめる
 
 ### ymfm を取り込む。ファイル名は `.cc` にする
 
@@ -109,11 +113,37 @@ openMSX のミキサーは消音中も生成を呼ぶ（確認済み: `MSXMixer:
 状態を変える（ステータスの反映、ADPCM メモリのポインタ）ので `FFh` を返す。
 本物の値が要るときは Z80 に `IN` させる（`tests/smoke.tcl` がその形）。
 
-### リズム ROM は任意
+### リズム ROM は SHA1 で `systemroms` から拾う。無くても起動する
 
-`Makoto.xml` の `<Makoto>` に `<rom>` を足せば読む。読めなければ警告を出して、
-リズム音を鳴らさずに動く。同梱の XML には `<rom>` を書いていない
-（SHA1 を知らないので、`systemroms` から探させる形にできない）。
+ユーザーが選んだ。MoonSound の波形 ROM（`share/extensions/moonsound.xml`）と同じく、
+`Makoto.xml` の `<rom>` に SHA1 とファイル名を書いておく。利用者は ROM を
+`systemroms` の下のどこかに置くだけでよく、openMSX が SHA1 で照合して見つける。
+ROM は配布物に含めない。
+
+| | 値 |
+|---|---|
+| 大きさ | 8192 バイト（ymfm がリズム 6 音に割り当てる範囲 `0000h`-`1FFFh` と一致） |
+| SHA1 | `50b6c3e288eaa12ad275d4f323267bb72b0445df` |
+| `<filename>` | `ym2608_rhythm.rom`（SHA1 で見つからないときの補助にしか使われない） |
+
+見つからなければ、MoonSound と違って起動は失敗させない。警告を出して、
+リズム音だけ鳴らさずに動く（`YM2608.cc` のコンストラクタ）。利用側の試験は
+レジスタしか見ないので、ROM の無い環境でも回る。
+
+- **前提**: この SHA1 の吸い出しが出回っているものと同じであること。
+  **未確認**（手元の 1 本しか見ていない）。別の吸い出しが見つかったら、
+  `<sha1>` を並べて書けばどちらも拾える。値段は XML の 1 行
+
+### エンドユーザー向けの案内は README と XML の説明文
+
+ユーザーが選んだ。`main` と同じく、ルートの `README` の先頭に英語の節を置いた。
+フォークである旨、拡張の使い方、リズム ROM の置き方（大きさと SHA1）、
+帰属表示（ymfm）を書いてある。`Makoto.xml` の `<description>` にも、
+リズム ROM が要ることを一文入れた（openMSX の拡張の一覧に出る）。
+
+upstream の `packagezip.py` は `README` を zip に入れない（`main` の
+`doc/fork/release/README.md` の実行経緯に記録がある）ので、デプロイ先で目に
+触れるのは XML の説明文だけになる。
 
 ### 見送ったもの
 
@@ -202,7 +232,7 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 - 上の「ymfm の挙動」の 1〜3 を走らせて確かめた
 - **未検証**: タイマー A の IRQ が CPU に届くこと。ステータス0 のフラグが立つことと、
   `27h` で消えることまでは確かめた
-- **未検証**: リズム ROM を与えたときの発音。ROM が手元に無い
+- ~~**未検証**: リズム ROM を与えたときの発音。ROM が手元に無い~~ → 下で確認済み
 - **未検証**: セーブステートの保存と読み込み
 - 専用のデプロイ先へ zip（750 ファイル）を展開。展開した `openmsx.exe` がビルドしたものと
   同一であることを `cmp` で確認。**デプロイ先の exe と `share/` で `smoke.tcl` が全項目
@@ -213,3 +243,10 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
   `upstream-touched.txt` と `check-docs.py` が無いので NG になる。5 が挙げた
   変更済みの upstream のファイルは `DeviceFactory.cc`、`src/meson.build`、
   `build/msvc/openmsx.vcxproj(.filters)` の 4 つで、上の「統合する場合の値段」と一致する
+- リズム ROM の扱いを決めた（上の「リズム ROM は SHA1 で…」）。`README` に
+  エンドユーザー向けの節を足した
+- **リズム ROM を `systemroms` に置くと SHA1 で見つかり、リズム音が鳴ることを確認
+  （確認済み）**。`tests/rhythm.tcl` でバスドラムを鳴らし、チャンネル 1 を 0.3 秒
+  録音した。振幅の最大値は ROM ありで 15284、ROM 無しで 12。ROM 無しでも起動は
+  終了コード 0。使い捨てのユーザーデータを 2 つ作り、片方の `systemroms` にだけ
+  ROM を複製して比べた

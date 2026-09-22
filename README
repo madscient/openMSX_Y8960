@@ -1,4 +1,74 @@
 ----------------------------------------------------------------------------
+This is an unofficial fork of openMSX, branch 'makoto'
+----------------------------------------------------------------------------
+
+This branch adds emulation of Makoto, a sound cartridge for the MSX with a
+Yamaha YM2608 (OPNA). There is no real hardware to compare with; the
+emulation follows the chip and the cartridge as far as they are known.
+
+Upstream openMSX does not contain any of this. Report problems to this fork,
+not to the openMSX developers.
+
+    this fork: https://github.com/madscient/openMSX_Y8960
+    upstream:  https://github.com/openMSX/openMSX
+
+What is added
+-------------
+
+The cartridge is the extension Makoto (share/extensions/Makoto.xml). It
+uses I/O ports only and does not take a cartridge slot:
+
+    openmsx -machine <machine> -ext Makoto
+
+It has one YM2608 at 8 MHz on I/O ports 14h-17h: FM 6 channels, SSG 3
+channels, rhythm 6 sounds and ADPCM 1 channel with 256KB of sample RAM.
+The sample RAM size is set with <sampleram> (in KB) in the extension file.
+The chip's interrupt output is connected to the MSX.
+
+For debugging, the registers are readable as the debuggable "Makoto regs"
+(512 bytes, 000h-0FFh the first register array and 100h-1FFh the second,
+holding the last value written) and the sample RAM as "Makoto ADPCM RAM".
+
+The rhythm ROM
+--------------
+
+The rhythm part plays samples from a ROM inside the YM2608. That ROM is not
+included. To hear the rhythm part, put a dump of it in the systemroms
+directory, as for other system ROMs (see "System ROMs" in
+doc/manual/setup.html):
+
+    size  8192 bytes
+    SHA1  50b6c3e288eaa12ad275d4f323267bb72b0445df
+
+openMSX finds it by its SHA1, so the file name and the subdirectory do not
+matter. Without it, openMSX shows a warning when the extension is loaded
+and the rhythm part stays silent; everything else works.
+
+Known limitations
+-----------------
+
+    - On real hardware, reading the status at port 14h collides on the bus
+      with a Philips Music Module when one is also connected. This is not
+      emulated.
+    - The sound is output as two channels: FM + rhythm + ADPCM in stereo,
+      and the SSG in mono.
+
+Credits
+-------
+
+The YM2608 is emulated by ymfm by Aaron Giles, under the BSD 3-Clause
+license (src/3rdparty/ymfm/LICENSE).
+
+The I/O ports and the clock of the cartridge are taken from the Makoto
+driver of vgmplay-msx.
+
+License
+-------
+
+Same as openMSX: GNU General Public License version 2, see doc/GPL.txt. The
+notice below is the original openMSX README.
+
+----------------------------------------------------------------------------
 openMSX - the MSX emulator that aims for perfection
 ----------------------------------------------------------------------------
 
