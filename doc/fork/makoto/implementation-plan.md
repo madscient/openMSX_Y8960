@@ -316,3 +316,12 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
   ユーザー判断で、`21.0-makoto.2` を出して `.1` はドラフトに戻す。
   zip の作成をスクリプトにしてリポジトリに入れ、ライセンス文を必須項目にした
   （上の「リリース」）。README の Credits から同梱先を指すようにした
+- **`21.0-makoto.2` を Pre-release として公開**。対象は `a7525c0b5`
+  - `-t:Rebuild` で 0 エラー / 141 警告 / 37 分 38 秒。`LNK4286` は 0 件
+  - `package-release.py` で zip を作成（752 エントリ、検査 OK）。
+    `doc/ymfm-LICENSE.txt` が `src/3rdparty/ymfm/LICENSE` と同一であることを確認
+  - **展開した zip で確認（確認済み）**。`smoke.tcl` は `failures 0`、`rhythm.tcl` は
+    ROM 無しで 12、ROM ありで 15284。ウィンドウは出ていない
+  - ドラフトで作って中身を見てから公開。タグは lightweight（`git cat-file -t` が `commit`）
+- `21.0-makoto.1` をドラフトに戻した。タグ `21.0-makoto.1` はリモートに残っている
+
