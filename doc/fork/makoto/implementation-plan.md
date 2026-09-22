@@ -207,3 +207,9 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 - 専用のデプロイ先へ zip（750 ファイル）を展開。展開した `openmsx.exe` がビルドしたものと
   同一であることを `cmp` で確認。**デプロイ先の exe と `share/` で `smoke.tcl` が全項目
   通ることを確認（確認済み）**。`failures 0`、ウィンドウは出ていない
+- 3 コミットに分けてコミット。`main` の `check-before-push.sh` を範囲だけ
+  `upstream/master..HEAD` に替えて走らせ、1〜4（著者、trailer、ローカル固有の文字列、
+  作業ツリー）が通ることを確認（確認済み）。5 と 6 はこのブランチに
+  `upstream-touched.txt` と `check-docs.py` が無いので NG になる。5 が挙げた
+  変更済みの upstream のファイルは `DeviceFactory.cc`、`src/meson.build`、
+  `build/msvc/openmsx.vcxproj(.filters)` の 4 つで、上の「統合する場合の値段」と一致する
