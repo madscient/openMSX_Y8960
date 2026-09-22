@@ -331,6 +331,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\ImGuiFileDialog\ImGuiFileDialog.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_adpcm.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_opn.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_ssg.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\imgui\imgui.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\imgui\imgui_demo.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\3rdparty\imgui\imgui_draw.cc" />
@@ -680,6 +683,7 @@
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Mixer.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXAudio.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXFmPac.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXMakoto.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXMixer.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXMoonSound.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\MSXMusic.cc" />
@@ -711,6 +715,7 @@
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413Burczynski.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413Okazaki.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2608.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413NukeYKT.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413OriginalNukeYKT.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\opll.cc" />
@@ -917,6 +922,12 @@
     <None Include="$(OpenMSXSrcDir)\3rdparty\ImGuiFileDialog/ImGuiFileDialog.h" />
     <None Include="$(OpenMSXSrcDir)\3rdparty\ImGuiFileDialog/ImGuiFileDialogConfig.h" />
     <None Include="$(OpenMSXSrcDir)\3rdparty\imgui/imconfig.h" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm.h" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_adpcm.h" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_fm.h" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_fm.ipp" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_opn.h" />
+    <None Include="$(OpenMSXSrcDir)\3rdparty\ymfm\ymfm_ssg.h" />
     <None Include="$(OpenMSXSrcDir)\3rdparty\imgui/imgui.h" />
     <None Include="$(OpenMSXSrcDir)\3rdparty\imgui/imgui_impl_opengl3.h" />
     <None Include="$(OpenMSXSrcDir)\3rdparty\imgui/imgui_impl_opengl3_loader.h" />
@@ -1296,6 +1307,7 @@
     <None Include="$(OpenMSXSrcDir)\sound\Mixer.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\MSXAudio.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\MSXFmPac.hh" />
+    <None Include="$(OpenMSXSrcDir)\sound\MSXMakoto.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\MSXMixer.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\MSXMoonSound.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\MSXMusic.hh" />
@@ -1333,6 +1345,7 @@
     <None Include="$(OpenMSXSrcDir)\sound\YM2413Core.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413Interface.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413Okazaki.hh" />
+    <None Include="$(OpenMSXSrcDir)\sound\YM2608.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413NukeYKT.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413NukeYktTables.ii" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413OriginalNukeYKT.hh" />

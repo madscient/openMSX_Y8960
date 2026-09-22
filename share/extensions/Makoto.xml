@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<!DOCTYPE msxconfig SYSTEM 'msxconfig2.dtd'>
+<msxconfig>
+  <info>
+    <name>Makoto</name>
+    <description>Sound cartridge with a Yamaha YM2608 (OPNA) at 8 MHz on I/O ports $14-$17: FM 6 channels, SSG 3 channels, rhythm 6 sounds and ADPCM 1 channel with 256 kB sample RAM.</description>
+    <type>sound expansion</type>
+  </info>
+  <devices>
+    <Makoto id="Makoto">
+      <io base="0x14" num="4"/>
+      <sound>
+        <volume>12000</volume>
+      </sound>
+      <sampleram>256</sampleram>
+      <!-- The rhythm part plays samples from a ROM inside the YM2608. It is
+           not included; without it the rhythm part is silent. To use one,
+           add a rom tag here, for example:
+             <rom><sha1>...</sha1></rom>
+           and put the file in the systemroms directory. -->
+    </Makoto>
+  </devices>
+</msxconfig>

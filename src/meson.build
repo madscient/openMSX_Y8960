@@ -1,4 +1,7 @@
 sources = files(
+    '3rdparty/ymfm/ymfm_adpcm.cc',
+    '3rdparty/ymfm/ymfm_opn.cc',
+    '3rdparty/ymfm/ymfm_ssg.cc',
     'Autofire.cc',
     'CLIOption.cc',
     'CartridgeSlotManager.cc',
@@ -387,6 +390,7 @@ sources = files(
     'sound/KeyClick.cc',
     'sound/MSXAudio.cc',
     'sound/MSXFmPac.cc',
+    'sound/MSXMakoto.cc',
     'sound/MSXMixer.cc',
     'sound/MSXMoonSound.cc',
     'sound/MSXMusic.cc',
