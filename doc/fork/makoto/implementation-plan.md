@@ -287,3 +287,6 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 - `.gitattributes` に `main` と同じ `export-ignore` の行を足した。`git archive` で
   `doc/fork/` の項目が 0 件になることを確認（確認済み）。変更前のコミット
   （`736b65cb4`）では 6 件出るので、この確かめ方は違いを見分けられる
+- GitHub が生成するアーカイブ（`gh api repos/.../tarball/<SHA>`）でも確認（確認済み）。
+  `9afaabd86` では `doc/fork/` が 0 件、`736b65cb4` では 5 件。どちらにも
+  `src/sound/YM2608.cc` は入っている
