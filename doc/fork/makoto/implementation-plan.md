@@ -53,7 +53,8 @@ Makoto は YM2608（OPNA）を 1 個載せた MSX 用のサウンドカートリ
 ユーザーが選んだ。Y8960 対応（`main`）とは別のブランチにし、upstream の上には
 Makoto のコードとこの文書だけを載せる。`main` にあるフォークの基盤
 （`CLAUDE.md`、`README` のフォーク表記、`doc/fork/` の build・release・tools、
-`.gitattributes`）は持ち込まない。ただし README の先頭の節は、このブランチ用に
+`.gitattributes`）は持ち込まない。ただし `.gitattributes` は後から `main` と同じ
+内容にした（下の「リリース」）。また README の先頭の節は、このブランチ用に
 書き起こした（下の「エンドユーザー向けの案内」）。
 
 - **前提**: Makoto のビルドに Y8960 が要らない限り成立する
@@ -228,9 +229,10 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 | 配布物 | Windows x64 のバイナリ zip 1 本 | |
 | 入れないもの | リズム ROM | 著作物。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
 
-**ソースアーカイブには `doc/fork/makoto/` が入る。** このブランチには `main` の
-`.gitattributes`（`export-ignore`）を持ち込んでいないため。外したくなったら
-`.gitattributes` に 1 行足す。
+**ソースアーカイブから `doc/fork/` を外す。** `main` と同じ `export-ignore` の行を
+`.gitattributes` に置いた（`main` と行まで揃えてあるので、統合しても衝突しない）。
+`21.0-makoto.1` はこの変更の前のコミットなので、そのソースアーカイブには
+`doc/fork/makoto/` が入っている。次のリリースから外れる。
 
 ## 実行経緯
 
@@ -282,3 +284,6 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
   - ドラフトで作り、Pre-release・対象コミット・添付の大きさ（8,287,633 バイト）が
     手元と一致することを見てから公開した。タグが lightweight であることを
     `git cat-file -t` で確認
+- `.gitattributes` に `main` と同じ `export-ignore` の行を足した。`git archive` で
+  `doc/fork/` の項目が 0 件になることを確認（確認済み）。変更前のコミット
+  （`736b65cb4`）では 6 件出るので、この確かめ方は違いを見分けられる
