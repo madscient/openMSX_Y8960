@@ -213,6 +213,25 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 展開したら、`OPENMSX_SYSTEM_DATA` を外し、`OPENMSX_USER_DATA` を使い捨ての場所に
 向けて、デプロイ先の exe で `smoke.tcl` を走らせる。
 
+## リリース
+
+`main` のリリース手順（`main` の `doc/fork/release/README.md`）に倣う。
+違いは、このブランチに `doc/fork/tools/package-release.py` が無いこと。
+同じ処理（upstream の `packagezip.py`、`README` を `README.txt` として追加、中身の検査）を
+その場で行った。
+
+| 項目 | 値 | 理由と前提 |
+|---|---|---|
+| タグ名 | `21.0-makoto.<n>`。初回は `21.0-makoto.1` | ユーザー判断。`main` の `21.0-y8960.<n>` と同じ形 |
+| タグの種類 | lightweight（`gh release create` に作らせる） | annotated だと `build/version.py` がビルド中に止まる（`main` で確認済みの事情） |
+| 種別 | Pre-release | ユーザー判断。実機との突き合わせをしていない |
+| 配布物 | Windows x64 のバイナリ zip 1 本 | |
+| 入れないもの | リズム ROM | 著作物。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
+
+**ソースアーカイブには `doc/fork/makoto/` が入る。** このブランチには `main` の
+`.gitattributes`（`export-ignore`）を持ち込んでいないため。外したくなったら
+`.gitattributes` に 1 行足す。
+
 ## 実行経緯
 
 ### 2026-09-22
@@ -250,3 +269,16 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
   録音した。振幅の最大値は ROM ありで 15284、ROM 無しで 12。ROM 無しでも起動は
   終了コード 0。使い捨てのユーザーデータを 2 つ作り、片方の `systemroms` にだけ
   ROM を複製して比べた
+- **`21.0-makoto.1` を Pre-release として公開**。対象は `736b65cb4`
+  - `-t:Rebuild` で全体をビルドし直した。0 エラー / 141 警告 / 44 分 33 秒。
+    `LNK4286` は 0 件
+  - zip は 751 エントリ。`doc/fork/` が無いこと、`README.txt`・`openmsx.exe`・
+    `share/extensions/Makoto.xml`・`doc/GPL.txt` があること、リズム ROM と同じ SHA1 の
+    ファイルが無いことを検査した
+  - **zip を `derived/` の下に展開し、そのバイナリで確認（確認済み）**。
+    `OPENMSX_SYSTEM_DATA` を外し、ユーザーデータは使い捨て。`smoke.tcl` は
+    `failures 0`、`rhythm.tcl` の振幅の最大値は ROM 無しで 12、ROM ありで 15284。
+    ウィンドウは出ていない
+  - ドラフトで作り、Pre-release・対象コミット・添付の大きさ（8,287,633 バイト）が
+    手元と一致することを見てから公開した。タグが lightweight であることを
+    `git cat-file -t` で確認
