@@ -57,7 +57,9 @@ Credits
 -------
 
 The YM2608 is emulated by ymfm by Aaron Giles, under the BSD 3-Clause
-license (src/3rdparty/ymfm/LICENSE).
+license. Its copyright notice and license text are in
+src/3rdparty/ymfm/LICENSE in the source, and in doc/ymfm-LICENSE.txt in
+the Windows package.
 
 The I/O ports and the clock of the cartridge are taken from the Makoto
 driver of vgmplay-msx.

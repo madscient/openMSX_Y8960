@@ -45,6 +45,7 @@ Makoto は YM2608（OPNA）を 1 個載せた MSX 用のサウンドカートリ
 | `README`（先頭の節） | エンドユーザー向けの案内。フォークである旨、使い方、リズム ROM の置き方、帰属表示 |
 | `doc/fork/makoto/tests/smoke.tcl` | 手で回す検証スクリプト |
 | `doc/fork/makoto/tests/rhythm.tcl` | リズム音が鳴るかを録音で見る。ROM の有無で結果が変わる |
+| `doc/fork/makoto/tools/package-release.py` | リリース用の zip を作って中身を検査する |
 
 ## 決定
 
@@ -217,9 +218,29 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 ## リリース
 
 `main` のリリース手順（`main` の `doc/fork/release/README.md`）に倣う。
-違いは、このブランチに `doc/fork/tools/package-release.py` が無いこと。
-同じ処理（upstream の `packagezip.py`、`README` を `README.txt` として追加、中身の検査）を
-その場で行った。
+zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstream の
+`packagezip.py` を呼んだあと、次の 2 つを足して中身を検査する。
+
+- `README` → `README.txt`
+- **ymfm のライセンス文** `src/3rdparty/ymfm/LICENSE` → `doc/ymfm-LICENSE.txt`。
+  BSD 3-Clause の第 2 条は、バイナリの再配布に著作権表示・条件・免責事項を
+  含めることを求める。upstream の `packagezip.py` はこれを入れない
+
+**フォークが `src/3rdparty/` に足したライブラリには、ライセンス文の同梱先を
+`EXTRA_FILES` に書く。** 書いていないライブラリがあるとスクリプトは zip を作らずに
+止まる（upstream/master に無いディレクトリを数えて判定する）。確認済み: ymfm の行を
+抜いた写しで走らせると `no license in EXTRA_FILES` で終了コード 1。
+
+手順:
+
+1. `-t:Rebuild` で全体をビルドし直す
+2. `py doc/fork/makoto/tools/package-release.py <タグ名>`
+3. zip を `derived/` の下に展開し、`OPENMSX_SYSTEM_DATA` を外し、ユーザーデータを
+   使い捨ての場所に向けて、`tests/smoke.tcl` と `tests/rhythm.tcl`（ROM ありと無し）を
+   走らせる
+4. `makoto` を push し、`gh release create <タグ名> --draft --prerelease --target <完全な SHA>`
+   でドラフトを作る。中身を見てから `--draft=false` で公開する
+5. `git fetch origin tag <タグ名>` して `git cat-file -t <タグ名>` が `commit` であることを見る
 
 | 項目 | 値 | 理由と前提 |
 |---|---|---|
@@ -227,6 +248,7 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 | タグの種類 | lightweight（`gh release create` に作らせる） | annotated だと `build/version.py` がビルド中に止まる（`main` で確認済みの事情） |
 | 種別 | Pre-release | ユーザー判断。実機との突き合わせをしていない |
 | 配布物 | Windows x64 のバイナリ zip 1 本 | |
+| 入れるもの | `README.txt`、`doc/GPL.txt`、`doc/ymfm-LICENSE.txt` | 帰属表示とライセンス文。検査の必須項目 |
 | 入れないもの | リズム ROM | 著作物。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
 
 **ソースアーカイブから `doc/fork/` を外す。** `main` と同じ `export-ignore` の行を
@@ -290,3 +312,7 @@ zip に無いもの（Catapult、利用者が置いた `share/systemroms/` の�
 - GitHub が生成するアーカイブ（`gh api repos/.../tarball/<SHA>`）でも確認（確認済み）。
   `9afaabd86` では `doc/fork/` が 0 件、`736b65cb4` では 5 件。どちらにも
   `src/sound/YM2608.cc` は入っている
+- `21.0-makoto.1` の zip に ymfm のライセンス文が入っていないことが分かった。
+  ユーザー判断で、`21.0-makoto.2` を出して `.1` はドラフトに戻す。
+  zip の作成をスクリプトにしてリポジトリに入れ、ライセンス文を必須項目にした
+  （上の「リリース」）。README の Credits から同梱先を指すようにした
