@@ -50,19 +50,35 @@ upstream の文書で変更しているのはルートの `README` だけ。
 **前提**: フォークの変更が upstream の変更と別のファイルに収まる限り、この判定が
 効く。同じファイルに入るようになったら、止まった衝突を手で解くことになる。
 
+フォーク側の集合は**差分の総和ではなく、各コミットが触ったファイルの和**で取る。
+リベースはコミットを 1 つずつ当てるので、途中で触って後で戻したファイル
+（`MSXPSG.cc` など）も、改行コードだけを書き換えて後で戻したファイルも衝突する。
+差分の総和ではどちらも見えない。
+
 ```sh
 git fetch upstream master
 base=$(git merge-base main upstream/master)
 
 # 触ったファイルの重なりを見る。出力が空なら衝突しない
 comm -12 <(git diff --name-only $base upstream/master | sort) \
-         <(git diff --name-only $base main | sort)
+         <(git log --format= --name-only $base..main | sort -u)
+
+# 載せ替えの正解を先に作っておく（衝突が無ければ tree が 1 行出るだけ）
+expect=$(git merge-tree --write-tree main upstream/master | head -1)
 
 git rebase --onto upstream/master $base main
 
-# フォークのコミットがそのまま載ったか。全行が "=" になること
+# フォークのコミットが載ったか。衝突を解かなかったコミットは "=" になる。
+# "!" は手で解いたコミットだけであること
 git range-diff $base..ORIG_HEAD upstream/master..main
+
+# 中身が単純マージと同じか。出力が空であること
+git diff $expect main
 ```
+
+最後の比較は、衝突の解き方を誤ったときの網になる。`patch` や手作業で解くと
+行が少しずれた位置に入ることがあり、ビルドは通っても upstream との差分が
+広がる。
 
 載せ替えると `main` の履歴が変わるので、`origin/main` へは
 `git push --force-with-lease origin main` で進める。
