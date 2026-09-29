@@ -182,8 +182,13 @@ Wouter Vermaelen がレビュー中。取り込まれれば upstream の `Makoto
 **リズム音データの SHA1 が一致した**（確認済み: PR の
 `src/3rdparty/ym2608/README.openmsx` に書かれた SHA1 と、`Makoto.xml` の `<sha1>` が
 どちらも `50b6c3e2…`）。手元の ROM は libvgm の再構成データと同一ということになる。
-GPL-2.0-or-later は openMSX の GPL-2.0-only と両立するので、同梱もできる。
-**同梱するかどうかは未決**。上の「リズム ROM は SHA1 で…」の決定は変えていない。
+ライセンスの表示だけを見れば GPL-2.0-or-later は openMSX の GPL-2.0-only と両立するが、
+**同梱しないと決めた**（2026-09-29、ユーザー判断）。理由: チップ内蔵のデータを
+libvgm が独自に配っているだけに見え、そのデータを再配布してよいという根拠が
+確かめられない。上の「リズム ROM は SHA1 で…」の決定はそのまま。
+**前提**: データの出所と再配布の権利が確かめられない限り成立する。変えるときの値段は、
+`Makoto.xml` と `YM2608.cc` のリズム ROM まわり、`package-release.py` の検査、README の案内の 4 か所を直すこと。
+加えて、同梱するならデータのライセンス文も入れる
 
 ### 利用側への影響
 
@@ -300,7 +305,7 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
 | 種別 | Pre-release | ユーザー判断。実機との突き合わせをしていない |
 | 配布物 | Windows x64 のバイナリ zip 1 本 | |
 | 入れるもの | `README.txt`、`doc/GPL.txt`、`doc/ymfm-LICENSE.txt` | 帰属表示とライセンス文。検査の必須項目 |
-| 入れないもの | リズム ROM | 同梱しないと決めている（GPL の再構成データと同一と分かったので、同梱するかは未決。「upstream の Makoto（PR #2209）」を参照）。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
+| 入れないもの | リズム ROM | 再配布してよいという根拠が確かめられない（「upstream の Makoto（PR #2209）」を参照）。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
 
 **ソースアーカイブから `doc/fork/` を外す。** `main` と同じ `export-ignore` の行を
 `.gitattributes` に置いた（`main` と行まで揃えてあるので、統合しても衝突しない）。
@@ -382,5 +387,5 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
   （上の「upstream の Makoto（PR #2209）」）。リズム ROM の SHA1 が、PR が内蔵している
   libvgm の再構成データ（GPL-2.0-or-later）の SHA1 と一致した
 - ユーザーの承認を得て、PR にサンプル RAM と ymfm の挙動 1〜3 についてコメントした
-- **未対応**: `src/sound/YM2608.cc` のコメントは、リズム ROM を配らない理由を
-  「著作物だから」としている。同梱するかを決めたら、合わせて書き直す
+- リズム ROM は引き続き同梱しないと決めた（ユーザー判断）。`src/sound/YM2608.cc` の
+  コメントにあった、配らない理由（「著作物だから」）を同じ理由に書き直した

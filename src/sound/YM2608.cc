@@ -34,9 +34,9 @@ YM2608::YM2608(const std::string& name_, DeviceConfig& config,
 {
 	chip.set_fidelity(FIDELITY);
 
-	// The rhythm samples live in a ROM inside the real chip. That ROM is
-	// copyrighted, so it is not shipped; without it the rhythm part is
-	// silent but its registers still work.
+	// The rhythm samples live in a ROM inside the real chip. Its contents are
+	// not shipped because their right to be redistributed is unclear;
+	// without it the rhythm part is silent but its registers still work.
 	if (config.findChild("rom")) {
 		try {
 			rhythmRom.emplace(getName() + " rhythm ROM", "YM2608 rhythm ROM", config);
