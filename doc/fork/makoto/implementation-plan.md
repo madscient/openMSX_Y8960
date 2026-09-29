@@ -29,10 +29,10 @@ Makoto は YM2608（OPNA）を 1 個載せた MSX 用のサウンドカートリ
 | | 内容 | 確度 |
 |---|---|---|
 | I/O | `14h` 表アドレス（W）／ステータス0（R）、`15h` 表データ（W）／データ（R）、`16h` 裏アドレス（W）／ステータス1（R）、`17h` 裏データ（W）／ADPCM データ（R） | 確認済み（vgmplay-msx `src/drivers/Makoto.asm` の `Makoto_BASE: equ 14H` と各ポートの定義。利用側がソースを読んで確認） |
-| クロック | 8MHz | 確認済み（同じファイルの `Makoto_CLOCK: equ 8000000`）。実機の水晶が正確に 8.000MHz かは未確認 |
-| サンプルメモリ | DRAM、x1 ビット | 容量は未確認。**既定を 256KB にして、`<sampleram>`（KB 単位）で変えられるようにした** |
-| IRQ | `/INT` に出ているか | 未確認。**出ている前提で作った**（Makoto の持ち主の判断） |
-| リズム音の波形 ROM | チップに内蔵されている | 著作物なので同梱しない。無ければリズム音は鳴らないが、レジスタは動く |
+| クロック | 8MHz | 確認済み（同じファイルの `Makoto_CLOCK: equ 8000000`）。実機の水晶が正確に 8.000MHz かは未確認。upstream PR #2209 の作者も、設計者に 8MHz と確かめたと書いている（伝聞） |
+| サンプルメモリ | DRAM、x1 ビット | 容量は未確認。**既定を 256KB にして、`<sampleram>`（KB 単位）で変えられるようにした**。PR #2209 の作者は設計者から 256KB と聞いたと書いている（伝聞） |
+| IRQ | `/INT` に出ているか | 未確認。**出ている前提で作った**（Makoto の持ち主の判断）。PR #2209 の作者は設計者から「タイマーの IRQ は直結」と聞いたと書いている（伝聞） |
+| リズム音の波形 ROM | チップに内蔵されている | 同梱していない。無ければリズム音は鳴らないが、レジスタは動く。下の「upstream の Makoto（PR #2209）」にあるとおり、SHA1 が GPL のデータと一致した |
 
 ## 構成
 
@@ -157,6 +157,57 @@ upstream の `packagezip.py` は `README` を zip に入れない（`main` の
   利用側は使わない
 - **声部ごとのチャンネル分け**。理由は上の「音声は 2 チャンネル」
 
+## upstream の Makoto（PR #2209）
+
+upstream に、別の作者（maxiwamoto）による Makoto の PR がある
+（https://github.com/openMSX/openMSX/pull/2209）。2026-09-29 の時点では open で、
+Wouter Vermaelen がレビュー中。取り込まれれば upstream の `Makoto` と
+このブランチの `Makoto` が並ぶことになる。
+
+### 比較（2026-09-29、PR の head `6db5b2a64` を読んで比べた）
+
+| | PR #2209 | このブランチ |
+|---|---|---|
+| ymfm | 同じ版（`81aec25`）に独自の改変 4 件（声部ごとの出力、副作用の無い peek、実効レジスタの読み書き、キャッシュの初期化） | 改変なし |
+| 生成レート | `OPN_FIDELITY_MAX`（1MHz） | `OPN_FIDELITY_MIN`（約 167kHz） |
+| チャンネル | 16 声部 | 2 |
+| リズム音 | libvgm の再構成データ（GPL-2.0-or-later）を内蔵 | `systemroms` から SHA1 で拾う |
+| レジスタのデバッガブル | `Makoto registers`（実効値） | `Makoto regs`（最後に書いた値） |
+| `16h`/`17h` の peek | 実際の値 | `FFh` |
+| サンプル RAM | `std::array`。デバッガブルは無い | `Ram`（`Makoto ADPCM RAM`） |
+
+ポート、クロック、RAM 容量、IRQ 直結、タイマーを 2 つの `Schedulable` で持つこと、
+ビジー中の書き込みを捨てないことは共通。
+
+**リズム音データの SHA1 が一致した**（確認済み: PR の
+`src/3rdparty/ym2608/README.openmsx` に書かれた SHA1 と、`Makoto.xml` の `<sha1>` が
+どちらも `50b6c3e2…`）。手元の ROM は libvgm の再構成データと同一ということになる。
+GPL-2.0-or-later は openMSX の GPL-2.0-only と両立するので、同梱もできる。
+**同梱するかどうかは未決**。上の「リズム ROM は SHA1 で…」の決定は変えていない。
+
+### 利用側への影響
+
+PR がこのまま取り込まれると、デバッガブルの名前が「利用側との取り決め」と違う
+（`Makoto regs` ではなく `Makoto registers`、`Makoto ADPCM RAM` は無い）。
+利用側が upstream 版に乗り換えるときは、試験スクリプトの名前を書き換えることになる。
+
+### PR に提案したこと
+
+ユーザーの承認を得て、2026-09-29 に PR にコメントした
+（https://github.com/openMSX/openMSX/pull/2209#issuecomment-5884649363）。
+
+1. **サンプル RAM を `Ram` にする。** PR の `std::array` は、XML のセーブステートでは
+   `CollectionSaver` で 1 要素ずつ `<item>` になる。リバースのスナップショットでは
+   memcpy 1 回だが、`serialize_blob` を通らないので `DeltaBlock` の差分圧縮が効かず、
+   毎回 256KiB がまるごと積まれる（openMSX の `serialize_core.hh` と `serialize.hh` を
+   読んだ見立て。**未計測**）。`Ram` なら両方で `serialize_blob` になり、デバッガブルも付く
+2. **下の「ymfm の挙動」1〜3 を実機で確かめてもらう。** PR の ymfm は ADPCM に
+   `peek()` を足しただけで、該当箇所はこのブランチと同じ（確認済み: 両方の
+   `ymfm_adpcm` を差分し、`ymfm_opn` の `m_flag_control(0x1c)` を見た）
+
+見送った提案: **生成レートを下げる件**（Wouter は 1MHz のコストを気にしている）。
+理由: CPU 負荷も音質も比べておらず、出す根拠が無い。
+
 ## ymfm の挙動で、実機と違うかもしれない点
 
 1〜3 は ymfm の挙動として走らせて確かめた（2026-09-22、`smoke.tcl` と
@@ -249,7 +300,7 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
 | 種別 | Pre-release | ユーザー判断。実機との突き合わせをしていない |
 | 配布物 | Windows x64 のバイナリ zip 1 本 | |
 | 入れるもの | `README.txt`、`doc/GPL.txt`、`doc/ymfm-LICENSE.txt` | 帰属表示とライセンス文。検査の必須項目 |
-| 入れないもの | リズム ROM | 著作物。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
+| 入れないもの | リズム ROM | 同梱しないと決めている（GPL の再構成データと同一と分かったので、同梱するかは未決。「upstream の Makoto（PR #2209）」を参照）。zip の全ファイルの SHA1 がリズム ROM と一致しないことを検査する |
 
 **ソースアーカイブから `doc/fork/` を外す。** `main` と同じ `export-ignore` の行を
 `.gitattributes` に置いた（`main` と行まで揃えてあるので、統合しても衝突しない）。
@@ -325,3 +376,11 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
   - ドラフトで作って中身を見てから公開。タグは lightweight（`git cat-file -t` が `commit`）
 - `21.0-makoto.1` をドラフトに戻した。タグ `21.0-makoto.1` はリモートに残っている
 
+### 2026-09-29
+
+- upstream に Makoto の PR #2209 があることを知り、このブランチと比べた
+  （上の「upstream の Makoto（PR #2209）」）。リズム ROM の SHA1 が、PR が内蔵している
+  libvgm の再構成データ（GPL-2.0-or-later）の SHA1 と一致した
+- ユーザーの承認を得て、PR にサンプル RAM と ymfm の挙動 1〜3 についてコメントした
+- **未対応**: `src/sound/YM2608.cc` のコメントは、リズム ROM を配らない理由を
+  「著作物だから」としている。同梱するかを決めたら、合わせて書き直す
