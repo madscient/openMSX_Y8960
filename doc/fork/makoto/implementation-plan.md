@@ -508,3 +508,6 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
   クロックが MSX の値（3579545÷2）で固定されていて、プリスケーラ 6 の 2MHz にも、
   プリスケーラによる切り替えにも合わない。クロックを設定できるようにする変更が
   upstream のファイルに要る。**未着手**
+- ユーザーの指示で `makoto-native-rate` を push し、試作の結果を PR に投稿した
+  （https://github.com/openMSX/openMSX/pull/2209#issuecomment-5910617531）。
+  ZOH については、実機の DAC も保持するのではという見立てを**推測**と明記して添えた
