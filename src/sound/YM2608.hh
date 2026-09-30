@@ -57,7 +57,32 @@ private:
 
 	void writeRegister(unsigned reg, uint8_t value, EmuTime time);
 	void timerExpired(unsigned tnum, EmuTime time);
+	void updateStreams(EmuTime time);
+	void applyPrescale();
 	[[nodiscard]] std::vector<uint8_t> saveChipState();
+
+	// ym2608::generate() mixes FM+ADPCM and SSG into one stream at a rate
+	// that is a multiple of both, repeating or averaging samples. Its
+	// protected members let the two parts be clocked separately, each at
+	// its own rate, without changing ymfm.
+	struct Chip final : ymfm::ym2608 {
+		using ym2608::ym2608;
+		void clockFm(int32_t& left, int32_t& right);
+		[[nodiscard]] int32_t clockSsg();
+		[[nodiscard]] unsigned prescale() const { return m_fm.clock_prescale(); }
+	};
+
+	// The SSG is a separate stream (mono, at its own rate), so it is a
+	// separate sound device.
+	struct SsgPart final : ResampledSoundDevice {
+		SsgPart(YM2608& parent, DeviceConfig& config);
+		~SsgPart();
+		void generateChannels(std::span<float*> bufs, unsigned num) override;
+		void setRate(unsigned rate);
+		using ResampledSoundDevice::updateStream;
+
+		YM2608& parent;
+	};
 
 	struct Timer final : Schedulable {
 		Timer(Scheduler& scheduler, YM2608& parent, unsigned tnum);
@@ -77,13 +102,15 @@ private:
 		void write(unsigned address, uint8_t value, EmuTime time) override;
 	} debuggable;
 
-	ymfm::ym2608 chip;
+	Chip chip;
 	Ram adpcmRam;
 	std::optional<Rom> rhythmRom;
 	IRQHelper irq;
 	std::array<Timer, 2> timers;
-
-	std::vector<ymfm::ym2608::output_data> outputBuffer;
+	SsgPart ssgPart;
+	// The rates the two sound devices are constructed with; reset() then
+	// finds nothing to change, before the devices are registered.
+	unsigned prescale = 6;
 
 	// ymfm calls back into this object without passing the time along
 	EmuTime now = EmuTime::zero();
