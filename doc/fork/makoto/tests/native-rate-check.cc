@@ -57,11 +57,15 @@ struct Native final : ymfm::ym2608 {
 		ymfm::ssg_engine::output_data o;
 		m_ssg.clock();
 		m_ssg.output(o);
-		// same mix as ssg_resampler<..., MixTo1=true>::write_to_output
-		return (o.data[0] + o.data[1] + o.data[2]) * 2 / 3;
+		return o.data[0] + o.data[1] + o.data[2];
 	}
 	uint32_t prescale() const { return m_fm.clock_prescale(); }
 };
+
+// generate() mixes the three SSG voices with a 2/3 factor
+// (ssg_resampler<..., MixTo1=true>::write_to_output); openMSX applies that
+// factor as the SSG device's amplification instead.
+int32_t mixed(int32_t sum) { return sum * 2 / 3; }
 
 void write(ymfm::ym2608& c, unsigned reg, uint8_t val) {
 	unsigned hi = (reg & 0x100) ? 2 : 0;
@@ -166,7 +170,7 @@ Totals run(uint8_t prescaleReg, ymfm::opn_fidelity fidelity, bool compareSsg,
 		if (compareSsg) {
 			// SSG samples that start before this FM sample see the old registers
 			ssgRep = ssgClk / outClk;
-			while (natSsg.size() * ssgRep < refSsg.size()) natSsg.push_back(nat.ssg());
+			while (natSsg.size() * ssgRep < refSsg.size()) natSsg.push_back(mixed(nat.ssg()));
 		}
 		applyUpTo(k);
 		pre = nat.prescale();
@@ -185,7 +189,7 @@ Totals run(uint8_t prescaleReg, ymfm::opn_fidelity fidelity, bool compareSsg,
 	}
 	if (compareSsg) {
 		for (size_t m = 0; (m + 1) * ssgRep <= refSsg.size(); ++m) {
-			if (m == natSsg.size()) natSsg.push_back(nat.ssg());
+			if (m == natSsg.size()) natSsg.push_back(mixed(nat.ssg()));
 			for (unsigned i = 0; i < ssgRep; ++i) {
 				++t.ssgCompared;
 				if (refSsg[m * ssgRep + i] != natSsg[m]) ++t.ssgMismatch;

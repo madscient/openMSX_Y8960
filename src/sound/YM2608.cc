@@ -196,8 +196,7 @@ int32_t YM2608::Chip::clockSsg()
 	ymfm::ssg_engine::output_data o;
 	m_ssg.clock();
 	m_ssg.output(o);
-	// The same 2/3 mix that ymfm's ssg_resampler applies
-	return (o.data[0] + o.data[1] + o.data[2]) * 2 / 3;
+	return o.data[0] + o.data[1] + o.data[2];
 }
 
 
@@ -218,9 +217,12 @@ YM2608::SsgPart::~SsgPart()
 
 float YM2608::SsgPart::getAmplificationFactorImpl() const
 {
-	// A mono device at centre balance reaches each side at 1/sqrt(2); the
-	// SSG used to be on both sides of the FM device at full level.
-	return std::numbers::sqrt2_v<float> / 32768.0f;
+	// On a real board the FM and the SSG are mixed outside the chip, so their
+	// balance depends on the board; each part has its own volume setting.
+	// This default keeps the balance of the single-stream version: ymfm's
+	// 2/3 SSG mix, and sqrt(2) because a mono device at centre balance
+	// reaches each side at 1/sqrt(2).
+	return (2.0f / 3.0f) * std::numbers::sqrt2_v<float> / 32768.0f;
 }
 
 void YM2608::SsgPart::setRate(unsigned rate)
