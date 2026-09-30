@@ -168,12 +168,17 @@ void YM2608::generateChannels(std::span<float*> bufs, unsigned num)
 	// Always clock, even when silent: the ADPCM-B status advances only here.
 	// With a single channel the buffer is not cleared beforehand, so the
 	// samples are stored, not added (see SoundDevice::mixChannels()).
+	// A silent buffer is reported as nullptr, which lets the mixer skip
+	// resampling it; OR-ing the samples keeps that test branch-free.
+	int32_t any = 0;
 	for (unsigned i = 0; i < num; ++i) {
 		int32_t l, r;
 		chip.clockFm(l, r);
 		bufs[0][2 * i + 0] = float(l);
 		bufs[0][2 * i + 1] = float(r);
+		any |= l | r;
 	}
+	if (!any) bufs[0] = nullptr;
 }
 
 
@@ -226,9 +231,13 @@ void YM2608::SsgPart::setRate(unsigned rate)
 
 void YM2608::SsgPart::generateChannels(std::span<float*> bufs, unsigned num)
 {
+	int32_t any = 0;
 	for (unsigned i = 0; i < num; ++i) {
-		bufs[0][i] = float(parent.chip.clockSsg());
+		int32_t s = parent.chip.clockSsg();
+		bufs[0][i] = float(s);
+		any |= s;
 	}
+	if (!any) bufs[0] = nullptr;
 }
 
 void YM2608::ymfm_set_timer(uint32_t tnum, int32_t duration_in_clocks)
