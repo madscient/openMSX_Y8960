@@ -7,14 +7,12 @@ set sound_driver null
 # 3906.3 Hz. check-prescale.py measures that.
 # Run with: -machine C-BIOS_MSX2+ -ext Makoto -script prescale.tcl
 # MAKOTO_TEST_OUT names a result file; the WAVs go next to it.
-# MAKOTO_SSG_CHANNEL is the sound device and channel that carry the SSG,
-# "Makoto SSG" 1 by default.
+# It records the whole mix rather than one channel: a recorded channel
+# goes through its own zero-filled buffer, not the path that is heard.
 
 set out_name $::env(MAKOTO_TEST_OUT)
 set out [open $out_name w]
 set dir [file dirname $out_name]
-set ssg_channel [expr {[info exists ::env(MAKOTO_SSG_CHANNEL)]
-                       ? $::env(MAKOTO_SSG_CHANNEL) : {{Makoto SSG} 1}}]
 
 proc lo {reg val} {
 	debug write ioports 0x14 $reg
@@ -24,8 +22,8 @@ proc lo {reg val} {
 proc select {reg} { debug write ioports 0x14 $reg }
 
 proc segment {name} {
-	global dir ssg_channel out
-	record_channels start -prefix [file join $dir makoto-prescale-$name] {*}$ssg_channel
+	global dir out
+	record start -audioonly [file join $dir makoto-prescale-$name.wav]
 	puts $out "segment $name"
 }
 
@@ -44,16 +42,16 @@ after time 1 {
 		segment p6
 		after time 0.5 {
 			if {[catch {
-				record_channels stop
+				record stop
 				select 0x2E
 				segment p3
 				after time 0.5 {
 					if {[catch {
-						record_channels stop
+						record stop
 						select 0x2F
 						segment p2
 						after time 0.5 {
-							record_channels stop
+							record stop
 							puts $out "done"
 							close $out
 							exit

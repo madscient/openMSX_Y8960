@@ -78,6 +78,7 @@ private:
 		SsgPart(YM2608& parent, DeviceConfig& config);
 		~SsgPart();
 		void generateChannels(std::span<float*> bufs, unsigned num) override;
+		[[nodiscard]] float getAmplificationFactorImpl() const override;
 		void setRate(unsigned rate);
 		using ResampledSoundDevice::updateStream;
 

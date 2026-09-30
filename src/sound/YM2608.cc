@@ -8,6 +8,8 @@
 
 #include "outer.hh"
 
+#include <numbers>
+
 namespace openmsx {
 
 // Input clocks per sample of each part, for prescaler 6, 3 and 2
@@ -164,11 +166,13 @@ void YM2608::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 void YM2608::generateChannels(std::span<float*> bufs, unsigned num)
 {
 	// Always clock, even when silent: the ADPCM-B status advances only here.
+	// With a single channel the buffer is not cleared beforehand, so the
+	// samples are stored, not added (see SoundDevice::mixChannels()).
 	for (unsigned i = 0; i < num; ++i) {
 		int32_t l, r;
 		chip.clockFm(l, r);
-		bufs[0][2 * i + 0] += float(l);
-		bufs[0][2 * i + 1] += float(r);
+		bufs[0][2 * i + 0] = float(l);
+		bufs[0][2 * i + 1] = float(r);
 	}
 }
 
@@ -207,6 +211,13 @@ YM2608::SsgPart::~SsgPart()
 	unregisterSound();
 }
 
+float YM2608::SsgPart::getAmplificationFactorImpl() const
+{
+	// A mono device at centre balance reaches each side at 1/sqrt(2); the
+	// SSG used to be on both sides of the FM device at full level.
+	return std::numbers::sqrt2_v<float> / 32768.0f;
+}
+
 void YM2608::SsgPart::setRate(unsigned rate)
 {
 	setInputRate(rate);
@@ -216,7 +227,7 @@ void YM2608::SsgPart::setRate(unsigned rate)
 void YM2608::SsgPart::generateChannels(std::span<float*> bufs, unsigned num)
 {
 	for (unsigned i = 0; i < num; ++i) {
-		bufs[0][i] += float(parent.chip.clockSsg());
+		bufs[0][i] = float(parent.chip.clockSsg());
 	}
 }
 
