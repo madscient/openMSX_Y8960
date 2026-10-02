@@ -208,8 +208,11 @@ upstream の `packagezip.py` は `README` を zip に入れない（`main` の
 
 upstream に、別の作者（maxiwamoto）による Makoto の PR がある
 （https://github.com/openMSX/openMSX/pull/2209）。2026-09-29 の時点では open で、
-Wouter Vermaelen がレビュー中。取り込まれれば upstream の `Makoto` と
-このブランチの `Makoto` が並ぶことになる。
+Wouter Vermaelen がレビュー中。
+
+**このブランチは PR が取り込まれるまでのつなぎで、取り込まれたら捨てる**
+（2026-10-02、ユーザー判断）。PR の変更には、実験や調査で要るとき以外は追従しない。
+**前提**: PR #2209 が upstream に取り込まれる見込みがある限り成立する。
 
 ### 比較（2026-09-29、PR の head `6db5b2a64` を読んで比べた）
 
@@ -346,7 +349,8 @@ Wouter は PR で、FM+ADPCM を 55.6kHz のステレオ、SSG を 250kHz のモ
 
 2・3・5 には、PR #2209 の作者による実機の報告がある（伝聞。
 2026-10-02 に PR の `doc/internal/makoto.md` と `src/3rdparty/ymfm/README.openmsx` で読んだ）。
-報告では 2 と 3 は ymfm と違い、PR は ymfm を直した。**このブランチの ymfm は直していない。**
+報告では 2 と 3 は ymfm と違い、PR は ymfm を直した。**このブランチの ymfm は直さない**
+（上の「upstream の Makoto」にある、このブランチの位置づけによる）。
 1 と 4 には報告が無く、PR も ymfm のまま（`110h` の初期値は `1Ch`）。
 
 1. **フラグマスク `110h` のリセット値は `1Ch` で、EOS・BRDY・ZERO がステータス1 に
@@ -573,4 +577,8 @@ zip は `doc/fork/makoto/tools/package-release.py <タグ名>` で作る。upstr
   - `51b4da9f4`: タイマーの試験の調整だけ
 - 記録が漏れていた `7bdef91ad`（09-30）で、PR の作者が実機の結果をもとに ymfm の
   ADPCM-B の CPU 転送を直していた。上の「ymfm の挙動」2・3・5 に書いた。
-  このブランチの ymfm は変えていない。直すかどうかは未決
+  このブランチの ymfm は変えていない
+- このブランチは PR が取り込まれるまでのつなぎとし、PR の変更には実験や調査以外では
+  追従しないと決めた（ユーザー判断。上の「upstream の Makoto」）。
+  見送った: ymfm の ADPCM-B の CPU 転送を実機の報告に合わせて直すこと。理由: 同じ判断。
+  利用側の試験が RAM の境界で落ちたら、上の「ymfm の挙動」2・3・5 を見る
