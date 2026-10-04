@@ -94,7 +94,8 @@ msbuild には `-p:PlatformToolset=v145 -p:VcpkgEnabled=false` が要る。
 ## 7. 出す前に
 
 `sh doc/fork/tools/check-before-push.sh` を通す。
-著者情報、trailer、ローカル固有のパスの混入、未コミット、文書の整合を見る。
+著者情報、trailer、ローカル固有のパスの混入、未コミット、文書の整合、
+annotated タグが見えていないかを見る。
 
 fork に push したオブジェクトは**親リポジトリから SHA で辿れて、後から消せない**。
 点検は push の前にしか意味が無い。
@@ -105,6 +106,10 @@ fork に push したオブジェクトは**親リポジトリから SHA で辿�
 
 決まりと手順は `doc/fork/release/README.md`。**タグは lightweight で作る。**
 annotated にすると `build/version.py` がビルド中に例外で止まる。
+
+**upstream のタグをローカルに取り込まない。** upstream の fetch にはブランチ名を付ける
+（`git fetch upstream master`）。ブランチ名なしの `git fetch upstream` は annotated タグを
+取り込み、exe の版表示が `21.0-unknown` でなくなる。設定と確かめ方は `doc/fork/README.md`。
 
 `CLAUDE.md` と `doc/fork/` は配布物に入れない。ソースアーカイブからは
 `.gitattributes` の `export-ignore` で外している。`doc/fork/` に置いたものは

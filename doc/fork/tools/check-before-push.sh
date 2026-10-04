@@ -164,7 +164,7 @@ if git rev-parse --verify -q upstream/master >/dev/null; then
 		fail=1
 	fi
 else
-	echo "  飛ばす（upstream/master が無い。git fetch upstream で取れる）"
+	echo "  飛ばす（upstream/master が無い。git fetch upstream master で取れる）"
 fi
 
 echo "== 6. 文書の整合 =="
@@ -172,6 +172,18 @@ if python doc/fork/tools/check-docs.py; then
 	:
 else
 	fail=1
+fi
+
+echo "== 7. annotated タグ =="
+# push とは関係が無いが、リリースの手順はビルドの前にこの点検を通るのでここで見る。
+# exe の版表示は git describe から作られ、ビルドした後では直せない。
+# annotated タグが見えると 21.0-unknown でなくなり、フォークのタグなら
+# build/version.py が例外で止まる。
+if desc=$(git describe 2>/dev/null); then
+	echo "  NG: git describe が $desc を返す（annotated タグがローカルに在る）"
+	fail=1
+else
+	echo "  OK"
 fi
 
 echo
