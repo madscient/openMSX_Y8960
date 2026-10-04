@@ -87,6 +87,24 @@ push の前に `doc/fork/tools/check-before-push.sh` を通すこと。
 **載せ替えたらビルドし直す。** upstream が触ったファイルによっては再ビルドの範囲が
 広い。手順は `doc/fork/build/README.md`。
 
+### upstream のタグは取り込まない
+
+upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `git describe` が
+成功し、exe の版表示が `21.0-unknown` でなくなる（`doc/fork/release/README.md` §1）。
+
+| fetch の形 | upstream のタグ |
+|---|---|
+| `git fetch upstream master`（ブランチ名を付ける） | 取らない |
+| `git fetch upstream`（ブランチ名なし） | 取る。全ブランチのリモート追跡ブランチも作る |
+| `remote.upstream.tagOpt` を `--no-tags` にした上での `git fetch upstream` | 取らない |
+
+（**確認済み**: git 2.52 で、設定の無いリモートに `git fetch --dry-run` を 3 通り走らせ、
+`[new tag]` の行が出るかを見た）
+
+クローンを作ったら、一度 `git config remote.upstream.tagOpt --no-tags` を設定しておく。
+この設定はクローンごとで、リポジトリには入らない。設定の無いクローンで取り込んで
+しまったことは、`check-before-push.sh` の 7 が `git describe` の成功で知らせる。
+
 ## 外部リポジトリ
 
 本リポジトリには取り込んでいない情報源。

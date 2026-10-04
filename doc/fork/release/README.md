@@ -9,7 +9,7 @@ GitHub の Releases にこのフォークのビルドを出すための決まり
 |---|---|---|
 | タグ名 | `<upstream の版>-y8960.<n>`。初回は `21.0-y8960.1` | ユーザー判断。upstream の `RELEASE_xx_x` と衝突しない。`<upstream の版>` は `build/version.py` の `packageVersionNumber`。`main` は 21.0 以降の開発版に載っているので、厳密には 21.0 そのものではない |
 | タグの種類 | **lightweight**（`gh release create` に作らせる） | annotated にすると `git describe` に拾われ、`build/version.py` が `y8960.1` から数字を取れずに例外で止まる（**確認済み**: 使い捨てリポジトリで annotated タグを付けて `git describe` が `21.0-y8960.1` を返すことを見て、その文字列を `extractGitRevision` / `extractNumberFromGitRevision` と同じ正規表現に通した）。lightweight なら describe は失敗し、ビルドは `unknown` で通る（**確認済み**: 同じリポジトリで lightweight タグを付けて describe が終了コード 128） |
-| exe の版表示 | 触らない。`21.0-unknown` になる | ユーザー判断。`build/version.py` に接尾辞を足すと、upstream が版を上げるたびに同じ行でリベースが衝突する。**前提**: フォークのタグに annotated を使わない限り成立する |
+| exe の版表示 | 触らない。`21.0-unknown` になる | ユーザー判断。`build/version.py` に接尾辞を足すと、upstream が版を上げるたびに同じ行でリベースが衝突する。**前提**: `git describe` が失敗する限り成立する。つまり、フォークのタグに annotated を使わず、upstream の annotated タグ（`RELEASE_21_0` など）もローカルに取り込まないこと。upstream のタグが見えると版表示は `21.0-<数>-g<hash>` の形になる（**確認済み**: upstream のタグを取り込んだクローンで `git describe --dirty` が返した `RELEASE_21_0-530-g…` を、`extractGitRevision` / `extractNumberFromGitRevision` と同じ正規表現に通した。ビルドはしていない）。取り込まないための設定は `doc/fork/README.md` の「upstream のタグは取り込まない」。取り込んでしまったことは `check-before-push.sh` の 7 が知らせる |
 | 種別 | Pre-release | ユーザー判断。ハードウェア自体が WIP で挙動が変わる前提 |
 | リリースノート | 英語 | ユーザー判断。ルートの `README` と揃える |
 | 配布物 | Windows x64 のバイナリ zip 1 本 | このフォークでビルド実績があるのが Windows x64 だけ |
