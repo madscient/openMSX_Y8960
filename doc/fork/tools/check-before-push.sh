@@ -140,10 +140,15 @@ echo "== 5. 上流のファイルへの変更 =="
 # ときだけにする。増えたことに push の前に気づくための網であって、
 # 一覧そのものは doc/fork/upstream-touched.txt にある。
 #
+# 比べる相手は upstream/master の先端ではなく、フォークが載っている基点。
+# 先端と比べると、基点より後に upstream 自身が変えたファイルまで数えてしまい、
+# upstream を fetch しただけで結果が変わる。
+#
 # 突き合わせは awk で行う。プロセス置換や comm を使うと sh の実装に依存する。
 if git rev-parse --verify -q upstream/master >/dev/null; then
+	base=$(git merge-base HEAD upstream/master)
 	expected=$(sed 's/#.*//' doc/fork/upstream-touched.txt | awk 'NF {print $1}' | sort)
-	actual=$(git diff --name-status upstream/master | awk '$1 == "M" {print $2}' | sort)
+	actual=$(git diff --name-status "$base" | awk '$1 == "M" {print $2}' | sort)
 	if [ "$expected" = "$actual" ]; then
 		echo "  OK ($(printf '%s
 ' "$actual" | awk 'NF' | wc -l | tr -d ' ') 件)"
