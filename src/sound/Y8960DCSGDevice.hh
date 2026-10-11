@@ -2,7 +2,7 @@
 #define Y8960DCSGDEVICE_HH
 
 #include "MSXDevice.hh"
-#include "Y8960DCSG.hh"
+#include "SN76489.hh"
 #include "serialize_meta.hh"
 
 namespace openmsx {
@@ -33,7 +33,7 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	Y8960DCSG dcsg;
+	SN76489 dcsg;
 	const bool useIoEnabler;
 	bool ioEnabled;
 };
