@@ -6,7 +6,7 @@ namespace openmsx {
 
 Y8960DCSGDevice::Y8960DCSGDevice(const DeviceConfig& config)
 	: MSXDevice(config)
-	, dcsg(getName(), config)
+	, dcsg(config, getName())
 	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
 	, ioEnabled(!useIoEnabler)
 {
