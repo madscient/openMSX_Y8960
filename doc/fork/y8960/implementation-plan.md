@@ -1132,11 +1132,12 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 - **Makoto（確認済み）**: `-testconfig -machine C-BIOS_MSX2+ -ext Makoto` が終了コード 0。
   `-ext HRA_Y8960 -ext Makoto` を同時に挿しても終了コード 0。サウンドデバイスと
   デバッガブルの名前は `doc/fork/makoto/README.md` の §2 に書いた
-- **未決**: upstream の Makoto は、YM2608 のリズム音のデータをソースに内蔵している
+- upstream の Makoto は、YM2608 のリズム音のデータをソースに内蔵している
   （`src/sound/YM2608AdpcmRom.hh`）。独自の実装では、再配布の根拠が確かめられないとして
   同梱しなかったデータである。内蔵してよいのかを upstream に尋ねた
-  （https://github.com/openMSX/openMSX/issues/2238 ）。この追従を push するか、
-  配布物にどう入れるかは、ユーザーが決める
+  （https://github.com/openMSX/openMSX/issues/2238 ）。
+  **決定（ユーザー判断）**: この追従は push する。リリースは返事を待ってから出す
+  （`doc/fork/release/README.md` の §1）
 - フォークが写しを持つ元ファイルでは、`AY8910` にクロックを変える関数が 1 つ足された
   だけ（`setClockFrequency`）。`Y8960SsgCore` には要らない
 
