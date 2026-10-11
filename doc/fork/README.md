@@ -17,6 +17,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `y8960/hardware-notes.md` | Y8960 のハードウェア仕様の調査結果。出典と確度つき |
 | `y8960/implementation-plan.md` | 実装計画・決定・実行経緯 |
 | `y8960/tests/` | 手で回す検証スクリプト |
+| `makoto/README.md` | Makoto（YM2608）の独自実装を持っていた間に分かったこと。実装は upstream のものを使う |
 | `build/README.md` | ビルド環境。マシンごとの詰まりどころと手順 |
 | `release/README.md` | GitHub Releases に出すときの決まりと手順 |
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
