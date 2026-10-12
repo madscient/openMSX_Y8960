@@ -198,6 +198,14 @@ upstream に追従した時点で、このフォークのソースとバイナ�
   （本物の ROM のイメージかもしれないため）。追加のコミットとして PR に載せた
   （ユーザーの承認を得て push）。push の後、SonarCloud の品質ゲートは OK、未解決の
   指摘は 0 件（**確認済み**: SonarCloud の API）。本物の ROM の往復は、直した後も同一
+- **2026-10-12 に upstream/master に取り込まれた**（`c596782ad`。作者は madscient、
+  コミッタは Wouter）。PR の表示は「closed」。Wouter がスクリプトを外して取り込んだ。
+  理由は「ほかの拡張でも ROM を作る道具は付けていない。正しいファイルはインターネットで
+  見つけるのが難しくない」（伝聞）。ROM が必須であること、`Makoto.xml` の `<rom>`、
+  内蔵データの削除はそのまま入っている（**確認済み**: upstream/master を読んだ）
+  - 取り込まれた `YM2608.hh` のコメントに、外されたスクリプトへの言及が 1 行残っている
+    （`Contrib/ym2608_rhythm_rom.py can build one from WAV files`）
+  - スクリプトは PR のブランチ（コミット `7d64be399`）にだけ残っている
 - PR のブランチはフォークの `ym2608-external-rhythm-rom`。upstream/master から切ってあり、
   フォークの変更は含まない。取り込まれるか閉じられるかしたら消す
 
