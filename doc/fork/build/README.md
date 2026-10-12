@@ -227,6 +227,26 @@ OPENMSX_USER_DATA="$(pwd)/derived/openmsx-user" \
 openmsx.exe -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script probe.tcl
 ```
 
+**失敗や警告の理由も、同じく Tcl で書き出せば見える。** 終了コードは「起動しなかった」
+ことしか教えない。拒否されることを確かめる試験では、理由の文面まで見ないと、
+別の理由（ファイルが見つからない等）で落ちていても区別がつかない。
+
+```tcl
+# 先頭の 2 行（CLAUDE.md §5）の後に置く
+set ::f [open $::env(OUT) w]
+proc log_message {message level} { puts $::f "message ($level): $message" }
+set message_callback log_message          ;# 警告や情報の文面
+if {[catch {ext Makoto} err]} {           ;# -ext で挿すと失敗が起動ごと止まるので、
+	puts $::f "failed: $err"              ;# 起動後に Tcl から挿してエラー文を取る
+}
+close $::f
+exit
+```
+
+（**確認済み**: 2026-10-13、Win10 機。ROM が無い場合の「Couldn't find ROM file」、
+大きさの違う ROM での「Wrong ROM」のエラー文と、SHA1 が合わない ROM での警告が、
+どれもファイルに出た）
+
 ### 4.1 実機の BIOS ROM
 
 C-BIOS 以外の機種を動かすには BIOS ROM が要る。openMSX は
