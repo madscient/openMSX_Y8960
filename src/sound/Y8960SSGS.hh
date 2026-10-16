@@ -2,6 +2,7 @@
 #define Y8960SSGS_HH
 
 #include "ResampledSoundDevice.hh"
+#include "Y8960Pan.hh"
 #include "Y8960SsgCore.hh"
 
 #include "EmuTime.hh"
@@ -9,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -16,23 +18,23 @@ namespace openmsx {
 
 class AY8910Periphery;
 
-/** The SSGS block of the Y8960: two YM2149 units with a panpot per channel.
+/** The SSGS block of the Y8960: two YM2149 units, each channel with its own
+  * volume and pan.
   *
-  * Register map, same as the YMZ705 (SSGS) and YMZ732 (SSGS2):
+  * Register map (the `ssg` sheet of the specification):
   *
-  *   $00-$1F  unit 0        $20-$3F  unit 1
+  *   00h-0Fh  unit 0, YM2149 registers
+  *   10h-1Fh  unit 1, YM2149 registers
+  *   20h-22h  volume of unit 0 channel A, B, C   (0..128, 128 is unity)
+  *   24h-26h  volume of unit 1 channel A, B, C
+  *   28h-2Ah  pan of unit 0 channel A, B, C      (1 left, 128 centre, 255 right)
+  *   2Ch-2Eh  pan of unit 1 channel A, B, C
   *
-  * and within a unit:
-  *
-  *   $00-$0D  YM2149 registers
-  *   $0E-$0F  absent, unless the primary unit carries the GPIO
-  *   $10-$12  4 bit panpot for channel A, B and C
-  *
-  * $40 and up is the ADPCM and sequencer area of those parts, which the Y8960
-  * does not use.
+  * 23h, 27h, 2Bh and 2Fh are not connected. 0Eh/0Fh (the GPIO) are absent
+  * unless the primary unit carries one.
   *
   * This is one stereo sound device rather than two mono ones because the
-  * panpot is per channel, while openMSX only has a balance per device.
+  * pan is per channel, while openMSX only has a balance per device.
   */
 class Y8960SSGS final : public ResampledSoundDevice
 {
@@ -41,9 +43,10 @@ public:
 	static constexpr unsigned CHANNELS_PER_UNIT = 3;
 	static constexpr unsigned NUM_CHANNELS = NUM_UNITS * CHANNELS_PER_UNIT;
 
-	/** Highest panpot value; the register is 4 bits on the 705 and 732. */
-	static constexpr uint8_t PAN_MAX = 15;
-	static constexpr uint8_t PAN_CENTER = (PAN_MAX + 1) / 2;
+	static constexpr unsigned UNIT_REGS = 0x10;
+	static constexpr unsigned VOLUME_BASE = 0x20;
+	static constexpr unsigned PAN_BASE = 0x28;
+	static constexpr unsigned REG_END = 0x30;
 
 	/** @param periphery what the primary unit's GPIO drives, or nullptr for
 	  *                   a block without one. */
@@ -64,17 +67,22 @@ private:
 	void generateChannels(std::span<float*> bufs, unsigned num) override;
 	[[nodiscard]] float getAmplificationFactorImpl() const override;
 
-	static void panGains(uint8_t pan, float& gainL, float& gainR);
 	void measureDc();
+	void updateGain(unsigned channel);
 	[[nodiscard]] bool isGpioReg(unsigned unit_, unsigned sub) const;
+	/** The channel a volume or pan register (20h-2Fh) addresses, or
+	  * nothing for the four unconnected slots. */
+	[[nodiscard]] static std::optional<unsigned> mixChannel(unsigned reg);
 
 private:
 	std::array<Y8960SsgCore, NUM_UNITS> unit;
 	const bool hasGpio;
+	std::array<uint8_t, NUM_CHANNELS> volume;
 	std::array<uint8_t, NUM_CHANNELS> pan;
+	std::array<y8960::PanGain, NUM_CHANNELS> gain; // derived from volume and pan
 
 	/** The core's output is unipolar, so a silent channel does not sit at
-	  * zero. That offset has to come off before the panpot is applied,
+	  * zero. That offset has to come off before the pan is applied,
 	  * otherwise the DC leaks into the stereo image. */
 	std::array<float, NUM_CHANNELS> dc;
 

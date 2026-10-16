@@ -2,7 +2,6 @@
 
 #include "YM2413Burczynski.hh"
 #include "YM2413NukeYKT.hh"
-#include "YM2413NukeYKTBanked.hh"
 #include "YM2413Okazaki.hh"
 #include "YM2413OriginalNukeYKT.hh"
 
@@ -52,8 +51,6 @@ static std::unique_ptr<YM2413Core> createCore(const DeviceConfig& config)
 		return std::make_unique<YM2413NukeYKT::YM2413>();
 	} else if (core == "Original-NukeYKT") {
 		return std::make_unique<YM2413OriginalNukeYKT::YM2413>(); // for debug
-	} else if (core == "NukeYKT-Banked") {
-		return std::make_unique<YM2413NukeYKTBanked::YM2413>();
 	} else if (core.empty()) {
 		// The preferred way to select the core is via the <core> tag.
 		// But for backwards compatibility, when that tag is missing,
@@ -65,7 +62,7 @@ static std::unique_ptr<YM2413Core> createCore(const DeviceConfig& config)
 		}
 	}
 	throw MSXException("Unknown YM2413 core '", core,
-	                   "'. Must be one of 'Okazaki', 'Burczynski', 'NukeYKT', 'Original-NukeYKT', 'NukeYKT-Banked'.");
+	                   "'. Must be one of 'Okazaki', 'Burczynski', 'NukeYKT', 'Original-NukeYKT'.");
 }
 
 static constexpr auto INPUT_RATE = unsigned(cstd::round(YM2413Core::CLOCK_FREQ / 72.0));

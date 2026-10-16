@@ -35,7 +35,7 @@ proc run_test {} {
 
 	# $07 の b6=0 で port A を入力に、b7=1 で port B を出力にする
 	w 0x07 0x80
-	w 0x27 0x80
+	w 0x17 0x80
 
 	# 同じジョイスティック/カセットを見ているので、本体 PSG と一致するはず
 	set a [debug read "Y8960 SSGS regs" 0x0E]
@@ -46,10 +46,10 @@ proc run_test {} {
 	puts $OUT [format "2. unit0 \$0F write-back = 0x%02X (expect 0x5A)" \
 		[debug read "Y8960 SSGS regs" 0x0F]]
 
-	w 0x2E 0x11
-	w 0x2F 0x22
-	puts $OUT [format "3. unit1 \$2E=0x%02X \$2F=0x%02X (expect FF FF, the secondary has no GPIO)" \
-		[debug read "Y8960 SSGS regs" 0x2E] [debug read "Y8960 SSGS regs" 0x2F]]
+	w 0x1E 0x11
+	w 0x1F 0x22
+	puts $OUT [format "3. unit1 \$1E=0x%02X \$1F=0x%02X (expect FF FF, the secondary has no GPIO)" \
+		[debug read "Y8960 SSGS regs" 0x1E] [debug read "Y8960 SSGS regs" 0x1F]]
 
 	close $OUT
 	exit

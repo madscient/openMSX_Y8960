@@ -21,7 +21,9 @@ Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTi
 	, unit{Y8960SsgCore(name_ + " unit0", config, time, periphery),
 	       Y8960SsgCore(name_ + " unit1", config, time)}
 	, hasGpio(periphery != nullptr)
+	, volume{}
 	, pan{}
+	, gain{}
 	, dc{}
 	, debuggable(config.getMotherBoard(), getName())
 {
@@ -37,7 +39,9 @@ Y8960SSGS::~Y8960SSGS()
 void Y8960SSGS::reset(EmuTime time)
 {
 	for (auto& u : unit) u.reset(time);
-	std::ranges::fill(pan, PAN_CENTER);
+	std::ranges::fill(volume, 128);
+	std::ranges::fill(pan, 128);
+	for (auto ch : xrange(NUM_CHANNELS)) updateGain(ch);
 	measureDc();
 }
 
@@ -57,23 +61,11 @@ void Y8960SSGS::measureDc()
 	}
 }
 
-// The datasheet does not say how a panpot value maps to left/right levels, so
-// this follows the YMZ280B of the same family: both sides open at the centre,
-// the opposite side closing linearly as the value moves away, and the two
-// extreme steps hard over to one side.
-void Y8960SSGS::panGains(uint8_t pan_, float& gainL, float& gainR)
+void Y8960SSGS::updateGain(unsigned channel)
 {
-	if (pan_ == PAN_CENTER) {
-		gainL = 1.0f;
-		gainR = 1.0f;
-	} else if (pan_ < PAN_CENTER) {
-		gainL = 1.0f;
-		gainR = (pan_ == 0) ? 0.0f
-		                    : float(pan_ - 1) / float(PAN_CENTER - 1);
-	} else {
-		gainL = float(PAN_MAX - pan_) / float(PAN_MAX - PAN_CENTER);
-		gainR = 1.0f;
-	}
+	auto g = y8960::panGain(pan[channel]);
+	float v = y8960::volumeGain(volume[channel]);
+	gain[channel] = {.left = g.left * v, .right = g.right * v};
 }
 
 // Only the primary unit has the GPIO, and only when the Y8960 is built into an
@@ -83,18 +75,30 @@ bool Y8960SSGS::isGpioReg(unsigned unit_, unsigned sub) const
 	return hasGpio && (unit_ == 0) && (sub >= 0x0E) && (sub <= 0x0F);
 }
 
+std::optional<unsigned> Y8960SSGS::mixChannel(unsigned reg)
+{
+	// 20h-22h / 24h-26h and 28h-2Ah / 2Ch-2Eh: unit in bit 2, channel in
+	// bits 0-1, with channel 3 the unconnected slot
+	unsigned slot = reg & 7;
+	if ((slot & 3) == 3) return std::nullopt;
+	return (slot >> 2) * CHANNELS_PER_UNIT + (slot & 3);
+}
+
 void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 {
-	if (reg >= 0x40) return; // ADPCM / sequencer area, not used by the Y8960
+	if (reg >= REG_END) return;
 
 	updateStream(time);
 
-	unsigned u = (reg >> 5) & 1;
-	unsigned sub = reg & 0x1F;
-	if ((sub >= 0x10) && (sub <= 0x12)) {
-		pan[u * CHANNELS_PER_UNIT + (sub - 0x10)] = value & PAN_MAX;
-	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-		unit[u].writeRegister(sub, value, time);
+	if (reg < VOLUME_BASE) {
+		unsigned u = reg / UNIT_REGS;
+		unsigned sub = reg % UNIT_REGS;
+		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
+			unit[u].writeRegister(sub, value, time);
+		}
+	} else if (auto ch = mixChannel(reg)) {
+		((reg >= PAN_BASE) ? pan : volume)[*ch] = value;
+		updateGain(*ch);
 	}
 }
 
@@ -102,28 +106,32 @@ uint8_t Y8960SSGS::readRegister(unsigned reg, EmuTime time)
 {
 	// Not peekRegister(): reading a GPIO register latches what the periphery
 	// returned, which a peek must not do.
-	if (reg >= 0x40) return 0xFF;
+	if (reg >= REG_END) return 0xFF;
 
-	unsigned u = (reg >> 5) & 1;
-	unsigned sub = reg & 0x1F;
-	if ((sub >= 0x10) && (sub <= 0x12)) {
-		return pan[u * CHANNELS_PER_UNIT + (sub - 0x10)];
-	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-		return unit[u].readRegister(sub, time);
+	if (reg < VOLUME_BASE) {
+		unsigned u = reg / UNIT_REGS;
+		unsigned sub = reg % UNIT_REGS;
+		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
+			return unit[u].readRegister(sub, time);
+		}
+	} else if (auto ch = mixChannel(reg)) {
+		return ((reg >= PAN_BASE) ? pan : volume)[*ch];
 	}
 	return 0xFF;
 }
 
 uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const
 {
-	if (reg >= 0x40) return 0xFF;
+	if (reg >= REG_END) return 0xFF;
 
-	unsigned u = (reg >> 5) & 1;
-	unsigned sub = reg & 0x1F;
-	if ((sub >= 0x10) && (sub <= 0x12)) {
-		return pan[u * CHANNELS_PER_UNIT + (sub - 0x10)];
-	} else if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-		return unit[u].peekRegister(sub, time);
+	if (reg < VOLUME_BASE) {
+		unsigned u = reg / UNIT_REGS;
+		unsigned sub = reg % UNIT_REGS;
+		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
+			return unit[u].peekRegister(sub, time);
+		}
+	} else if (auto ch = mixChannel(reg)) {
+		return ((reg >= PAN_BASE) ? pan : volume)[*ch];
 	}
 	return 0xFF;
 }
@@ -136,7 +144,7 @@ float Y8960SSGS::getAmplificationFactorImpl() const
 void Y8960SSGS::generateChannels(std::span<float*> bufs, unsigned num)
 {
 	// The cores produce mono; collect that first and then spread it over
-	// the stereo output with the panpot.
+	// the stereo output with the volume and the pan.
 	std::vector<float> scratch(size_t(num) * CHANNELS_PER_UNIT);
 
 	for (auto u : xrange(NUM_UNITS)) {
@@ -152,14 +160,13 @@ void Y8960SSGS::generateChannels(std::span<float*> bufs, unsigned num)
 				bufs[ch] = nullptr;
 				continue;
 			}
-			float gainL, gainR;
-			panGains(pan[ch], gainL, gainR);
+			const auto& g = gain[ch];
 			const float* src = &scratch[size_t(c) * num];
 			float offset = dc[ch];
 			for (auto i : xrange(num)) {
 				float v = src[i] - offset;
-				bufs[ch][2 * i + 0] += v * gainL;
-				bufs[ch][2 * i + 1] += v * gainR;
+				bufs[ch][2 * i + 0] += v * g.left;
+				bufs[ch][2 * i + 1] += v * g.right;
 			}
 		}
 	}
@@ -168,7 +175,7 @@ void Y8960SSGS::generateChannels(std::span<float*> bufs, unsigned num)
 // SimpleDebuggable
 
 Y8960SSGS::Debuggable::Debuggable(MSXMotherBoard& motherBoard_, const std::string& name_)
-	: SimpleDebuggable(motherBoard_, name_ + " regs", "Y8960 SSGS", 0x40)
+	: SimpleDebuggable(motherBoard_, name_ + " regs", "Y8960 SSGS", REG_END)
 {
 }
 
@@ -187,10 +194,12 @@ void Y8960SSGS::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
 template<typename Archive>
 void Y8960SSGS::serialize(Archive& ar, unsigned /*version*/)
 {
-	ar.serialize("unit0", unit[0],
-	             "unit1", unit[1],
-	             "pan",   pan);
+	ar.serialize("unit0",  unit[0],
+	             "unit1",  unit[1],
+	             "volume", volume,
+	             "pan",    pan);
 	if constexpr (Archive::IS_LOADER) {
+		for (auto ch : xrange(NUM_CHANNELS)) updateGain(ch);
 		measureDc();
 	}
 }
