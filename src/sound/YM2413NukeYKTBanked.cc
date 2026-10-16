@@ -287,7 +287,7 @@ void YM2413::reset()
 	for (auto& w : writes) w.port = uint8_t(-1);
 	write_fm_cycle = uint8_t(-1);
 	write_data = fm_data = write_address = 0;
-	fast_fm_rewrite = test_mode_active = false;
+	fast_fm_rewrite = fm_write_postponed = test_mode_active = false;
 
 	eg_counter_state = 3;
 	eg_timer = eg_timer_shift = eg_timer_shift_lock = eg_timer_lock = 0;
@@ -679,11 +679,11 @@ NEVER_INLINE YM2413::Patch* YM2413::getPatchPtr(uint8_t num)
 
 NEVER_INLINE void YM2413::doRegWrite(uint8_t channel)
 {
-	if (write_address < 0x50) {
+	if (fm_write_postponed) {
+		fm_write_postponed = false; // try again in 18 steps
+	} else {
 		write_fm_cycle = uint8_t(-1);
 		doRegWrite(write_address & 0xf0, channel, fm_data);
-	} else {
-		write_address -= 0x50; // try again in 18 steps
 	}
 }
 
@@ -729,13 +729,13 @@ NEVER_INLINE void YM2413::doIO(uint32_t cycles_plus_1, Write& write)
 		} else if (write_address < 0x50) {
 			write_fm_cycle = write_address & 0xf;
 			fm_data = write.value;
-			if (!fast_fm_rewrite && (write_fm_cycle == cycles_plus_1)) {
-				write_address += 0x50; // postpone for 18 steps
-			}
 			// First fm-register write takes one cycle longer than
 			// subsequent writes to the same register. When the address
 			// is changed (even if to the same value) then there's again
-			// one cycle penalty.
+			// one cycle penalty. A data write that arrives while an
+			// earlier one is still postponed replaces it, as on the
+			// original Nuked-OPLL.
+			fm_write_postponed = !fast_fm_rewrite && (write_fm_cycle == cycles_plus_1);
 			fast_fm_rewrite = true;
 		}
 	} else {
@@ -1061,14 +1061,15 @@ void YM2413::writePort(bool port, uint8_t value, int cycle_offset)
 
 	// only needed for peekRegs()
 	if (port == 0) {
-		latch = value & 63;
-	} else {
+		latch = value;
+	} else if (latch < regs.size()) {
 		regs[latch] = value;
 	}
 }
 
 void YM2413::pokeReg(uint8_t reg, uint8_t value)
 {
+	if (reg >= regs.size()) return;
 	regs[reg] = value;
 	if (reg < 0x10) {
 		doModeWrite(reg, value);
@@ -1081,7 +1082,7 @@ void YM2413::pokeReg(uint8_t reg, uint8_t value)
 
 std::span<const uint8_t, 64> YM2413::peekRegs() const
 {
-	return regs;
+	return std::span<const uint8_t, 64>(regs.data(), 64);
 }
 
 float YM2413::getAmplificationFactor() const
@@ -1123,6 +1124,7 @@ void YM2413::serialize(Archive& ar, unsigned /*version*/)
 	             "write_address", write_address,
 	             "write_fm_cycle", write_fm_cycle,
 	             "fast_fm_rewrite", fast_fm_rewrite,
+	             "fm_write_postponed", fm_write_postponed,
 	             "test_mode_active", test_mode_active);
 
 	ar.serialize("eg_timer", eg_timer,
@@ -1171,7 +1173,7 @@ void YM2413::serialize(Archive& ar, unsigned /*version*/)
 		// Restore these from register values:
 		//   fnum, block, p_ksl, p_incr, p_ksr_freq, sk_on, vol8,
 		//   inst, p_inst, rhythm, testMode, patches[0]
-		for (auto i : xrange(uint8_t(64))) {
+		for (auto i : xrange(uint8_t(regs.size()))) {
 			pokeReg(i, regs[i]);
 		}
 	}
