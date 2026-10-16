@@ -76,6 +76,8 @@ public:
 	void writePort(bool port, uint8_t value, int cycle_offset) override;
 	void pokeReg(uint8_t reg, uint8_t value) override;
 	[[nodiscard]] std::span<const uint8_t, 64> peekRegs() const override;
+	/** The whole register mirror, past the 64 bytes the interface shows. */
+	[[nodiscard]] std::span<const uint8_t> peekAllRegs() const { return regs; }
 	void generateChannels(std::span<float*, 9 + 5> out, uint32_t n) override;
 	[[nodiscard]] float getAmplificationFactor() const override;
 	void setSpeed(double speed) override;

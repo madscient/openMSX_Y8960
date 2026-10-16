@@ -123,7 +123,7 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	}
 
 	auto& motherBoard = getMotherBoard();
-	opll  = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll");
+	opll  = findWiredDevice<Y8960OPLLDevice>(motherBoard, config, "opll");
 	opl2  = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2");
 	ssgs  = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
 	timer = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");

@@ -21,10 +21,11 @@ The cartridge is the extension HRA_Y8960 (share/extensions/HRA_Y8960.xml):
 
 It is built from these devices:
 
-    Y8960-OPLL       YM2413 with a per-channel preset tone bank
+    Y8960-OPLL       YM2413 with a preset tone bank and a pan per channel
     Y8960-OPL2       YM3812 with waveform select and an ADPCM-B
     Y8960-ADPCM-RAM  the 256KB ADPCM sample memory
-    Y8960-SSGS       two YM2149-compatible SSGs with 4-bit panpots
+    Y8960-SSGS       two YM2149-compatible SSGs with a volume and a pan
+                     per channel
     MSX-TIMER        the cartridge's timer
     Y8960-MIXER      the cartridge's digital mixer and output switch
     Y8960 ROM type   SCC, the cartridge's mapper, its I/O enablers and the

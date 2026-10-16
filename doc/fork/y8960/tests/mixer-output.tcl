@@ -14,7 +14,7 @@
 #
 # 本体 PSG と SSGS は A0h-A2h で重なっている。片方だけを鳴らすために、
 #  - 前半は SSGS の I/O を閉じたまま書く（本体 PSG にしか届かない）
-#  - 後半は SSGS 系統 1 ($20-) を使い、本体 PSG はデバッガブルで黙らせる
+#  - 後半は SSGS 系統 1 (10h-) を使い、本体 PSG はデバッガブルで黙らせる
 #    （C-BIOS のレジスタ番号は 0-15 にマスクされるので系統 1 には届かない）
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
@@ -61,7 +61,7 @@ proc step2 {} { capture psg_y8960 y8960 step3 }
 # 後半: SSGS 系統 1 だけが鳴る
 proc step3 {} {
 	mem_write 0x7FFF 0x10
-	w 0x20 0x40 ; w 0x21 0x01 ; w 0x27 0x3E ; w 0x28 0x0F
+	w 0x10 0x40 ; w 0x11 0x01 ; w 0x17 0x3E ; w 0x18 0x0F
 	debug write "PSG regs" 7 0x3F
 	debug write "PSG regs" 8 0x00
 	capture ssgs_y8960 y8960 step4

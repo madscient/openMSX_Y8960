@@ -3,7 +3,8 @@
 
   python check-ssgs-panpot.py <WAV のあるディレクトリ>
 
-パンポットが効いていなければ left/right も center と同じ L=R になる。
+定位が効いていなければ left/right も center と同じ L=R になり、
+音量が効いていなければ half は center と同じ大きさになる。
 そこが判別力のある部分である。
 """
 import struct
@@ -24,7 +25,7 @@ def peaks(path):
 
 def main(directory):
     got = {name: peaks(f"{directory}/{name}.wav")
-           for name in ("center", "left", "right", "unit1")}
+           for name in ("center", "left", "right", "half", "unit1")}
     for name, (l, r) in got.items():
         print(f"{name:7s} L_peak={l:6d} R_peak={r:6d}")
 
@@ -33,10 +34,16 @@ def main(directory):
         failures.append("center が無音。音が鳴っていない")
     if got["center"][0] != got["center"][1]:
         failures.append("center で L と R が違う")
+    if got["center"][0] >= 32767:
+        failures.append("center がクリップしている。half の比較ができない")
     if got["left"][0] == 0 or got["left"][1] != 0:
         failures.append("left が左に振り切れていない")
     if got["right"][1] == 0 or got["right"][0] != 0:
         failures.append("right が右に振り切れていない")
+    # 音量 64 は 128 の半分。16bit への丸めと直流分の除去で数 LSB はずれる
+    want = got["center"][0] / 2
+    if abs(got["half"][0] - want) > want * 0.03 + 2:
+        failures.append(f"half が center の半分でない (want {want:.0f})")
     if got["unit1"][0] == 0 and got["unit1"][1] == 0:
         failures.append("unit1 が無音。SSG 系統 1 が鳴っていない")
 

@@ -7,7 +7,7 @@
 #include "MSXTimer.hh"
 #include "Y8960OPL2Device.hh"
 #include "Y8960SSGSDevice.hh"
-#include "Y8960OPLL.hh"
+#include "Y8960OPLLDevice.hh"
 
 namespace openmsx {
 
@@ -43,7 +43,7 @@ private:
 	unsigned int convAddressToRegion(uint16_t address) const;
 
 private:
-	Y8960OPLL *opll;
+	Y8960OPLLDevice *opll;
 	Y8960OPL2Device *opl2;
 	Y8960SSGSDevice *ssgs;
 	MSXTimer *timer;

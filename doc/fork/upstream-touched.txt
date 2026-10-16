@@ -20,4 +20,3 @@ src/memory/RomTypes.hh              同上
 src/meson.build                     ソース一覧
 src/sound/MSXMixer.cc               デバイスごとのゲインの枠。既定 1.0 なので他の構成の挙動は変わらない
 src/sound/MSXMixer.hh               同上
-src/sound/YM2413.cc                 コア名 NukeYKT-Banked の登録。選択肢が 1 つ増えるだけ
