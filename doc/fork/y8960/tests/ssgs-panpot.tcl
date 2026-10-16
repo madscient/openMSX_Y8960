@@ -9,7 +9,8 @@
 #
 # 判別力があるのは left / right / half で、定位が効いていなければ left と
 # right も center と同じ（L=R）になり、音量が効いていなければ half は
-# center と同じ大きさになる。unit1 は 10h 起点に書いた音が 4 番目の
+# center と同じ大きさになる。音量は 7bit で 127 が最大なので、64 は 127 の
+# 半分（0.504 倍）。判定器は 3% の幅で見ている。unit1 は 10h 起点に書いた音が 4 番目の
 # チャンネルから出ることを見ており、SSG 2 系統の分離を確かめている。
 # 最初に 7FFFh へ書いているのは、それが無いと SSGS の I/O が閉じたままで
 # 何も鳴らないため。
@@ -66,11 +67,11 @@ set step 0
 proc next {} {
 	global step
 	switch $step {
-		0 { capture center 0 128 128 1 }
-		1 { capture left   0 128 1   1 }
-		2 { capture right  0 128 255 1 }
+		0 { capture center 0 127 128 1 }
+		1 { capture left   0 127 1   1 }
+		2 { capture right  0 127 255 1 }
 		3 { capture half   0 64  128 1 }
-		4 { capture unit1  1 128 128 4 }
+		4 { capture unit1  1 127 128 4 }
 		default { exit }
 	}
 }

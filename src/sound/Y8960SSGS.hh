@@ -25,13 +25,16 @@ class AY8910Periphery;
   *
   *   00h-0Fh  unit 0, YM2149 registers
   *   10h-1Fh  unit 1, YM2149 registers
-  *   20h-22h  volume of unit 0 channel A, B, C   (0..128, 128 is unity)
+  *   20h-22h  volume of unit 0 channel A, B, C   (7 bits, 127 is unity)
   *   24h-26h  volume of unit 1 channel A, B, C
   *   28h-2Ah  pan of unit 0 channel A, B, C      (1 left, 128 centre, 255 right)
   *   2Ch-2Eh  pan of unit 1 channel A, B, C
   *
-  * 23h, 27h, 2Bh and 2Fh are not connected. 0Eh/0Fh (the GPIO) are absent
-  * unless the primary unit carries one.
+  * 23h, 27h, 2Bh and 2Fh are not connected. 0Eh/0Fh and 1Eh/1Fh are the
+  * units' GPIO registers; only the primary unit of a Y8960 built into an
+  * MSX has anything behind them (the PSG's wiring), the others are plain
+  * storage. The LEDs the sheet puts on the second unit's port B are not
+  * represented.
   *
   * This is one stereo sound device rather than two mono ones because the
   * pan is per channel, while openMSX only has a balance per device.
@@ -69,14 +72,12 @@ private:
 
 	void measureDc();
 	void updateGain(unsigned channel);
-	[[nodiscard]] bool isGpioReg(unsigned unit_, unsigned sub) const;
 	/** The channel a volume or pan register (20h-2Fh) addresses, or
 	  * nothing for the four unconnected slots. */
 	[[nodiscard]] static std::optional<unsigned> mixChannel(unsigned reg);
 
 private:
 	std::array<Y8960SsgCore, NUM_UNITS> unit;
-	const bool hasGpio;
 	std::array<uint8_t, NUM_CHANNELS> volume;
 	std::array<uint8_t, NUM_CHANNELS> pan;
 	std::array<y8960::PanGain, NUM_CHANNELS> gain; // derived from volume and pan
