@@ -1122,7 +1122,11 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 - ユーザーが手元で更新した xlsx は、セルの値は `b9de3c1` と同一で、削除分を MemoryMappedIO
   シートの取り消し線で示している（**確認済み**: 両版のセルの書式を比べた）。残る窓の番地
   （SSG 7FEAh、OPL2 7FEEh、OPLL 7FF4h）と、残る enable ビット（7FF6h b0、7FFFh b0 / b4 / b7）は
-  変わらない
+  この xlsx では動いていない
+- **ただし、窓の番地と enable のビット位置は変わる可能性がある**（ユーザー）。詰め直しは
+  未定で、今の値は確定ではない。どちらも `RomY8960::writeMem()` の定数と同ファイル冒頭の
+  コメント、`tests/opll-enabler.tcl` / `tests/enabler2.tcl` / `tests/mapper-windows.tcl`、
+  本書 §3.3-§3.3.2 に書かれている。窓が 7FE0h-7FFFh の中に収まる限り、変更はこの範囲で閉じる
 - 前項の解釈が分かれる点のうち、1 と 2 は決着した。残るのは 3（SSG の配置）と 4（定位と
   音量の決まっていないこと）
 - **決定**（ユーザー判断）: `YM2413NukeYKTBanked` の書き込みの先送りは、`write_address` に
