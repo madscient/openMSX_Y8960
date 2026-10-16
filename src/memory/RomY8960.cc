@@ -13,44 +13,19 @@
 //  	RamEnable:  0x48FB, 0x49FB, 0x4AFB, 0x4BFB, 0x4CFB, 0x4DFB, 0x4EFB, 0x4FFB
 //					Enable RAM write control
 //
-//  	OPLL0:      0x7FF4 - 0x7FF5
-//					tunnel to OPLL0 I/O port
+//    The window's addresses and the enabler bits are the constants right
+//    below this comment. They are still subject to change on the hardware
+//    side, so they are kept in that one place.
 //
-//  	OPLL1: 		0x7FF2 - 0x7FF3
-//					tunnel to OPLL1 I/O port
+//  	OPLL:       tunnel to the OPLL I/O ports (address / data)
+//  	OPL2:       tunnel to the OPL2 I/O ports (address / data)
+//  	SSGS:       tunnel to the SSGS I/O ports (address / data)
 //
-//  	OPL2-1:     0x7FEC - 0x7FED
-//					tunnel to OPL2-1 I/O port
-//
-//  	OPL2-0:     0x7FEE - 0x7FEF
-//					tunnel to OPL2-0 I/O port
-//
-//  	SSGS:       0x7FEA - 0x7FEB
-//					tunnel to SSGS I/O port
-//
-//  	DCSG1:      0x7FF0
-//  	DCSG0:      0x7FF1
-//					tunnel to the DCSG register port
-//
-//	In this window the first circuit of a pair sits at the HIGHER address,
-//	which is the opposite of how the direct I/O ports are laid out for the
-//	OPL2 and the DCSG. Both orders are inherited from earlier hardware, so
-//	neither follows from the other (hra1129, 2026-09-09).
-//
-//  	I/O Enabler1: 0x7FF6
-//					b0: open OPLL0 I/O ports (0x7C-0x7D)
-//					b1: open OPLL1 I/O ports (0x7A-0x7B)
-//					Both are closed after reset, like the FM-PAC. The tunnels
+//  	I/O Enabler1: open the OPLL I/O ports (0x7C-0x7D)
+//  	I/O Enabler2: open the OPL2 (0xC0-0xC1), SSGS (0xA0-0xA2) and
+//					MSX-TIMER (0xB0-0xB3) I/O ports
+//					All are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
-//
-//  	I/O Enabler2: 0x7FFF
-//					b0: open OPL2-0 I/O ports (0xC0-0xC1)
-//					b1: open OPL2-1 I/O ports (0xC2-0xC3)
-//					b2: open the DCSG0 I/O port (0x3E)
-//					b3: open the DCSG1 I/O port (0x3F)
-//					b4: open the SSGS I/O ports (0xA0-0xA2)
-//					b7: open the MSX-TIMER I/O ports (0xB0-0xB3)
-//					All are closed after reset. The tunnels above stay open.
 //
 //  	SCC:		0x1800-0x1FFF of any bank whose bank register holds #63,
 //  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
@@ -105,6 +80,19 @@ namespace openmsx {
 
 namespace {
 
+// The memory mapped I/O window. Everything in it is write-only.
+constexpr uint16_t MmioWindow     = 0x7FE0; // 0x7FE0-0x7FFF
+constexpr uint16_t MmioSsgs       = 0x7FEA; // + 0x7FEB
+constexpr uint16_t MmioOpl2       = 0x7FEE; // + 0x7FEF
+constexpr uint16_t MmioOpll       = 0x7FF4; // + 0x7FF5
+constexpr uint16_t MmioIoEnabler1 = 0x7FF6;
+constexpr uint16_t MmioIoEnabler2 = 0x7FFF;
+
+constexpr byte Enabler1Opll  = 0x01;
+constexpr byte Enabler2Opl2  = 0x01;
+constexpr byte Enabler2Ssgs  = 0x10;
+constexpr byte Enabler2Timer = 0x80;
+
 template<typename T>
 [[nodiscard]] T* findWiredDevice(MSXMotherBoard& motherBoard,
                                  const DeviceConfig& config, std::string_view element)
@@ -135,14 +123,10 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	}
 
 	auto& motherBoard = getMotherBoard();
-	opll_0 = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll0");
-	opll_1 = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll1");
-	opl2_0 = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2_0");
-	opl2_1 = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2_1");
-	ssgs   = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
-	dcsg_0 = findWiredDevice<Y8960DCSGDevice>(motherBoard, config, "dcsg0");
-	dcsg_1 = findWiredDevice<Y8960DCSGDevice>(motherBoard, config, "dcsg1");
-	timer  = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");
+	opll  = findWiredDevice<Y8960OPLL>      (motherBoard, config, "opll");
+	opl2  = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2");
+	ssgs  = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
+	timer = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");
 
 	powerUp(getCurrentTime());
 }
@@ -330,81 +314,40 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 
 void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
 {
-	if ((address & 0xFFE0) != 0x7FE0) return;
+	if ((address & 0xFFE0) != MmioWindow) return;
 
-	// write to OPLL1
-	if ((address & 0xFFFE) == 0x7FF4) {
-		if(opll_0 != nullptr) {
-			opll_0->writePort(address & 1, value, time);
+	// the tunnels: the low address bit is the address/data half
+	if ((address & 0xFFFE) == MmioOpll) {
+		if(opll != nullptr) {
+			opll->writePort(address & 1, value, time);
 		}
 	}
-
-	// write to OPLL2
-	if ((address & 0xFFFE) == 0x7FF2) {
-		if(opll_1 != nullptr) {
-			opll_1->writePort(address & 1, value, time);
+	if ((address & 0xFFFE) == MmioOpl2) {
+		if(opl2 != nullptr) {
+			opl2->writePort(address & 1, value, time);
 		}
 	}
-
-	// write to OPL2-1
-	if ((address & 0xFFFE) == 0x7FEC) {
-		if(opl2_1 != nullptr) {
-			opl2_1->writePort(address & 1, value, time);
-		}
-	}
-
-	// write to OPL2-0
-	if ((address & 0xFFFE) == 0x7FEE) {
-		if(opl2_0 != nullptr) {
-			opl2_0->writePort(address & 1, value, time);
-		}
-	}
-
-	// write to the SSGS
-	if ((address & 0xFFFE) == 0x7FEA) {
+	if ((address & 0xFFFE) == MmioSsgs) {
 		if(ssgs != nullptr) {
 			ssgs->writePort(address & 1, value, time);
 		}
 	}
 
-	// write to the DCSG. It has a single register port, so here the address
-	// bit picks the circuit rather than the address/data half.
-	if ((address & 0xFFFE) == 0x7FF0) {
-		auto* dcsg = (address & 1) ? dcsg_0 : dcsg_1;
-		if(dcsg != nullptr) {
-			dcsg->writePort(value, time);
-		}
-	}
-
-	// write to I/O Enabler2
-	if (address == 0x7FFF) {
-		if(opl2_0 != nullptr) {
-			opl2_0->setIoEnabled((value & 0x01) != 0);
-		}
-		if(opl2_1 != nullptr) {
-			opl2_1->setIoEnabled((value & 0x02) != 0);
-		}
-		if(dcsg_0 != nullptr) {
-			dcsg_0->setIoEnabled((value & 0x04) != 0);
-		}
-		if(dcsg_1 != nullptr) {
-			dcsg_1->setIoEnabled((value & 0x08) != 0);
+	if (address == MmioIoEnabler2) {
+		if(opl2 != nullptr) {
+			opl2->setIoEnabled((value & Enabler2Opl2) != 0);
 		}
 		if(ssgs != nullptr) {
-			ssgs->setIoEnabled((value & 0x10) != 0);
+			ssgs->setIoEnabled((value & Enabler2Ssgs) != 0);
 		}
 		if(timer != nullptr) {
-			timer->setIoEnabled((value & 0x80) != 0);
+			timer->setIoEnabled((value & Enabler2Timer) != 0);
 		}
 	}
 
-	// write to I/O Enabler1
-	if (address == 0x7FF6) {
-		if(opll_0 != nullptr) {
-			opll_0->setIoEnabled((value & 0x01) != 0);
-		}
-		if(opll_1 != nullptr) {
-			opll_1->setIoEnabled((value & 0x02) != 0);
+	if (address == MmioIoEnabler1) {
+		if(opll != nullptr) {
+			opll->setIoEnabled((value & Enabler1Opll) != 0);
 		}
 	}
 }
@@ -416,8 +359,8 @@ byte* RomY8960::getWriteCacheLine(uint16_t address)
 	} else if (address < 0x5000) {
 		// page selection(0x4800~0x4FFF)
 		return nullptr;
-	} else if ((address & 0xFF00) == (0x7FF0 & CacheLine::HIGH)) {
-		// write to OPLL(0x7F00~0x7FFF)
+	} else if ((address & 0xFF00) == (MmioWindow & CacheLine::HIGH)) {
+		// the memory mapped I/O window (0x7F00~0x7FFF)
 		return nullptr;
 	} else if (isSccAddress(address)) {
 		// write to SCC

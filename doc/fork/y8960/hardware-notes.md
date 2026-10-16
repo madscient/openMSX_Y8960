@@ -2,6 +2,11 @@
 
 調査日: 2026-09-08 / 対象: hra1129/Y8960_Cartridge @ d6d16a3 (main)
 
+**本書は `d6d16a3` の時点の記述である。** 2026-10-16 の `b9de3c1` で xlsx が改訂され、
+DCSG と、SSG 以外のブロックの 2 番目の回路が無くなった。OPLL と SSG にはチャンネルごとの
+定位が、SSG には音量が足された。何が変わり、何が未確認かは
+`implementation-plan.md` §8 の 2026-10-16 の各項にある。本書の該当箇所はまだ直していない。
+
 **パスの読み方**: 本書が `src/...` と書くとき、断りが無ければ
 hra1129/Y8960_Cartridge の `fpga/Y8960_Cartridge_TangPrimer25K/src/...` を指す。
 `doc/spec/` や `doc/manual/` も同リポジトリのもの。

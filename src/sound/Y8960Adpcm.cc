@@ -52,20 +52,18 @@ static constexpr int STEP_MASK = (1 << STEP_BITS) -1;
 
 
 Y8960Adpcm::Y8960Adpcm(Y8960OPL2& opl2_, const DeviceConfig& config,
-                       Y8960AdpcmMemory& memory_, unsigned block_)
+                       Y8960AdpcmMemory& memory_)
 	: Schedulable(config.getScheduler())
 	, opl2(opl2_)
 	, memory(memory_)
-	, block(block_)
 	, clock(config.getMotherBoard().getCurrentTime())
 {
-	// The memory is not cleared here: it is shared, and the other block
-	// may already have put samples in it.
+	// The memory device clears itself at power-up.
 }
 
 void Y8960Adpcm::clearRam()
 {
-	memory.clear(block);
+	memory.clear();
 }
 
 void Y8960Adpcm::reset(EmuTime time)
@@ -423,13 +421,12 @@ uint8_t Y8960Adpcm::peekData() const
 void Y8960Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	memory.write(block, addr, value);
+	memory.write(addr, value);
 }
 uint8_t Y8960Adpcm::readMemory(unsigned memPtr) const
 {
 	unsigned addr = (memPtr / 2) & addrMask;
-	// past the end of this block's window reads as 0
-	return memory.read(block, addr);
+	return memory.read(addr);
 }
 
 int Y8960Adpcm::calcSample()

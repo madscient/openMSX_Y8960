@@ -28,11 +28,6 @@ public:
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	/** ADPCM のサンプルメモリは 2 個の OPL2 が 1 個の Y8960-ADPCM-RAM を見る。
-	  * どちらの窓かは設定で決まる。分け方を選ぶレジスタが実機で決まったら、
-	  * writeIO() から adpcmMemory.setLayout() を呼べばよい。 */
-	Y8960AdpcmMemory& adpcmMemory;
-	const unsigned adpcmBlock;
 	Y8960OPL2 opl2;
 	byte registerLatch;
 	const bool useIoEnabler;

@@ -504,10 +504,10 @@ void Y8960OPL2::Channel::keyOff(KeyPart part)
 static constexpr auto INPUT_RATE = unsigned(cstd::round(Y8960OPL2::CLOCK_FREQ / double(Y8960OPL2::CLOCK_FREQ_DIV)));
 
 Y8960OPL2::Y8960OPL2(const std::string& name_, const DeviceConfig& config,
-                     Y8960AdpcmMemory& adpcmMemory, unsigned adpcmBlock, EmuTime time)
+                     Y8960AdpcmMemory& adpcmMemory, EmuTime time)
 	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 OPL2", 9 + 5 + 1, INPUT_RATE, false)
 	, motherBoard(config.getMotherBoard())
-	, adpcm(*this, config, adpcmMemory, adpcmBlock)
+	, adpcm(*this, config, adpcmMemory)
 	, debuggable(motherBoard, getName())
 	, timer1(EmuTimer::createOPL3_1(motherBoard.getScheduler(), *this))
 	, timer2(EmuTimer::createOPL3_2(motherBoard.getScheduler(), *this))

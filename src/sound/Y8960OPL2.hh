@@ -44,7 +44,7 @@ public:
 	static constexpr int STATUS_T1      = R04_MASK_T1;
 
 	Y8960OPL2(const std::string& name, const DeviceConfig& config,
-	          Y8960AdpcmMemory& adpcmMemory, unsigned adpcmBlock, EmuTime time);
+	          Y8960AdpcmMemory& adpcmMemory, EmuTime time);
 	~Y8960OPL2();
 
 	void clearRam();

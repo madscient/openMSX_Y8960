@@ -8,7 +8,7 @@
 #
 # 判別力があるのは手順 2 と 4 の「変わらないこと」を見る側である。
 # enabler を実装する前は writeIO() が無条件に転送していたので、
-# 2 では 0x11/0x22 が、4 では OPLL0=0x55 が入っていた。
+# 2 では 0x11 が、4 では 0x44 が入っていた。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
 # この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
@@ -19,16 +19,16 @@ set OUTPATH [expr {[info exists ::env(Y8960_TEST_OUT)] ? $::env(Y8960_TEST_OUT)
                                                        : "y8960-enabler-test.txt"}]
 set OUT [open $OUTPATH w]
 
-proc reg30 {n} { debug read "Y8960 OPLL $n regs" 0x30 }
+proc reg30 {} { debug read "Y8960 OPLL regs" 0x30 }
 
 proc report {label} {
 	global OUT
-	puts $OUT [format "%-44s OPLL0=0x%02X OPLL1=0x%02X" $label [reg30 0] [reg30 1]]
+	puts $OUT [format "%-48s OPLL=0x%02X" $label [reg30]]
 }
 
-proc io_write {addrport dataport val} {
-	debug write ioports $addrport 0x30
-	debug write ioports $dataport $val
+proc io_write {val} {
+	debug write ioports 0x7C 0x30
+	debug write ioports 0x7D $val
 }
 
 # カートリッジがどのスロットに入っても当たるよう全 ps/ss に書く。
@@ -44,23 +44,20 @@ proc mem_write {offset val} {
 proc run_test {} {
 	global OUT
 	report "1. reset"
-	io_write 0x7C 0x7D 0x11
-	io_write 0x7A 0x7B 0x22
+	io_write 0x11
 	report "2. enabler=0, direct I/O (expect unchanged)"
 
 	mem_write 0x7FF6 0x01
-	io_write 0x7C 0x7D 0x33
-	report "3. 7FF6=01, 0x33 via 7C/7D (expect OPLL0=33)"
-
-	mem_write 0x7FF6 0x02
-	io_write 0x7A 0x7B 0x44
-	io_write 0x7C 0x7D 0x55
-	report "4. 7FF6=02, 0x44 via 7A/7B, 0x55 via 7C/7D"
+	io_write 0x33
+	report "3. 7FF6=01, 0x33 via 7C/7D (expect 33)"
 
 	mem_write 0x7FF6 0x00
+	io_write 0x44
+	report "4. 7FF6=00, 0x44 via 7C/7D (expect unchanged 33)"
+
 	mem_write 0x7FF4 0x30
 	mem_write 0x7FF5 0x66
-	report "5. 7FF6=00, 0x66 via tunnel (expect OPLL0=66)"
+	report "5. 7FF6=00, 0x66 via tunnel (expect 66)"
 
 	close $OUT
 	exit

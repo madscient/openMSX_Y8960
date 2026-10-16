@@ -51,12 +51,12 @@ proc capture {name ws} {
 	setup_note
 	r 0xE0 $ws                     ;# modulator waveform
 	r 0xE3 $ws                     ;# carrier waveform
-	set "::Y8960 OPL2 0_ch1_record" "$OUTDIR/ws$name.wav"
+	set "::Y8960 OPL2_ch1_record" "$OUTDIR/ws$name.wav"
 	after time 1 [list stop_capture $name]
 }
 
 proc stop_capture {name} {
-	set "::Y8960 OPL2 0_ch1_record" ""
+	set "::Y8960 OPL2_ch1_record" ""
 	global step
 	incr step
 	next_step
