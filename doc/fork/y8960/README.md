@@ -14,6 +14,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `hardware-notes.md` | Y8960 ハードウェア仕様の調査結果。一次情報の出典と確度つき |
 | `implementation-plan.md` | 実装計画・決定事項・実行経緯 |
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
+| `tests/opll-regs-mirror.tcl` | OPLL のレジスタの写しが BANK レジスタ (40h-48h) で壊れないことの回帰テスト |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のパンポットと SSG 2 系統の分離の回帰テスト |
@@ -54,6 +55,10 @@ mkdir -p "$OUT"
 
 # 1. OPLL の I/O Enabler (7FF6h)。$OUT/opll.txt を目で見る
 Y8960_TEST_OUT="$OUT/opll.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opll-enabler.tcl"
+
+# 1a. OPLL のレジスタの写し。判定は最終行の RESULT を見る
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opll-regs-mirror.tcl"
+tail -1 "$OUT/opll-regs-mirror.txt"
 
 # 2. OPL2 の波形選択。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-waveform.tcl"

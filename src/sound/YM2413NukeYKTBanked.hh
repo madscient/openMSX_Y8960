@@ -215,6 +215,11 @@ private:
 	uint8_t write_address;
 	uint8_t write_fm_cycle;
 	bool fast_fm_rewrite;
+	/** The pending FM register write misses the channel's next slot and
+	  * goes in one round (18 steps) later. The first data write after an
+	  * address write takes a cycle longer on the real chip, so a write that
+	  * lands right before its slot is too late for it. */
+	bool fm_write_postponed;
 	bool test_mode_active;
 
 	// Envelope generator
@@ -278,8 +283,10 @@ private:
 	int delay11;
 	int delay12;
 
-	// only used for peekReg();
-	std::array<uint8_t, 64> regs;
+	// only used for peekReg() and to rebuild the state after loading.
+	// Wider than the 64 bytes YM2413Core::peekRegs() can show: the bank
+	// registers sit at 40h-48h and the pan registers at 50h-58h.
+	std::array<uint8_t, 0x60> regs;
 	uint8_t latch;
 
 	int allowed_offset = 0; // Hack: see comments in writePort()
