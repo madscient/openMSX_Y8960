@@ -8,8 +8,9 @@
 #
 # 結果は環境変数 Y8960_TEST_OUT のファイルに書く。
 #
-# GPIO は**プライマリ側だけ**が持ち、本体 PSG の代替なので繋がるものも同じ
-# （ジョイスティック 2 ポート、かなランプ、カセット）。
+# GPIO のレジスタは両系統にあるが、何かが繋がるのは**プライマリ側だけ**で、
+# 本体 PSG の代替なので繋がるものも同じ（ジョイスティック 2 ポート、かなランプ、
+# カセット）。セカンダリ側は書いた値がそのまま読み戻せるだけ（手順 3）。
 #
 # **読み出しにデバッガブルを使っている理由**: 試験用の構成では C-BIOS の PSG が
 # A0h-A2h に残ったままなので、ポートから読むと MSXMultiIODevice が両者の AND を
@@ -48,7 +49,7 @@ proc run_test {} {
 
 	w 0x1E 0x11
 	w 0x1F 0x22
-	puts $OUT [format "3. unit1 \$1E=0x%02X \$1F=0x%02X (expect FF FF, the secondary has no GPIO)" \
+	puts $OUT [format "3. unit1 \$1E=0x%02X \$1F=0x%02X (expect 11 22, storage with nothing behind it)" \
 		[debug read "Y8960 SSGS regs" 0x1E] [debug read "Y8960 SSGS regs" 0x1F]]
 
 	close $OUT

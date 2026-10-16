@@ -1,7 +1,6 @@
 #ifndef Y8960PAN_HH
 #define Y8960PAN_HH
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <numbers>
@@ -30,12 +29,13 @@ struct PanGain { float left, right; };
 	return {.left = std::cos(t), .right = std::sin(t)};
 }
 
-/** The gain of a per-channel volume register (SSGS 20h-26h): 0..128,
-  * linear, 128 is unity. What 129..255 do is not specified; they count as
-  * 128 here. */
+/** The gain of a per-channel volume register (SSGS 20h-26h): the low 7
+  * bits, linear, 127 is unity; bit 7 is ignored. (The sheet says "0..128,
+  * 128 is the maximum"; the hardware side confirmed the register is 7 bits
+  * wide, 2026-10-16.) */
 [[nodiscard]] inline float volumeGain(uint8_t volume)
 {
-	return float(std::min<int>(volume, 128)) / 128.0f;
+	return float(volume & 0x7F) / 127.0f;
 }
 
 } // namespace openmsx::y8960

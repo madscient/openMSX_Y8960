@@ -20,7 +20,6 @@ Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTi
 	                       NUM_CHANNELS, NATIVE_FREQ_INT, true)
 	, unit{Y8960SsgCore(name_ + " unit0", config, time, periphery),
 	       Y8960SsgCore(name_ + " unit1", config, time)}
-	, hasGpio(periphery != nullptr)
 	, volume{}
 	, pan{}
 	, gain{}
@@ -39,7 +38,7 @@ Y8960SSGS::~Y8960SSGS()
 void Y8960SSGS::reset(EmuTime time)
 {
 	for (auto& u : unit) u.reset(time);
-	std::ranges::fill(volume, 128);
+	std::ranges::fill(volume, 0x7F);
 	std::ranges::fill(pan, 128);
 	for (auto ch : xrange(NUM_CHANNELS)) updateGain(ch);
 	measureDc();
@@ -68,13 +67,6 @@ void Y8960SSGS::updateGain(unsigned channel)
 	gain[channel] = {.left = g.left * v, .right = g.right * v};
 }
 
-// Only the primary unit has the GPIO, and only when the Y8960 is built into an
-// MSX in place of its PSG. The cartridge has none, like the YMZ parts.
-bool Y8960SSGS::isGpioReg(unsigned unit_, unsigned sub) const
-{
-	return hasGpio && (unit_ == 0) && (sub >= 0x0E) && (sub <= 0x0F);
-}
-
 std::optional<unsigned> Y8960SSGS::mixChannel(unsigned reg)
 {
 	// 20h-22h / 24h-26h and 28h-2Ah / 2Ch-2Eh: unit in bit 2, channel in
@@ -91,11 +83,7 @@ void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 	updateStream(time);
 
 	if (reg < VOLUME_BASE) {
-		unsigned u = reg / UNIT_REGS;
-		unsigned sub = reg % UNIT_REGS;
-		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-			unit[u].writeRegister(sub, value, time);
-		}
+		unit[reg / UNIT_REGS].writeRegister(reg % UNIT_REGS, value, time);
 	} else if (auto ch = mixChannel(reg)) {
 		((reg >= PAN_BASE) ? pan : volume)[*ch] = value;
 		updateGain(*ch);
@@ -109,11 +97,7 @@ uint8_t Y8960SSGS::readRegister(unsigned reg, EmuTime time)
 	if (reg >= REG_END) return 0xFF;
 
 	if (reg < VOLUME_BASE) {
-		unsigned u = reg / UNIT_REGS;
-		unsigned sub = reg % UNIT_REGS;
-		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-			return unit[u].readRegister(sub, time);
-		}
+		return unit[reg / UNIT_REGS].readRegister(reg % UNIT_REGS, time);
 	} else if (auto ch = mixChannel(reg)) {
 		return ((reg >= PAN_BASE) ? pan : volume)[*ch];
 	}
@@ -125,11 +109,7 @@ uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const
 	if (reg >= REG_END) return 0xFF;
 
 	if (reg < VOLUME_BASE) {
-		unsigned u = reg / UNIT_REGS;
-		unsigned sub = reg % UNIT_REGS;
-		if ((sub <= 0x0D) || isGpioReg(u, sub)) {
-			return unit[u].peekRegister(sub, time);
-		}
+		return unit[reg / UNIT_REGS].peekRegister(reg % UNIT_REGS, time);
 	} else if (auto ch = mixChannel(reg)) {
 		return ((reg >= PAN_BASE) ? pan : volume)[*ch];
 	}

@@ -40,8 +40,8 @@ def main(directory):
         failures.append("left が左に振り切れていない")
     if got["right"][1] == 0 or got["right"][0] != 0:
         failures.append("right が右に振り切れていない")
-    # 音量 64 は 128 の半分。16bit への丸めと直流分の除去で数 LSB はずれる
-    want = got["center"][0] / 2
+    # 音量 64 は最大 127 の 0.504 倍。16bit への丸めと直流分の除去で数 LSB はずれる
+    want = got["center"][0] * 64 / 127
     if abs(got["half"][0] - want) > want * 0.03 + 2:
         failures.append(f"half が center の半分でない (want {want:.0f})")
     if got["unit1"][0] == 0 and got["unit1"][1] == 0:
