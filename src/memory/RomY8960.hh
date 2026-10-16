@@ -5,7 +5,6 @@
 #include "Ram.hh"
 #include "SCC.hh"
 #include "MSXTimer.hh"
-#include "Y8960DCSGDevice.hh"
 #include "Y8960OPL2Device.hh"
 #include "Y8960SSGSDevice.hh"
 #include "Y8960OPLL.hh"
@@ -44,13 +43,9 @@ private:
 	unsigned int convAddressToRegion(uint16_t address) const;
 
 private:
-	Y8960OPLL *opll_0;
-	Y8960OPLL *opll_1;
-	Y8960OPL2Device *opl2_0;
-	Y8960OPL2Device *opl2_1;
+	Y8960OPLL *opll;
+	Y8960OPL2Device *opl2;
 	Y8960SSGSDevice *ssgs;
-	Y8960DCSGDevice *dcsg_0;
-	Y8960DCSGDevice *dcsg_1;
 	MSXTimer *timer;
 	const bool useMmioTunnel;
 	SCC scc;

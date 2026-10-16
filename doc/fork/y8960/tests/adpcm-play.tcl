@@ -36,14 +36,14 @@ proc mem_write {offset val} {
 	}
 }
 
-# OPL2-0 は C0h がレジスタ番号、C1h がその値
+# C0h がレジスタ番号、C1h がその値
 proc r {reg val} {
 	debug write ioports 0xC0 $reg
 	debug write ioports 0xC1 $val
 }
 
 proc run_test {} {
-	mem_write 0x7FFF 0x01        ;# I/O Enabler2 b0: OPL2-0 を開く
+	mem_write 0x7FFF 0x01        ;# I/O Enabler2 b0: OPL2 を開く
 
 	# --- サンプル RAM への書き込み ---
 	r 0x08 0x00                  ;# RAM、18bit アドレス

@@ -24,53 +24,19 @@
         <volume>21000</volume>
       </sound>
     </Y8960-SSGS>
-    <!-- DCSG は 1 ポートずつで、アドレス bit0 が 2 回路のどちらかを選ぶ -->
-    <Y8960-DCSG id="Y8960 DCSG 0">
-      <io base="0x3E" num="1" type="O"/>
-      <sound>
-        <volume>21000</volume>
-      </sound>
-    </Y8960-DCSG>
-    <Y8960-DCSG id="Y8960 DCSG 1">
-      <io base="0x3F" num="1" type="O"/>
-      <sound>
-        <volume>21000</volume>
-      </sound>
-    </Y8960-DCSG>
-    <Y8960-OPLL id="Y8960 OPLL 0">
+    <Y8960-OPLL id="Y8960 OPLL">
       <io base="0x7C" num="2" type="O"/>
       <sound>
         <volume>13000</volume>
       </sound>
       <ym2413-core>NukeYKT-Banked</ym2413-core>
     </Y8960-OPLL>
-    <Y8960-OPLL id="Y8960 OPLL 1">
-      <io base="0x7A" num="2" type="O"/>
-      <sound>
-        <volume>13000</volume>
-      </sound>
-      <ym2413-core>NukeYKT-Banked</ym2413-core>
-    </Y8960-OPLL>
-    <!-- ADPCM のサンプルメモリ 256KB。2 個の OPL2 がこれを共有する。
-         SRAM の 40000h-7FFFFh にあたる。共有か、片方に全部寄せるか、
-         128KB ずつに割るかを選べるはずだが、選ぶ手段が実機に無いので
-         常に共有。OPL2 より先に置くこと（OPL2 が構築時に参照する） -->
+    <!-- ADPCM のサンプルメモリ 256KB。SRAM の 40000h-7FFFFh にあたる。
+         OPL2 より先に置くこと（OPL2 が構築時に参照する） -->
     <Y8960-ADPCM-RAM id="Y8960 ADPCM RAM"/>
-    <!-- OPL2 + ADPCM-B。直接 I/O は低位側が 1 番目 (C0h)、メモリマップド I/O は
-         高位側が 1 番目 (7FEEh) で、並びが逆になる。どちらも過去の実装との
-         互換のためで、一方から他方は導けない（hra1129 さん、2026-09-09） -->
-    <Y8960-OPL2 id="Y8960 OPL2 0">
+    <Y8960-OPL2 id="Y8960 OPL2">
       <io base="0xC0" num="2"/>
       <adpcm_memory>Y8960 ADPCM RAM</adpcm_memory>
-      <adpcm_block>0</adpcm_block>
-      <sound>
-        <volume>12000</volume>
-      </sound>
-    </Y8960-OPL2>
-    <Y8960-OPL2 id="Y8960 OPL2 1">
-      <io base="0xC2" num="2"/>
-      <adpcm_memory>Y8960 ADPCM RAM</adpcm_memory>
-      <adpcm_block>1</adpcm_block>
       <sound>
         <volume>12000</volume>
       </sound>
@@ -84,14 +50,12 @@
           </sound>
           <mappertype>Y8960</mappertype>
           <rom/>
-          <opll0>Y8960 OPLL 0</opll0> <!-- I/O tunnel from 7FF4h -->
-          <opll1>Y8960 OPLL 1</opll1> <!-- I/O tunnel from 7FF2h -->
-          <opl2_0>Y8960 OPL2 0</opl2_0> <!-- I/O tunnel from 7FEEh -->
-          <opl2_1>Y8960 OPL2 1</opl2_1> <!-- I/O tunnel from 7FECh -->
-          <ssgs>Y8960 SSGS</ssgs> <!-- I/O tunnel from 7FEAh, I/O Enabler2 b4 -->
-          <dcsg0>Y8960 DCSG 0</dcsg0> <!-- I/O tunnel from 7FF1h, I/O Enabler2 b2 -->
-          <dcsg1>Y8960 DCSG 1</dcsg1> <!-- I/O tunnel from 7FF0h, I/O Enabler2 b3 -->
-          <timer>y8960-timer</timer> <!-- I/O Enabler2 b7 -->
+          <!-- メモリマップド I/O の窓の番地と I/O Enabler のビットは
+               RomY8960.cc の先頭にまとめてある -->
+          <opll>Y8960 OPLL</opll>
+          <opl2>Y8960 OPL2</opl2>
+          <ssgs>Y8960 SSGS</ssgs>
+          <timer>y8960-timer</timer>
         </ROM>
       </secondary>
     </primary>
@@ -99,19 +63,14 @@
          B6h-B7h あたりがいいかも」との由。ioport.txt の記載とも一致する。
          レジスタ仕様が無いので B6h-B7h は値を憶えるだけで音には触らない。
          カートリッジは音声を本体に戻さないので、既定は Y8960 側の出力だけ。
-         y8960-mixer_output 設定で msx / mix に切り替えられる -->
+         y8960-mixer_output 設定で msx / mix に切り替えられる。
+         チャンネル番号は外に出る値なので、空きができても詰め直さない -->
     <Y8960-MIXER id="y8960-mixer">
       <io base="0xB6" num="2"/>
       <default_output>y8960</default_output>
-      <channel num="0" idref="Y8960 OPLL 0"/>
-      <channel num="1" idref="Y8960 OPLL 1"/>
-      <channel num="2" idref="Y8960 OPL2 0"/>
-      <channel num="3" idref="Y8960 OPL2 1"/>
+      <channel num="0" idref="Y8960 OPLL"/>
+      <channel num="2" idref="Y8960 OPL2"/>
       <channel num="4" idref="Y8960 SSGS"/>
-      <!-- channel num="5" は SSG 系統 1 用だったが、SSGS 全体で 1 デバイスにまとめてある -->
-      <channel num="6" idref="Y8960 DCSG 0"/>
-      <channel num="7" idref="Y8960 DCSG 1"/>
-      <!-- channel num="8" idref="Y8960 ADPCM"/ -->
       <channel num="9" idref="Y8960 SCC"/>
     </Y8960-MIXER>
   </devices>

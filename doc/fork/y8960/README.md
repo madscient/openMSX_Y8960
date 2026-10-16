@@ -19,13 +19,13 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/ssgs-panpot.tcl` | SSGS のパンポットと SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
-| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b2/b3/b7 と、SSGS / DCSG / OPL2 のトンネルの回帰テスト |
+| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
 | `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
 | `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
 | `tests/check-adpcm-play.py` | 上記 WAV の判定。ピークと基本周波数を見る |
-| `tests/adpcm-share.tcl` | 2 個の OPL2EX が ADPCM メモリを共有していることの回帰テスト。WAV も書き出す |
+| `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
 | `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
@@ -76,12 +76,9 @@ Y8960_TEST_OUT="$OUT/irq.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -scr
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/adpcm-play.tcl"
 py $T/check-adpcm-play.py "$OUT"
 
-# 6a. ADPCM メモリの共有。レジスタ側は RESULT、音は終了コードで分かる
-#     WAV の名前が 6 と同じなので、出力先を分ける
-mkdir -p "$OUT/share"
-Y8960_TEST_OUT="$OUT/share" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/adpcm-share.tcl"
-tail -1 "$OUT/share/adpcm-share.txt"
-py $T/check-adpcm-play.py "$OUT/share"
+# 6a. ADPCM に rommode が無いこと。判定は最終行の RESULT を見る
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/adpcm-rommode.tcl"
+tail -1 "$OUT/adpcm-rommode.txt"
 
 # 7. ミキサー。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-output.tcl"
@@ -98,7 +95,7 @@ for t in mapper-windows mapper-cpu-read; do
     tail -1 "$OUT/$t.txt"
 done
 
-# 9. I/O Enabler2 の b2/b3/b7 とトンネル。$OUT/en2.txt を目で見る
+# 9. I/O Enabler2 の b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 ```
 

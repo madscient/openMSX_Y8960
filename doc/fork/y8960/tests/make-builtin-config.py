@@ -21,7 +21,7 @@ SOURCE = "share/extensions/HRA_Y8960.xml"
 DOCTYPE = "<!DOCTYPE msxconfig SYSTEM 'msxconfig2.dtd'>"
 
 # I/O イネーブラーを持つデバイスの型名
-GATED = ("Y8960-OPLL", "Y8960-OPL2", "Y8960-SSGS", "Y8960-DCSG", "MSX-TIMER")
+GATED = ("Y8960-OPLL", "Y8960-OPL2", "Y8960-SSGS", "MSX-TIMER")
 
 
 def set_child(parent, tag, text):

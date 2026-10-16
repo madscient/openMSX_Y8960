@@ -4,8 +4,6 @@
 #include "MSXMotherBoard.hh"
 #include "serialize.hh"
 
-#include "narrow.hh"
-
 namespace openmsx {
 
 [[nodiscard]] static Y8960AdpcmMemory& getAdpcmMemory(const DeviceConfig& config)
@@ -21,21 +19,9 @@ namespace openmsx {
 	return *device;
 }
 
-[[nodiscard]] static unsigned getAdpcmBlock(const DeviceConfig& config)
-{
-	int block = config.getChildDataAsInt("adpcm_block", -1);
-	if ((block < 0) || (block >= int(Y8960AdpcmMemory::BlockCount))) {
-		throw MSXException("Y8960-OPL2 needs an <adpcm_block> of 0..",
-		                   Y8960AdpcmMemory::BlockCount - 1, ".");
-	}
-	return narrow<unsigned>(block);
-}
-
 Y8960OPL2Device::Y8960OPL2Device(const DeviceConfig& config)
 	: MSXDevice(config)
-	, adpcmMemory(getAdpcmMemory(config))
-	, adpcmBlock(getAdpcmBlock(config))
-	, opl2(getName(), config, adpcmMemory, adpcmBlock, getCurrentTime())
+	, opl2(getName(), config, getAdpcmMemory(config), getCurrentTime())
 	, registerLatch(0)
 	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
 	, ioEnabled(!useIoEnabler)

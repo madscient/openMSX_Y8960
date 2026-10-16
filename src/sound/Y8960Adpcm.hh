@@ -15,15 +15,15 @@ class Y8960OPL2;
 
 /** The ADPCM-B block of the Y8960's OPL2EX.
   *
-  * A copy of Y8950Adpcm, which the Y8960 cannot use as it stands: its two
-  * blocks read and write one sample memory that they share or divide
-  * between them, so the memory cannot be a member of the block.
+  * A copy of Y8950Adpcm, which the Y8960 cannot use as it stands: the
+  * sample memory is a device of its own (Y8960AdpcmMemory) rather than a
+  * member of the block, and the Y8960 has no sample ROM.
   */
 class Y8960Adpcm final : public Schedulable
 {
 public:
 	Y8960Adpcm(Y8960OPL2& opl2, const DeviceConfig& config,
-	           Y8960AdpcmMemory& memory, unsigned block);
+	           Y8960AdpcmMemory& memory);
 
 	void clearRam();
 	void reset(EmuTime time);
@@ -69,7 +69,6 @@ private:
 private:
 	Y8960OPL2& opl2;
 	Y8960AdpcmMemory& memory;
-	const unsigned block;
 
 	// copy/pasted from Y8960OPL2.hh
 	static constexpr int CLOCK_FREQ     = 3579545;

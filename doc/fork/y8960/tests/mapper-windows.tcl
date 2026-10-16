@@ -37,7 +37,7 @@ proc cr {addr}     { debug read  "slotted memory" [expr {(1 << 18) | $addr}] }
 proc wave0 {} { debug read "Y8960 SCC SCC" 0 }
 # deformation レジスタ。SCC 窓のオフセット E0h-FFh に書いた値がここに来る
 proc deform {} { debug read "Y8960 SCC SCC" 0xC0 }
-proc opll0 {reg} { debug read "Y8960 OPLL 0 regs" $reg }
+proc opll {reg} { debug read "Y8960 OPLL regs" $reg }
 
 # リセット直後の状態に戻す。RAMMODE は両モードで書けるので先に戻し、
 # そのあと互換モードのバンクレジスタでバンクを戻す
@@ -106,7 +106,7 @@ check_ne "RAM mode: no SCC window in bank 0" [wave0] 0x55
 mapper_reset
 cw 0x7FF4 0x02
 cw 0x7FF5 0x5A
-check "MMIO tunnel reaches OPLL 0 in ROM mode" [opll0 2] 0x5A
+check "MMIO tunnel reaches OPLL in ROM mode" [opll 2] 0x5A
 
 # バンク1 に SCC が出ると MMIO 窓は消え、同じ書き込みが SCC に落ちる。
 # 0x7FF4/0x7FF5 は窓のオフセット F4h/F5h なので deformation レジスタに当たる
@@ -114,7 +114,7 @@ mapper_reset
 cw 0x7000 0x3F
 cw 0x7FF4 0x03
 cw 0x7FF5 0xA5
-check_ne "bank1 SCC hides MMIO (OPLL untouched)" [opll0 3] 0xA5
+check_ne "bank1 SCC hides MMIO (OPLL untouched)" [opll 3] 0xA5
 check "the same write landed on the SCC instead" [deform] 0xA5
 
 # バンク1 が RAM でも MMIO 窓は消える
@@ -123,7 +123,7 @@ cw 0x48FB 0x01
 cw 0x48FD 0x10
 cw 0x7FF4 0x04
 cw 0x7FF5 0x3C
-check_ne "bank1 RAM hides MMIO (OPLL untouched)" [opll0 4] 0x3C
+check_ne "bank1 RAM hides MMIO (OPLL untouched)" [opll 4] 0x3C
 
 # バンク1 が ROM バンクなら、RAM モードでも MMIO 窓は残る
 mapper_reset
@@ -131,7 +131,7 @@ cw 0x48FB 0x01
 cw 0x48FD 0x01
 cw 0x7FF4 0x05
 cw 0x7FF5 0x6E
-check "RAM mode with ROM in bank1 keeps MMIO" [opll0 5] 0x6E
+check "RAM mode with ROM in bank1 keeps MMIO" [opll 5] 0x6E
 
 # --- RAM バンクの判定が region を取り違えていないこと -----------------------
 #
