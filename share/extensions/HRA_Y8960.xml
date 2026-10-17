@@ -60,8 +60,8 @@
       </secondary>
     </primary>
     <!-- ミキサーに I/O ポートは無く、音量はメモリマップド I/O の
-         7FF7h + チャンネル番号で書く。3 は ADPCM で、OPL2 の中で混ざるので
-         ここには書かない。SCC の音源を参照するので ROM より後に置くこと。
+         7FF7h + チャンネル番号で書く。ADPCM は OPL2 に混ざり、OPL2 の音量に従う。
+         SCC の音源を参照するので ROM より後に置くこと。
          カートリッジは音声を本体に戻さないので、既定は Y8960 側の出力だけ。
          y8960-mixer_output 設定で msx / mix に切り替えられる -->
     <Y8960-MIXER id="y8960-mixer">
@@ -69,7 +69,7 @@
       <channel num="0" idref="Y8960 SSGS"/>
       <channel num="1" idref="Y8960 OPLL"/>
       <channel num="2" idref="Y8960 OPL2"/>
-      <channel num="4" idref="Y8960 SCC"/>
+      <channel num="3" idref="Y8960 SCC"/>
     </Y8960-MIXER>
   </devices>
 </msxconfig>

@@ -19,7 +19,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-opll-panpot.py` | 上記 WAV の判定 |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
-| `tests/opl2-panpot.tcl` | OPL2 のチャンネルごとの定位 (F6h-FEh)、リズム音の定位、ADPCM の定位 (FFh) と音量 (7FFAh) の回帰テスト。WAV を書き出す |
+| `tests/opl2-panpot.tcl` | OPL2 のチャンネルごとの定位 (F6h-FEh)、リズム音の定位と比率、ADPCM の定位 (FFh) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のチャンネルごとの定位と音量、SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
@@ -33,7 +33,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
-| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFBh) の回帰テスト。WAV を書き出す |
+| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFAh) の回帰テスト。WAV を書き出す |
 | `tests/check-mixer-volume.py` | 上記 WAV の判定 |
 | `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-remove.py` | 上記 WAV の判定 |
@@ -71,7 +71,7 @@ py $T/check-opll-panpot.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-waveform.tcl"
 py $T/check-opl2-waveform.py "$OUT"
 
-# 2a. OPL2 と ADPCM の定位、ADPCM の音量。判定は終了コードで分かる
+# 2a. OPL2 と ADPCM の定位、リズム音の比率。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-panpot.tcl"
 py $T/check-opl2-panpot.py "$OUT"
 

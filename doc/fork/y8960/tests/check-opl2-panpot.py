@@ -3,8 +3,7 @@
 
   python check-opl2-panpot.py <WAV のあるディレクトリ>
 
-定位が効いていなければ *_left / *_right も center と同じ L=R になり、
-ADPCM の音量が効いていなければ adpcm_half が adpcm_center と同じ大きさになる。
+定位が効いていなければ *_left / *_right も center と同じ L=R になる。
 リズム音を 2 倍で出していれば bd_left が ch7_left の倍になる。
 そこが判別力のある部分である。
 """
@@ -13,7 +12,7 @@ import sys
 import wave
 
 NAMES = ("fm_center", "fm_left", "fm_right", "ch7_left", "bd_left",
-         "adpcm_center", "adpcm_left", "adpcm_half")
+         "adpcm_center", "adpcm_left")
 
 
 def peaks(path):
@@ -47,10 +46,6 @@ def main(directory):
     want = got["ch7_left"][0]
     if abs(got["bd_left"][0] - want) > want * 0.03 + 2:
         failures.append(f"bd_left が ch7_left と同じ大きさでない (want {want})")
-    # 音量 64 は最大 128 の 0.5 倍。16bit への丸めで数 LSB はずれる
-    want = got["adpcm_center"][0] * 64 / 128
-    if abs(got["adpcm_half"][0] - want) > want * 0.03 + 2:
-        failures.append(f"adpcm_half が adpcm_center の半分でない (want {want:.0f})")
 
     if failures:
         for f in failures:

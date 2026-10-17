@@ -43,10 +43,6 @@ Y8960Mixer::Y8960Mixer(const DeviceConfig& config)
 		if (num < 0 || num >= ChannelCount) {
 			throw MSXException("Invalid channel number(", num, ") device '", idRef, "'");
 		}
-		if (num == AdpcmChannel) {
-			throw MSXException("Channel ", num, " is the ADPCM, which is mixed "
-			                   "inside the OPL2; device '", idRef, "' can not use it");
-		}
 
 		channelDevices[num].push_back(idRef);
 	}
@@ -96,7 +92,7 @@ void Y8960Mixer::reset(EmuTime /*time*/)
 
 void Y8960Mixer::writeVolume(int channel, uint8_t value)
 {
-	assert(channel >= 0 && channel < ChannelCount && channel != AdpcmChannel);
+	assert(channel >= 0 && channel < ChannelCount);
 	volume[channel] = value;
 	applyAllGains();
 }

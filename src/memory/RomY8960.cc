@@ -26,8 +26,8 @@
 //					All are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
 //
-//  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, ADPCM,
-//					SCC). The mixer has no other way in.
+//  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, SCC).
+//					The mixer has no other way in.
 //
 //  	SCC:		0x1800-0x1FFF of any bank whose bank register holds #63,
 //  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
@@ -89,7 +89,7 @@ constexpr uint16_t MmioOpl2       = 0x7FF2; // + 0x7FF3
 constexpr uint16_t MmioOpll       = 0x7FF4; // + 0x7FF5
 constexpr uint16_t MmioIoEnabler1 = 0x7FF6;
 constexpr uint16_t MmioIoEnabler2 = 0x7FFF;
-constexpr uint16_t MmioVolume     = 0x7FF7; // + Y8960Mixer channel, up to 0x7FFB
+constexpr uint16_t MmioVolume     = 0x7FF7; // + Y8960Mixer channel, up to 0x7FFA
 
 constexpr byte Enabler1Opll  = 0x01;
 constexpr byte Enabler2Opl2  = 0x01;
@@ -353,13 +353,8 @@ void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
 	}
 
 	if ((address >= MmioVolume) && (address < MmioVolume + Y8960Mixer::ChannelCount)) {
-		int channel = address - MmioVolume;
-		if (channel == Y8960Mixer::AdpcmChannel) {
-			if (opl2 != nullptr) {
-				opl2->setAdpcmVolume(value, time);
-			}
-		} else if (auto* m = getMixer()) {
-			m->writeVolume(channel, value);
+		if (auto* m = getMixer()) {
+			m->writeVolume(address - MmioVolume, value);
 		}
 	}
 }
