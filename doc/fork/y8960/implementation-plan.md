@@ -177,16 +177,16 @@ OPLL はリードアクセスが無いので、書き込みを落とせば挙動
 
 回帰テストは `doc/fork/y8960/tests/opll-enabler.tcl`。
 
-### 3.3.1 I/O Enabler2（7FF7h）
+### 3.3.1 I/O Enabler2（7FFFh）
 
-| 7FF7h のビット | 開くポート | デバイス |
+| 7FFFh のビット | 開くポート | デバイス |
 |---|---|---|
 | b0 | C0h-C1h | `Y8960 OPL2` |
 | b1 | A0h-A2h | `Y8960 SSGS` |
 | b7 | B0h-B3h | `y8960-timer` |
 
-リセット直後は全ビットが閉じている。RTL（`d6d16a3`）は 7FFFh で SSG が b4 の、
-改訂前の配置のまま（`hardware-notes.md` §3）。
+リセット直後は全ビットが閉じている。RTL（`d6d16a3`）は番地が同じで、SSG が b4 の
+改訂前の割り当てのまま（`hardware-notes.md` §3）。
 
 OPL2 と MSX-TIMER はリードアクセスがあるので、`writeIO()` だけでなく
 `readIO()` / `peekIO()` も閉じているときは 0xFF を返す。
@@ -211,11 +211,10 @@ OPLL と SSGS はライトオンリーなので `writeIO()` だけを弾く。
 | 7FF2h / 7FF3h | `Y8960 OPL2`（アドレス / データ） |
 | 7FF4h / 7FF5h | `Y8960 OPLL`（アドレス / データ） |
 | 7FF6h | I/O Enabler1（§3.3） |
-| 7FF7h | I/O Enabler2（§3.3.1） |
-| 7FF8h-7FFCh | ミキサーの音量（§3.7）。7FFBh だけは `Y8960 OPL2` へ |
+| 7FF7h-7FFBh | ミキサーの音量（§3.7）。7FFAh だけは `Y8960 OPL2` へ |
+| 7FFFh | I/O Enabler2（§3.3.1） |
 
-ミラー（3FE0h-3FFFh）は持たない。xlsx の Enabler2 の名前に「(Mirror 3FFFh)」が残って
-いるが、ミラーは無いと回答があった（2026-10-17）。
+ミラー（3FE0h-3FFFh）は持たない。ミラーは無いと回答があった（2026-10-17）。
 
 **窓が出る条件は §3.8.1 の規則 2**（バンク1 が ROM を出しているときだけ）。
 xlsx の「RAM Mode=0 か、あるいは BANK1 が ROM バンク (#0-#15)」と同じ範囲で、
@@ -254,7 +253,7 @@ TEST レジスタ 01h の b5 が全体のゲートになる（クリアなら全
 レジスタ処理に入る前に取る。リズム音は BD が ch7、SD と HH が ch8、TOM と CYM が ch9 の
 定位に従い、楽音と 1 : 1 で混ざる（Y8950 から引き継いだ 2 倍は外した）。
 
-**ADPCM の音量**（ミキサーの 7FFBh）は `Y8960OPL2::setAdpcmVolume()` で受け、ADPCM だけに
+**ADPCM の音量**（ミキサーの 7FFAh）は `Y8960OPL2::setAdpcmVolume()` で受け、ADPCM だけに
 掛ける。ADPCM は OPL2 の中で混ざり、そのあと OPL2 の音量が全体に掛かるため（§3.7）。
 
 回帰テストは `tests/opl2-waveform.tcl`（波形）と `tests/opl2-panpot.tcl`（定位、リズム音の
@@ -498,7 +497,7 @@ RTL は `memory_io_en = ~rammode` で、RAM モードなら無条件に窓が消
 規則 2 はバンク1 の内容で決めるので、**RAM モードでも窓が残る構成がある**。
 これを許容と決めた。
 
-利点が 1 つある。I/O イネーブラ (7FF6h / 7FF7h) は MMIO 窓にしか入口が無く、
+利点が 1 つある。I/O イネーブラ (7FF6h / 7FFFh) は MMIO 窓にしか入口が無く、
 直接 I/O ポートを持たない。RTL の規則だと RAM モード中はイネーブラを変更できず、
 一度 ROM モードに戻る必要がある。規則 2 なら、バンク1 に ROM バンクを置いて
 いる限り RAM モード中でも変更できる。
@@ -628,20 +627,20 @@ RAM 経由で回収している。RAM バンクを置いたページと SCC 窓�
 音源にはゲインが掛かっておらず、鳴ってしまう。デバイスの増減を知る手段が
 下流に無いため。設定を振り直せば揃う（**未修正**）。
 
-#### 音量（7FF8h-7FFCh）
+#### 音量（7FF7h-7FFBh）
 
 音源ごとの音量を 1 本ずつ持つ。**I/O ポートは無く、メモリマップド I/O からだけ書ける**
 （xlsx の `MIXIER` シート）。`RomY8960` が `<mixer>` のデバイスへ渡す。
 
 | 番地 | チャンネル | 掛かる先 |
 |---|---|---|
-| 7FF8h | 0 | `Y8960 SSGS` |
-| 7FF9h | 1 | `Y8960 OPLL` |
-| 7FFAh | 2 | `Y8960 OPL2`（ADPCM を含む） |
-| 7FFBh | 3 | ADPCM だけ。`Y8960OPL2::setAdpcmVolume()` へ |
-| 7FFCh | 4 | `Y8960 SCC` |
+| 7FF7h | 0 | `Y8960 SSGS` |
+| 7FF8h | 1 | `Y8960 OPLL` |
+| 7FF9h | 2 | `Y8960 OPL2`（ADPCM を含む） |
+| 7FFAh | 3 | ADPCM だけ。`Y8960OPL2::setAdpcmVolume()` へ |
+| 7FFBh | 4 | `Y8960 SCC` |
 
-- XML の `<channel num>` は 7FF8h からのずれ（2026-10-17、ユーザー判断）。
+- XML の `<channel num>` は 7FF7h からのずれ（2026-10-17、ユーザー判断）。
   チャンネル 3 を XML に書くと例外にしている
 - ゲインは `y8960::volumeGain()`（§3.6）。左右に同じ値を入れる。リセット値は 128（最大。
   2026-10-17、hra1129 さんの回答）
@@ -759,7 +758,7 @@ DCSG の型名 `Y8960-DCSG` と `<dcsg0>` / `<dcsg1>` は、2026-10-16 に DCSG 
 | 項目 | 値 |
 |---|---|
 | XML の結線要素 | `<mixer>`（ROM の側。ミキサーのデバイス id） |
-| `<channel num>` | 7FF8h からのずれ。0 SSG、1 OPLL、2 OPL2、4 SCC。3（ADPCM）は書けない |
+| `<channel num>` | 7FF7h からのずれ。0 SSG、1 OPLL、2 OPL2、4 SCC。3（ADPCM）は書けない |
 | I/O ポート | 無し（B6h-B7h は 2026-10-17 に外した） |
 
 ### 4.2.3 ADPCM サンプルメモリ（確定済み 2026-09-12）
@@ -783,7 +782,7 @@ DCSG の型名 `Y8960-DCSG` と `<dcsg0>` / `<dcsg1>` は、2026-10-16 に DCSG 
 一次情報が食い違っていたもの。いずれも**確認済み**（各出典を読んだ）。
 **hra1129 さんからの直接の回答があるものは、それを最優先する。**
 
-| | 採用値 | buppu3 実装 (2026-01) | RTL (`d6d16a3`) | xlsx (`9869ca0`) |
+| | 採用値 | buppu3 実装 (2026-01) | RTL (`d6d16a3`) | xlsx (`6ab414e`) |
 |---|---|---|---|---|
 | OPLL | 7Ch-7Dh | 7Ch-7Dh / 7Ah-7Bh | 7Ch-7Dh / 7Ah-7Bh | 7Ch-7Dh |
 | OPL2 | C0h-C1h | （未実装） | C0h-C1h / C2h-C3h | C0h-C1h |
@@ -817,7 +816,7 @@ DCSG のアドレス（3Eh/3Fh か 7Eh/7Fh か）、ミキサーのアドレス�
 | 互換モードのバンクレジスタ | 5000-57FFh / 7000-77FFh / 9000-97FFh / B000-B7FFh |
 | SCC 音源レジスタ | 各 region の 1800-1FFF、すなわち 5800-5FFFh / 7800-7FFFh / 9800-9FFFh / B800-BFFFh |
 | SCC 窓を開くバンク値 | 3Fh |
-| MMIO 窓 | 7FE0-7FFFh（使っているのは 7FF0h-7FFCh。§3.3.2） |
+| MMIO 窓 | 7FE0-7FFFh（使っているのは 7FF0h-7FFBh と 7FFFh。§3.3.2） |
 
 **やり直しの値段**: SCC 窓を出す region を減らすのは条件式 1 つ。
 増やすのも同じ。MMIO 窓のアドレスを動かすと §3.8.1 の包含関係の前提が
@@ -1005,6 +1004,20 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
   持ち込むと挙動が説明しにくくなる
 
 ## 8. 実行経緯
+
+### 2026-10-17 (8) — Enabler2 を 7FFFh、音量を 7FF7h-7FFBh に移した
+
+(7) の追従。ユーザーの指示。
+
+- `RomY8960.cc` の `MmioIoEnabler2` を 0x7FFF、`MmioVolume` を 0x7FF7 にした。ミキサーの
+  チャンネル番号と XML の `<channel num>` は変わらない
+- テスト 13 本、`src/` のコメント、XML のコメント、README 2 本、`hardware-notes.md`、本書の設計の節の
+  番地を書き換えた。本節より前の経緯の記述は直していない
+- **判別力**（**確認済み**）: 変更前の exe で書き換え後のテストを回すと、`enabler2.tcl` の手順 2 が
+  B0h=0xFF（expect 0x00 / 0x06）、`mixer-volume` が無音で NG
+- **ビルド（確認済み）**: 0 エラー、`LNK4286` 0 件、警告は既存の `MSXTimer.cc` の 1 件だけ
+- **回帰テスト（確認済み）**: README の 1-10 と既存拡張 5 種・`HRA_Y8960` の `-testconfig` がすべて
+  通った。目で見るテストの出力は (6) と同一（`enabler2.tcl` の表示の番地 7FF7 → 7FFF だけが違う）
 
 ### 2026-10-17 (7) — xlsx の再改訂（`6ab414e`）を読んだ。Enabler2 が 7FFFh に戻った
 

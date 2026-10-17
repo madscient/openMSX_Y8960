@@ -33,7 +33,7 @@ proc w {reg val} {
 proc run_test {} {
 	global OUT
 
-	mem_write 0x7FF7 0x02        ;# I/O Enabler2 b1: SSGS を開く
+	mem_write 0x7FFF 0x02        ;# I/O Enabler2 b1: SSGS を開く
 	# $07 の b6=1 / b7=1 で両ポートを出力にする
 	w 0x07 0xC0
 	w 0x17 0xC0

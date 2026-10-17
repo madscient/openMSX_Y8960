@@ -1,4 +1,4 @@
-# デジタルミキサーの音量レジスタ (7FF8h-7FFCh) の回帰テスト。
+# デジタルミキサーの音量レジスタ (7FF7h-7FFBh) の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script mixer-volume.tcl
 #
@@ -6,11 +6,11 @@
 # vol_reset / vol_half / vol_mute / vol_others / vol_ff の 5 本の WAV を書き出す。
 # 判定は check-mixer-volume.py が行う。
 #
-# SSG（7FF8h）だけで鳴らし、その音量を書き換えて録る。
+# SSG（7FF7h）だけで鳴らし、その音量を書き換えて録る。
 #   vol_reset   リセット直後（128 = 最大）
 #   vol_half    64。半分になる
 #   vol_mute    0。消える
-#   vol_others  SSG を 128 に戻し、他の 4 本 (7FF9h-7FFCh) に 0。SSG は変わらない
+#   vol_others  SSG を 128 に戻し、他の 4 本 (7FF8h-7FFBh) に 0。SSG は変わらない
 #   vol_ff      FFh。bit7 が立てば最大なので reset と同じ
 #
 # **最終ミックスを録っている**（`record -audioonly`）。デバイスごとの
@@ -37,7 +37,7 @@ proc w {reg val} {
 }
 
 proc run_test {} {
-	mem_write 0x7FF7 0x02        ;# I/O Enabler2 b1: SSGS を開く
+	mem_write 0x7FFF 0x02        ;# I/O Enabler2 b1: SSGS を開く
 	# 系統 1 (10h-1Fh) で鳴らす。C-BIOS も A0h/A1h に書くが、本体 PSG の
 	# レジスタ番号は 0-15 にマスクされるので系統 1 には届かない。
 	# 系統 0 で鳴らすと C-BIOS の書き込みで音が変わり、測るたびに値が動く
@@ -51,10 +51,10 @@ proc run_test {} {
 }
 
 set steps {
-	vol_half   {0x7FF8 64}
-	vol_mute   {0x7FF8 0}
-	vol_others {0x7FF8 0x80 0x7FF9 0 0x7FFA 0 0x7FFB 0 0x7FFC 0}
-	vol_ff     {0x7FF8 0xFF}
+	vol_half   {0x7FF7 64}
+	vol_mute   {0x7FF7 0}
+	vol_others {0x7FF7 0x80 0x7FF8 0 0x7FF9 0 0x7FFA 0 0x7FFB 0}
+	vol_ff     {0x7FF7 0xFF}
 }
 
 proc capture {name} {

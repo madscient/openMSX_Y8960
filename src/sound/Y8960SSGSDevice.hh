@@ -26,7 +26,7 @@ public:
 
 	void writePort(bool port, byte value, EmuTime time);
 
-	/** 7FF7h (I/O Enabler2) bit 1. */
+	/** 7FFFh (I/O Enabler2) bit 1. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 
 	template<typename Archive>
