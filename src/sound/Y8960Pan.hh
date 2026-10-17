@@ -29,10 +29,10 @@ struct PanGain { float left, right; };
 	return {.left = std::cos(t), .right = std::sin(t)};
 }
 
-/** The gain of a volume register (SSGS 20h-26h, the mixer's 7FF7h-7FFAh):
-  * 0 mutes, 1-127 is linear in steps of 1/128, and any value with bit 7 set
-  * is unity. So 128, the documented maximum, is unity and 127 just below
-  * it. The specification gives only the end points. */
+/** The gain of a volume register (SSGS 20h-26h, the mixer's 7FF7h-7FFAh
+  * and 7FFEh): 0 mutes, 1-127 is linear in steps of 1/128, and any value
+  * with bit 7 set is unity. So 128, the documented maximum, is unity and 127
+  * just below it. The specification gives only the end points. */
 [[nodiscard]] inline float volumeGain(uint8_t volume)
 {
 	if (volume & 0x80) return 1.0f;

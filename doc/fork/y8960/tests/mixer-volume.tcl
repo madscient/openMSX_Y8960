@@ -1,9 +1,10 @@
-# デジタルミキサーの音量レジスタ (7FF7h-7FFAh) の回帰テスト。
+# デジタルミキサーの音量レジスタ (7FF7h-7FFAh) とマスター音量 (7FFEh) の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script mixer-volume.tcl
 #
 # 出力先は環境変数 Y8960_TEST_OUT のディレクトリ（未設定ならカレント）。
-# vol_reset / vol_half / vol_mute / vol_others / vol_ff の 5 本の WAV を書き出す。
+# vol_reset / vol_half / vol_mute / vol_others / vol_ff / master_half /
+# master_quarter / master_mute / reserved の 9 本の WAV を書き出す。
 # 判定は check-mixer-volume.py が行う。
 #
 # SSG（7FF7h）だけで鳴らし、その音量を書き換えて録る。
@@ -12,6 +13,10 @@
 #   vol_mute    0。消える
 #   vol_others  SSG を 128 に戻し、他の 3 本 (7FF8h-7FFAh) に 0。SSG は変わらない
 #   vol_ff      FFh。bit7 が立てば最大なので reset と同じ
+#   master_half     マスター (7FFEh) を 64。SSG は FFh のままなので半分
+#   master_quarter  さらに SSG を 64。両方が掛かって 1/4
+#   master_mute     SSG を 128 に戻し、マスターを 0。消える
+#   reserved        マスターを 128 に戻し、7FFBh-7FFDh に 0。reset と同じ
 #
 # **最終ミックスを録っている**（`record -audioonly`）。デバイスごとの
 # `_ch<n>_record` はミキサーの手前で分岐するので、ここでは使えない。
@@ -55,6 +60,10 @@ set steps {
 	vol_mute   {0x7FF7 0}
 	vol_others {0x7FF7 0x80 0x7FF8 0 0x7FF9 0 0x7FFA 0}
 	vol_ff     {0x7FF7 0xFF}
+	master_half    {0x7FFE 64}
+	master_quarter {0x7FF7 64}
+	master_mute    {0x7FF7 0x80 0x7FFE 0}
+	reserved       {0x7FFE 0x80 0x7FFB 0 0x7FFC 0 0x7FFD 0}
 }
 
 proc capture {name} {
