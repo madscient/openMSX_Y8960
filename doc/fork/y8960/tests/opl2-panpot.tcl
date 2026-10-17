@@ -4,13 +4,15 @@
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script opl2-panpot.tcl
 #
 # 出力先は環境変数 Y8960_TEST_OUT のディレクトリ（未設定ならカレント）。
-# fm_center / fm_left / fm_right / bd_left / adpcm_center / adpcm_left /
-# adpcm_half の 7 本の WAV を書き出す。判定は check-opl2-panpot.py が行う。
+# fm_center / fm_left / fm_right / ch7_left / bd_left / adpcm_center /
+# adpcm_left / adpcm_half の 8 本の WAV を書き出す。判定は check-opl2-panpot.py が行う。
 #
 # 判別力があるのは fm_left / fm_right / bd_left / adpcm_left / adpcm_half で、
 # 定位が効いていなければ L=R になり、ADPCM の音量が効いていなければ
 # adpcm_half が adpcm_center と同じ大きさになる。bd_left は ch7 を左端、
 # ch8 を右端にして BD を鳴らし、BD が ch7 の定位に従うことを見る。
+# ch7_left は同じスロットの設定で ch7 をメロディとして鳴らしたもので、
+# BD と同じ大きさになる（リズム音はメロディと 1 : 1）。2 倍なら BD が倍になる。
 #
 # デバイスごとの録音 (`_ch<n>_record`) は音源の出力をそのまま録る。
 # ch1-9 が FM、ch10-14 がリズム音 (BD / SD / CYM / HH / TOM)、ch15 が ADPCM。
@@ -54,16 +56,29 @@ proc fm {name pan} {
 }
 proc fm_off {} { r 0xB0 0x11 }
 
-# BD (ch7 のスロット) を鳴らす。ch8 の定位は逆側にしておく
-proc bd {name} {
+# ch7 のスロット。BD もこれを使う。ch8 の定位は逆側にしておく
+proc ch7_slots {} {
 	r 0xF6 128
 	r 0xFC 1                     ;# ch7 を左端
 	r 0xFD 255                   ;# ch8 を右端
 	r 0x30 0x01 ; r 0x33 0x01
-	r 0x50 0x00 ; r 0x53 0x10    ;# TL。リズム音は 2 倍で出るので 12dB 下げる
+	r 0x50 0x00 ; r 0x53 0x08
 	r 0x70 0xF0 ; r 0x73 0xF0
 	r 0x90 0x00 ; r 0x93 0x00
-	r 0xA6 0x98 ; r 0xB6 0x09
+	r 0xC6 0x00                  ;# FM。BD は常に FM で鳴る
+	r 0xA6 0x98
+}
+
+proc ch7 {name} {
+	ch7_slots
+	r 0xB6 0x29                  ;# キーオン
+	after time 0.05 [list rec $name 7 [list ch7_off]]
+}
+proc ch7_off {} { r 0xB6 0x09 }
+
+proc bd {name} {
+	ch7_slots
+	r 0xB6 0x09
 	r 0xBD 0x20                  ;# リズムモード
 	r 0xBD 0x30                  ;# BD キーオン
 	after time 0.05 [list rec $name 10 [list bd_off]]
@@ -114,10 +129,11 @@ proc next_step {} {
 		0 { mem_write 0x7FF7 0x01 ; fm fm_center 128 }
 		1 { fm fm_left  1 }
 		2 { fm fm_right 255 }
-		3 { bd bd_left }
-		4 { adpcm_start ; adpcm adpcm_center 128 128 }
-		5 { adpcm adpcm_left 1 128 }
-		6 { adpcm adpcm_half 128 64 }
+		3 { ch7 ch7_left }
+		4 { bd bd_left }
+		5 { adpcm_start ; adpcm adpcm_center 128 128 }
+		6 { adpcm adpcm_left 1 128 }
+		7 { adpcm adpcm_half 128 64 }
 		default { exit }
 	}
 }

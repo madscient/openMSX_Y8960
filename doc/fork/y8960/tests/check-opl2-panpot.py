@@ -5,13 +5,14 @@
 
 定位が効いていなければ *_left / *_right も center と同じ L=R になり、
 ADPCM の音量が効いていなければ adpcm_half が adpcm_center と同じ大きさになる。
+リズム音を 2 倍で出していれば bd_left が ch7_left の倍になる。
 そこが判別力のある部分である。
 """
 import struct
 import sys
 import wave
 
-NAMES = ("fm_center", "fm_left", "fm_right", "bd_left",
+NAMES = ("fm_center", "fm_left", "fm_right", "ch7_left", "bd_left",
          "adpcm_center", "adpcm_left", "adpcm_half")
 
 
@@ -37,11 +38,15 @@ def main(directory):
             failures.append(f"{name} が無音。音が鳴っていない")
         if got[name][0] != got[name][1]:
             failures.append(f"{name} で L と R が違う")
-    for name in ("fm_left", "bd_left", "adpcm_left"):
+    for name in ("fm_left", "ch7_left", "bd_left", "adpcm_left"):
         if got[name][0] == 0 or got[name][1] != 0:
             failures.append(f"{name} が左に振り切れていない")
     if got["fm_right"][1] == 0 or got["fm_right"][0] != 0:
         failures.append("fm_right が右に振り切れていない")
+    # BD は ch7 のスロットをそのまま使う。リズム音がメロディと 1 : 1 なら同じ大きさ
+    want = got["ch7_left"][0]
+    if abs(got["bd_left"][0] - want) > want * 0.03 + 2:
+        failures.append(f"bd_left が ch7_left と同じ大きさでない (want {want})")
     # 音量 64 は最大 128 の 0.5 倍。16bit への丸めで数 LSB はずれる
     want = got["adpcm_center"][0] * 64 / 128
     if abs(got["adpcm_half"][0] - want) > want * 0.03 + 2:

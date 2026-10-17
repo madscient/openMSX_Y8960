@@ -912,21 +912,25 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 			(void)ch[7].slot[MOD].calc_phase(lfo_pm);
 			(void)ch[8].slot[CAR].calc_phase(lfo_pm);
 
+			// The Y8950 this was forked from doubles the rhythm sounds. On
+			// the Y8960 the rhythm mode only changes how channels 7-9 are
+			// used, not their level, so they mix at 1:1 with the melody.
+
 			if (ch[6].slot[CAR].isActive()) {
-				out(9, 6, 2 * ch[6].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
-				                   ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)));
+				out(9, 6, ch[6].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
+				              ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)));
 			}
 			if (ch[7].slot[CAR].isActive()) {
-				out(10, 7, 2 * ch[7].slot[CAR].calc_slot_snare(lfo_pm, lfo_am, whiteNoise));
+				out(10, 7, ch[7].slot[CAR].calc_slot_snare(lfo_pm, lfo_am, whiteNoise));
 			}
 			if (ch[8].slot[CAR].isActive()) {
-				out(11, 8, 2 * ch[8].slot[CAR].calc_slot_cym(lfo_am, noiseA, noiseB));
+				out(11, 8, ch[8].slot[CAR].calc_slot_cym(lfo_am, noiseA, noiseB));
 			}
 			if (ch[7].slot[MOD].isActive()) {
-				out(12, 7, 2 * ch[7].slot[MOD].calc_slot_hat(lfo_am, noiseA, noiseB, whiteNoise));
+				out(12, 7, ch[7].slot[MOD].calc_slot_hat(lfo_am, noiseA, noiseB, whiteNoise));
 			}
 			if (ch[8].slot[MOD].isActive()) {
-				out(13, 8, 2 * ch[8].slot[MOD].calc_slot_tom(lfo_pm, lfo_am));
+				out(13, 8, ch[8].slot[MOD].calc_slot_tom(lfo_pm, lfo_am));
 			}
 		} else {
 			//bufs[ 9] += 0;
