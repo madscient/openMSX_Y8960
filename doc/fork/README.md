@@ -121,7 +121,7 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 
 | ブロック | 状態 |
 |---|---|
-| SSGS ×1 | 実装済み。内部に YM2149 相当の SSG が 2 系統（計 6ch）+ チャンネルごとの音量と定位（20h-2Eh）。カートリッジ版はライトオンリー |
+| SSGS ×1 | 実装済み。内部に YM2149 相当の SSG が 2 系統（計 6ch）+ チャンネルごとの音量と定位（20h-2Eh）。ライトオンリー |
 | OPLL ×1 | 実装済み（チャンネル別音色バンクと定位付き YM2413） |
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`）。バンクメモリは RTL と差があり**保留中** |
 | MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定）。割り込みが CPU に届くことを実測済み |
@@ -130,7 +130,7 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | OPL2 + ADPCM-B ×1 | 実装済み（OPL2 波形選択、チャンネルごとの定位 F6h-FEh、ADPCM の定位 FFh）。ADPCM の発音を実測済み |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |
 | I/O Enabler2 (7FF7h) | 実装済み（OPL2 b0、SSGS b1、タイマー b7） |
-| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h。窓を `rammode` で閉じるのは未実装） |
+| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h）。窓はバンク1 が ROM のときだけ出る |
 
 DCSG と、OPLL / OPL2 の 2 番目の回路は、2026-10-16 の仕様変更で無くなった。
 本体内蔵版は別のハードウェアになるので、このフォークはカートリッジ版だけを扱う。
