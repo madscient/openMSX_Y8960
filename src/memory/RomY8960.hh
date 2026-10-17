@@ -5,9 +5,12 @@
 #include "Ram.hh"
 #include "SCC.hh"
 #include "MSXTimer.hh"
+#include "Y8960Mixer.hh"
 #include "Y8960OPL2Device.hh"
 #include "Y8960SSGSDevice.hh"
 #include "Y8960OPLLDevice.hh"
+
+#include <string>
 
 namespace openmsx {
 
@@ -33,6 +36,7 @@ public:
 private:
 	void bankSwitch(unsigned page, unsigned block);
 	void writeMmio(uint16_t address, byte value, EmuTime time);
+	[[nodiscard]] Y8960Mixer* getMixer();
 	bool isRamRegion(unsigned int region) const;
 	bool isSccRegion(unsigned int region) const;
 	bool isSccAddress(uint16_t address) const;
@@ -47,7 +51,8 @@ private:
 	Y8960OPL2Device *opl2;
 	Y8960SSGSDevice *ssgs;
 	MSXTimer *timer;
-	const bool useMmioTunnel;
+	Y8960Mixer* mixer = nullptr;
+	std::string mixerName;
 	SCC scc;
 	Ram ram;
 	bool ramEnabled;

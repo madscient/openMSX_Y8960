@@ -2,8 +2,7 @@
 //
 // memory mapped I/O
 //    The memory mapped registers below are the cartridge's way in to the
-//    sound blocks. Built into an MSX the blocks sit on the bus directly and
-//    the window is not there; <use_mmio_tunnel> false drops it.
+//    sound blocks.
 //
 //    The window 0x7FE0-0x7FFF is fully covered by the SCC window of the same
 //    page (0x7800-0x7FFF), so it is only there while 0x6000-0x7FFF shows
@@ -26,6 +25,9 @@
 //					MSX-TIMER (0xB0-0xB3) I/O ports
 //					All are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
+//
+//  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, ADPCM,
+//					SCC). The mixer has no other way in.
 //
 //  	SCC:		0x1800-0x1FFF of any bank whose bank register holds #63,
 //  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
@@ -82,15 +84,16 @@ namespace {
 
 // The memory mapped I/O window. Everything in it is write-only.
 constexpr uint16_t MmioWindow     = 0x7FE0; // 0x7FE0-0x7FFF
-constexpr uint16_t MmioSsgs       = 0x7FEA; // + 0x7FEB
-constexpr uint16_t MmioOpl2       = 0x7FEE; // + 0x7FEF
+constexpr uint16_t MmioSsgs       = 0x7FF0; // + 0x7FF1
+constexpr uint16_t MmioOpl2       = 0x7FF2; // + 0x7FF3
 constexpr uint16_t MmioOpll       = 0x7FF4; // + 0x7FF5
 constexpr uint16_t MmioIoEnabler1 = 0x7FF6;
-constexpr uint16_t MmioIoEnabler2 = 0x7FFF;
+constexpr uint16_t MmioIoEnabler2 = 0x7FF7;
+constexpr uint16_t MmioVolume     = 0x7FF8; // + Y8960Mixer channel, up to 0x7FFC
 
 constexpr byte Enabler1Opll  = 0x01;
 constexpr byte Enabler2Opl2  = 0x01;
-constexpr byte Enabler2Ssgs  = 0x10;
+constexpr byte Enabler2Ssgs  = 0x02;
 constexpr byte Enabler2Timer = 0x80;
 
 template<typename T>
@@ -110,7 +113,6 @@ template<typename T>
 
 RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	: Rom8kBBlocks(config, std::move(rom_))
-	, useMmioTunnel(config.getChildDataAsBool("use_mmio_tunnel", true))
 	, ram(config, getName() + " ram", "ram", 8192 * RamBankCounts)
 	, scc(getName(), config, getCurrentTime())
 {
@@ -127,6 +129,7 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	opl2  = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2");
 	ssgs  = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
 	timer = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");
+	mixerName = config.getChildData("mixer", "");
 
 	powerUp(getCurrentTime());
 }
@@ -275,9 +278,7 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 		ram[getRamAddress(address)] = value;
 	}
 
-	// Built into an MSX the sound blocks sit on the bus directly, so the
-	// cartridge's way in to them is not there.
-	if (useMmioTunnel && isMmioVisible()) {
+	if (isMmioVisible()) {
 		writeMmio(address, value, time);
 	}
 
@@ -350,6 +351,32 @@ void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
 			opll->setIoEnabled((value & Enabler1Opll) != 0);
 		}
 	}
+
+	if ((address >= MmioVolume) && (address < MmioVolume + Y8960Mixer::ChannelCount)) {
+		int channel = address - MmioVolume;
+		if (channel == Y8960Mixer::AdpcmChannel) {
+			if (opl2 != nullptr) {
+				opl2->setAdpcmVolume(value, time);
+			}
+		} else if (auto* m = getMixer()) {
+			m->writeVolume(channel, value);
+		}
+	}
+}
+
+Y8960Mixer* RomY8960::getMixer()
+{
+	// Looked up on first use: the mixer is created after this device,
+	// because it checks that the SCC sound device it mixes exists.
+	if ((mixer == nullptr) && !mixerName.empty()) {
+		mixer = dynamic_cast<Y8960Mixer*>(getMotherBoard().findDevice(mixerName));
+		if (mixer == nullptr) {
+			getMotherBoard().getMSXCliComm().printWarning(
+				"can not found device '", mixerName, "'.");
+			mixerName.clear();
+		}
+	}
+	return mixer;
 }
 
 byte* RomY8960::getWriteCacheLine(uint16_t address)

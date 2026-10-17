@@ -61,7 +61,7 @@ proc set_range {start_byte stop_byte} {
 
 proc run_test {} {
 	global log fails
-	mem_write 0x7FFF 0x01        ;# I/O Enabler2 b0: OPL2 を開く
+	mem_write 0x7FF7 0x01        ;# I/O Enabler2 b0: OPL2 を開く
 
 	check "byte 0x30000 starts out erased" [ram 0x30000] 0xFF
 

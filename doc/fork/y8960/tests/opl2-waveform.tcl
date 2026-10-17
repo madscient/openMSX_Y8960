@@ -1,4 +1,4 @@
-# Y8960 の OPL2 波形選択 (E0h-F5h) と I/O Enabler2 (7FFFh) の回帰テスト。
+# Y8960 の OPL2 波形選択 (E0h-F5h) と I/O Enabler2 (7FF7h) の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script opl2-waveform.tcl
 #
@@ -7,8 +7,8 @@
 # 2 つが異なることと、WS2 に負のサンプルが無いことを確かめれば波形選択が
 # 効いていると言える。判定は tools/check-opl2-waveform.py が行う。
 #
-# あわせて enabler も見る。7FFFh を書かないうちは C0h-C1h への書き込みが
-# 落ちるので、最初の capture が 7FFFh を開けている点に意味がある。
+# あわせて enabler も見る。7FF7h を書かないうちは C0h-C1h への書き込みが
+# 落ちるので、最初の capture が 7FF7h を開けている点に意味がある。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
 # この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
@@ -46,7 +46,7 @@ proc setup_note {} {
 
 proc capture {name ws} {
 	global OUTDIR
-	mem_write 0x7FFF 0x01          ;# I/O Enabler2 b0: open C0h-C1h
+	mem_write 0x7FF7 0x01          ;# I/O Enabler2 b0: open C0h-C1h
 	r 0xB0 0x11                    ;# key off
 	setup_note
 	r 0xE0 $ws                     ;# modulator waveform

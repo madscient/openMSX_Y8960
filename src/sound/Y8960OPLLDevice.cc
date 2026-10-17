@@ -7,8 +7,7 @@ namespace openmsx {
 Y8960OPLLDevice::Y8960OPLLDevice(const DeviceConfig& config)
 	: MSXDevice(config)
 	, opll(getName(), config)
-	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
-	, ioEnabled(!useIoEnabler)
+	, ioEnabled(false)
 {
 	reset(getCurrentTime());
 }
@@ -16,7 +15,7 @@ Y8960OPLLDevice::Y8960OPLLDevice(const DeviceConfig& config)
 void Y8960OPLLDevice::reset(EmuTime time)
 {
 	opll.reset(time);
-	ioEnabled = !useIoEnabler;
+	ioEnabled = false;
 }
 
 void Y8960OPLLDevice::writeIO(uint16_t port, byte value, EmuTime time)

@@ -9,13 +9,13 @@ namespace openmsx::y8960 {
 
 struct PanGain { float left, right; };
 
-/** The pan law of the Y8960's per-channel pan registers (OPLL 50h-58h,
-  * SSGS 28h-2Eh): 1 is hard left, 128 the centre, 255 hard right, and 0
+/** The pan law of the Y8960's pan registers (OPLL 50h-58h, SSGS 28h-2Eh,
+  * OPL2 F6h-FFh): 1 is hard left, 128 the centre, 255 hard right, and 0
   * counts as the centre.
   *
   * The specification only gives those anchor values. Between them this is
   * power panning, L = cos(t), R = sin(t) with t running from 0 to pi/2, so
-  * the centre sits 3dB down on both sides. (Decided 2026-10-16.)
+  * the centre sits 3dB down on both sides.
   */
 [[nodiscard]] inline PanGain panGain(uint8_t pan)
 {
@@ -29,13 +29,14 @@ struct PanGain { float left, right; };
 	return {.left = std::cos(t), .right = std::sin(t)};
 }
 
-/** The gain of a per-channel volume register (SSGS 20h-26h): the low 7
-  * bits, linear, 127 is unity; bit 7 is ignored. (The sheet says "0..128,
-  * 128 is the maximum"; the hardware side confirmed the register is 7 bits
-  * wide, 2026-10-16.) */
+/** The gain of a volume register (SSGS 20h-26h, the mixer's 7FF8h-7FFCh):
+  * 0 mutes, 1-127 is linear in steps of 1/128, and any value with bit 7 set
+  * is unity. So 128, the documented maximum, is unity and 127 just below
+  * it. The specification gives only the end points. */
 [[nodiscard]] inline float volumeGain(uint8_t volume)
 {
-	return float(volume & 0x7F) / 127.0f;
+	if (volume & 0x80) return 1.0f;
+	return float(volume) / 128.0f;
 }
 
 } // namespace openmsx::y8960

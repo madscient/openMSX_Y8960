@@ -1,5 +1,5 @@
-# カートリッジ版 SSGS がリードに反応しないこと、および I/O Enabler2 (7FFFh)
-# の b4 が効くことの回帰テスト。
+# カートリッジ版 SSGS がリードに反応しないこと、および I/O Enabler2 (7FF7h)
+# の b1 が効くことの回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script ssgs-write-only.tcl
 #
@@ -53,7 +53,7 @@ proc run_test {} {
 		[debug read ioports 0xA2]]
 
 	# enabler を開けると SSGS にも重ねて届く
-	mem_write 0x7FFF 0x10
+	mem_write 0x7FF7 0x02
 	psg_write 0x00 0x5A
 	puts $OUT [format "4. enabler open   : SSG.reg0=0x%02X PSG.reg0=0x%02X (expect 0x5A both)" \
 		[debug read "Y8960 SSGS regs" 0] [debug read "PSG regs" 0]]

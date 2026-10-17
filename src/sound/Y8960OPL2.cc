@@ -505,7 +505,7 @@ static constexpr auto INPUT_RATE = unsigned(cstd::round(Y8960OPL2::CLOCK_FREQ / 
 
 Y8960OPL2::Y8960OPL2(const std::string& name_, const DeviceConfig& config,
                      Y8960AdpcmMemory& adpcmMemory, EmuTime time)
-	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 OPL2", 9 + 5 + 1, INPUT_RATE, false)
+	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 OPL2", 9 + 5 + 1, INPUT_RATE, true)
 	, motherBoard(config.getMotherBoard())
 	, adpcm(*this, config, adpcmMemory)
 	, debuggable(motherBoard, getName())
@@ -594,6 +594,10 @@ void Y8960OPL2::reset(EmuTime time)
 	std::ranges::fill(reg, 0x00);
 
 	reg[0x04] = 0x18;
+	std::fill(&reg[PAN_BASE], &reg[PAN_ADPCM] + 1, uint8_t(128));
+	updatePanGains();
+	adpcmVolume = 0x80;
+	adpcmGain = y8960::volumeGain(adpcmVolume);
 	status = 0x00;
 	statusMask = 0;
 	irq.reset();
@@ -807,6 +811,20 @@ void Y8960OPL2::updateWaveTables()
 	}
 }
 
+void Y8960OPL2::updatePanGains()
+{
+	for (auto i : xrange(panGain.size())) {
+		panGain[i] = y8960::panGain(reg[PAN_BASE + i]);
+	}
+}
+
+void Y8960OPL2::setAdpcmVolume(uint8_t value, EmuTime time)
+{
+	updateStream(time);
+	adpcmVolume = value;
+	adpcmGain = y8960::volumeGain(value);
+}
+
 bool Y8960OPL2::checkMuteHelper()
 {
 	for (auto i : xrange(6)) {
@@ -868,9 +886,15 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 		noiseB_phase &= (0x10 << 11) - 1;
 		int noiseB = noiseB_phase & (0x0A << 11) ? DB_POS(6) : DB_NEG(6);
 
+		auto out = [&](unsigned buf, unsigned panOf, int value) {
+			auto v = narrow_cast<float>(value);
+			bufs[buf][2 * sample + 0] += v * panGain[panOf].left;
+			bufs[buf][2 * sample + 1] += v * panGain[panOf].right;
+		};
+
 		for (auto i : xrange(rythm_mode ? 6 : 9)) {
 			if (ch[i].slot[CAR].isActive()) {
-				bufs[i][sample] += narrow_cast<float>(ch[i].alg
+				out(i, i, ch[i].alg
 					? ch[i].slot[CAR].calc_slot_car(lfo_pm, lfo_am, 0) +
 					       ch[i].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)
 					: ch[i].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
@@ -888,23 +912,22 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 			(void)ch[7].slot[MOD].calc_phase(lfo_pm);
 			(void)ch[8].slot[CAR].calc_phase(lfo_pm);
 
-			bufs[ 9][sample] += (ch[6].slot[CAR].isActive())
-				? narrow_cast<float>(
-					2 * ch[6].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
-						    ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)))
-				: 0.0f;
-			bufs[10][sample] += (ch[7].slot[CAR].isActive())
-				? narrow_cast<float>(2 * ch[7].slot[CAR].calc_slot_snare(lfo_pm, lfo_am, whiteNoise))
-				: 0.0f;
-			bufs[11][sample] += (ch[8].slot[CAR].isActive())
-				? narrow_cast<float>(2 * ch[8].slot[CAR].calc_slot_cym(lfo_am, noiseA, noiseB))
-				: 0.0f;
-			bufs[12][sample] += (ch[7].slot[MOD].isActive())
-				? narrow_cast<float>(2 * ch[7].slot[MOD].calc_slot_hat(lfo_am, noiseA, noiseB, whiteNoise))
-				: 0.0f;
-			bufs[13][sample] += (ch[8].slot[MOD].isActive())
-				? narrow_cast<float>(2 * ch[8].slot[MOD].calc_slot_tom(lfo_pm, lfo_am))
-				: 0.0f;
+			if (ch[6].slot[CAR].isActive()) {
+				out(9, 6, 2 * ch[6].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
+				                   ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)));
+			}
+			if (ch[7].slot[CAR].isActive()) {
+				out(10, 7, 2 * ch[7].slot[CAR].calc_slot_snare(lfo_pm, lfo_am, whiteNoise));
+			}
+			if (ch[8].slot[CAR].isActive()) {
+				out(11, 8, 2 * ch[8].slot[CAR].calc_slot_cym(lfo_am, noiseA, noiseB));
+			}
+			if (ch[7].slot[MOD].isActive()) {
+				out(12, 7, 2 * ch[7].slot[MOD].calc_slot_hat(lfo_am, noiseA, noiseB, whiteNoise));
+			}
+			if (ch[8].slot[MOD].isActive()) {
+				out(13, 8, 2 * ch[8].slot[MOD].calc_slot_tom(lfo_pm, lfo_am));
+			}
 		} else {
 			//bufs[ 9] += 0;
 			//bufs[10] += 0;
@@ -913,7 +936,10 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 			//bufs[13] += 0;
 		}
 
-		bufs[14][sample] += narrow_cast<float>(adpcm.calcSample());
+		// calcSample() advances the ADPCM, so it is called whatever the gain
+		auto a = narrow_cast<float>(adpcm.calcSample()) * adpcmGain;
+		bufs[14][2 * sample + 0] += a * panGain[9].left;
+		bufs[14][2 * sample + 1] += a * panGain[9].right;
 	}
 }
 
@@ -936,6 +962,13 @@ void Y8960OPL2::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 		// update the output buffer before changing the register
 		updateStream(time);
 	//}
+
+	if (rg >= PAN_BASE) {
+		// not part of the OPL2: the mixing stage behind it
+		reg[rg] = data;
+		updatePanGains();
+		return;
+	}
 
 	switch (rg & 0xe0) {
 	case 0x00: {
@@ -1297,7 +1330,7 @@ void Y8960OPL2::Channel::serialize(Archive& ar, unsigned /*version*/)
 }
 
 template<typename Archive>
-void Y8960OPL2::serialize(Archive& ar, unsigned /*version*/)
+void Y8960OPL2::serialize(Archive& ar, unsigned version)
 {
 	ar.serialize("adpcm",            adpcm,
 	             "timer1",            *timer1,
@@ -1317,11 +1350,18 @@ void Y8960OPL2::serialize(Archive& ar, unsigned /*version*/)
 	             "rythm_mode",    rythm_mode,
 	             "am_mode",       am_mode,
 	             "pm_mode",       pm_mode);
+	if (ar.versionAtLeast(version, 2)) {
+		ar.serialize("adpcmVolume", adpcmVolume);
+	} else {
+		adpcmVolume = 0x80;
+	}
 
 	if constexpr (Archive::IS_LOADER) {
 		// TODO restore more state from registers
 		update_key_status();
 		updateWaveTables();
+		updatePanGains();
+		adpcmGain = y8960::volumeGain(adpcmVolume);
 	}
 }
 

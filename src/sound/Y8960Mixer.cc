@@ -6,6 +6,7 @@
 #include "MSXMotherBoard.hh"
 #include "SoundDevice.hh"
 #include "XMLElement.hh"
+#include "Y8960Pan.hh"
 #include "serialize.hh"
 
 #include "StringOp.hh"
@@ -41,6 +42,10 @@ Y8960Mixer::Y8960Mixer(const DeviceConfig& config)
 		int num = e->getAttributeValueAsInt("num", 0);
 		if (num < 0 || num >= ChannelCount) {
 			throw MSXException("Invalid channel number(", num, ") device '", idRef, "'");
+		}
+		if (num == AdpcmChannel) {
+			throw MSXException("Channel ", num, " is the ADPCM, which is mixed "
+			                   "inside the OPL2; device '", idRef, "' can not use it");
 		}
 
 		channelDevices[num].push_back(idRef);
@@ -85,46 +90,14 @@ Y8960Mixer::~Y8960Mixer()
 
 void Y8960Mixer::reset(EmuTime /*time*/)
 {
-	registerLatch = 0;
-	std::ranges::fill(regs, 0);
-
-	masterGain = Gain{.left = 1.0f, .right = 1.0f};
-	std::ranges::fill(channelGain, Gain{.left = 1.0f, .right = 1.0f});
-
+	std::ranges::fill(volume, 0x80);
 	applyAllGains();
 }
 
-byte Y8960Mixer::readIO(uint16_t port, EmuTime time)
+void Y8960Mixer::writeVolume(int channel, uint8_t value)
 {
-	return peekIO(port, time);
-}
-
-byte Y8960Mixer::peekIO(uint16_t port, EmuTime /*time*/) const
-{
-	if ((port & 1) == 0) return registerLatch;
-	return (registerLatch < RegCount) ? regs[registerLatch] : 0xFF;
-}
-
-void Y8960Mixer::writeIO(uint16_t port, byte value, EmuTime /*time*/)
-{
-	// The register layout is not specified, so this stores and nothing more.
-	if ((port & 1) == 0) {
-		registerLatch = value;
-	} else if (registerLatch < RegCount) {
-		regs[registerLatch] = value;
-	}
-}
-
-void Y8960Mixer::setChannelGain(int channel, float left, float right)
-{
-	assert(channel >= 0 && channel < ChannelCount);
-	channelGain[channel] = Gain{.left = left, .right = right};
-	applyAllGains();
-}
-
-void Y8960Mixer::setMasterGain(float left, float right)
-{
-	masterGain = Gain{.left = left, .right = right};
+	assert(channel >= 0 && channel < ChannelCount && channel != AdpcmChannel);
+	volume[channel] = value;
 	applyAllGains();
 }
 
@@ -149,9 +122,8 @@ void Y8960Mixer::applyAllGains()
 	for (const auto& info : mixer.getDeviceInfos()) {
 		std::string_view name = info.device->getName();
 		if (auto channel = findChannel(name)) {
-			const auto& g = channelGain[*channel];
-			mixer.setDeviceGain(name, g.left  * masterGain.left  * y8960Gain,
-			                          g.right * masterGain.right * y8960Gain);
+			float g = y8960::volumeGain(volume[*channel]) * y8960Gain;
+			mixer.setDeviceGain(name, g, g);
 		} else {
 			mixer.setDeviceGain(name, msxGain, msxGain);
 		}
@@ -167,9 +139,11 @@ template<typename Archive>
 void Y8960Mixer::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<MSXDevice>(*this);
-	if (ar.versionAtLeast(version, 2)) {
-		ar.serialize("regs",          regs,
-		             "registerLatch", registerLatch);
+	if (ar.versionAtLeast(version, 3)) {
+		ar.serialize("volume", volume);
+	}
+	if constexpr (Archive::IS_LOADER) {
+		applyAllGains();
 	}
 }
 INSTANTIATE_SERIALIZE_METHODS(Y8960Mixer);
