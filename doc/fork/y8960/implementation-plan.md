@@ -1006,6 +1006,33 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-10-17 (7) — xlsx の再改訂（`6ab414e`）を読んだ。Enabler2 が 7FFFh に戻った
+
+ユーザーの指示。**実装は変えていない。**
+
+- 受け取った xlsx は hra1129/Y8960_Cartridge の `6ab414e`（2026-10-17 12:02）とバイト単位で同一
+  （**確認済み**: SHA-1）。`9869ca0` との差は xlsx だけで、その中でも MemoryMappedIO シートだけ
+  （**確認済み**: `git diff --stat`、全シートのセルの値・取り消し線・文字色・塗りの突き合わせ）
+- **変わったところ**（**確認済み**: 両版のセルを読み比べた）
+
+  | 番地 | `9869ca0` | `6ab414e` |
+  |---|---|---|
+  | 7FF7h | I/O Enabler2 | SSG Volume |
+  | 7FF8h | SSG Volume | OPLL Volume |
+  | 7FF9h | OPLL Volume | OPL2 Volume |
+  | 7FFAh | OPL2 Volume | ADPCM Volume |
+  | 7FFBh | ADPCM Volume | SCC Volume |
+  | 7FFCh | SCC Volume | （行が無い） |
+  | 7FFFh | （行が無い） | I/O Enabler2 |
+
+  Enabler2 のビット（b7 TIMER、b1 SSG、b0 OPL2）と、7FF0h-7FF6h は変わっていない。
+  Enabler2 の名前から「(Mirror 3FFFh)」が消えた（(2) の回答と一致）。7FFCh-7FFEh は表に無い
+- **影響**（読解。**未検証**）: `RomY8960.cc` 冒頭の定数 2 個（`MmioIoEnabler2` を 0x7FFF、
+  `MmioVolume` を 0x7FF7）で閉じる。ミキサーのチャンネル番号（7FF?h からのずれ）は並びが
+  同じなので変わらない。テストは 12 本が 7FF7h-7FFCh を書いている（Enabler2 は 0x7FF7 → 0x7FFF、
+  音量は 1 ずつ下へ）。文書は `hardware-notes.md` §3 / §6.5、本書 §3.3.1 / §3.3.2 / §3.7 /
+  §4.4、`doc/fork/README.md`、`doc/fork/y8960/README.md`、`src/` のコメント数か所
+
 ### 2026-10-17 (6) — ミキサーのリセット値、OPL2 のリズム音、文書の追従
 
 - **ミキサー音量のリセット値は 128 でよい**（hra1129 さんの回答。ユーザー経由）。(5) の未確認は解消
