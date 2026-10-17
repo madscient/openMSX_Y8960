@@ -65,7 +65,7 @@ public:
 	void clearRam();
 	void reset(EmuTime time);
 	void writeReg(uint8_t rg, uint8_t data, EmuTime time);
-	/** The mixer's ADPCM volume (7FFBh). */
+	/** The mixer's ADPCM volume (7FFAh). */
 	void setAdpcmVolume(uint8_t value, EmuTime time);
 	[[nodiscard]] uint8_t readReg(uint8_t rg, EmuTime time);
 	[[nodiscard]] uint8_t peekReg(uint8_t rg, EmuTime time) const;

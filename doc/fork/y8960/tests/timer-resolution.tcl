@@ -182,7 +182,7 @@ proc finish {} {
 
 proc run_test {} {
 	# I/O Enabler2 の b7 でタイマーのポートを開ける
-	mem_write 0x7FF7 0x80
+	mem_write 0x7FFF 0x80
 	after time 0.05 unit_start
 }
 

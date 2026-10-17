@@ -21,7 +21,7 @@ public:
 	void writePort(bool port, byte value, EmuTime time);
 	void setAdpcmVolume(byte value, EmuTime time) { opl2.setAdpcmVolume(value, time); }
 
-	/** 7FF7h (I/O Enabler2) による直接 I/O ポートの開閉。
+	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
 	  * メモリマップド I/O からの writePort() はこれに影響されない。 */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 

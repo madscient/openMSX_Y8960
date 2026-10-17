@@ -1,11 +1,11 @@
 # Y8960 カートリッジ ハードウェア仕様 調査ノート
 
 調査日: 2026-09-08 / 改訂: 2026-10-17
-対象: hra1129/Y8960_Cartridge の xlsx は `9869ca0`（2026-10-17）、RTL は `d6d16a3`
+対象: hra1129/Y8960_Cartridge の xlsx は `6ab414e`（2026-10-17）、RTL は `d6d16a3`
 
 **xlsx と RTL は同じ時点を指していない。** `d6d16a3` 以降のコミット（`b9de3c1` から
-`9869ca0` まで）が変えたのは `doc/spec/Y8960_Specifications.xlsx` だけで、RTL は
-`d6d16a3` のまま（**確認済み**: `git diff --stat d6d16a3 9869ca0`）。xlsx の改訂で
+`6ab414e` まで）が変えたのは `doc/spec/Y8960_Specifications.xlsx` だけで、RTL は
+`d6d16a3` のまま（**確認済み**: `git diff --stat d6d16a3 6ab414e`）。xlsx の改訂で
 DCSG と 2 番目の OPLL / OPL2 が無くなり、窓の番地が詰め直され、定位と音量が足されたが、
 RTL はどれも反映していない。本書の RTL の記述は改訂前の構成のものである。
 
@@ -62,7 +62,7 @@ DCSG（SN76489 相当）は 2026-10-16 の改訂で無くなった。RTL（`d6d1
 
 ## 2. I/O ポートマップ
 
-xlsx（`9869ca0`）の各シートの直接 I/O の表（**確認済み(読解)**）:
+xlsx（`6ab414e`）の各シートの直接 I/O の表（**確認済み(読解)**）:
 
 | ポート | ブロック | RW |
 |---|---|---|
@@ -111,7 +111,7 @@ SSG / OPLL / OPL2 / MSX-TIMER の直接 I/O は、リセット直後は閉じて
 
 ## 3. メモリマップド I/O
 
-xlsx（`9869ca0`）の `MemoryMappedIO` シート（**確認済み(読解)**）。すべて WO。
+xlsx（`6ab414e`）の `MemoryMappedIO` シート（**確認済み(読解)**）。すべて WO。
 
 | アドレス | 内容 |
 |---|---|
@@ -119,17 +119,16 @@ xlsx（`9869ca0`）の `MemoryMappedIO` シート（**確認済み(読解)**）�
 | 7FF2h / 7FF3h | OPL2 アドレス / データ |
 | 7FF4h / 7FF5h | OPLL アドレス / データ |
 | 7FF6h | I/O Enabler1: b0 = OPLL |
-| 7FF7h | I/O Enabler2: b0 = OPL2、b1 = SSG、b7 = MSX-TIMER |
-| 7FF8h | SSG の音量 |
-| 7FF9h | OPLL の音量 |
-| 7FFAh | OPL2 の音量 |
-| 7FFBh | ADPCM の音量 |
-| 7FFCh | SCC の音量 |
+| 7FF7h | SSG の音量 |
+| 7FF8h | OPLL の音量 |
+| 7FF9h | OPL2 の音量 |
+| 7FFAh | ADPCM の音量 |
+| 7FFBh | SCC の音量 |
+| 7FFFh | I/O Enabler2: b0 = OPL2、b1 = SSG、b7 = MSX-TIMER |
 
 利用条件は「RAM Mode=0 か、あるいは BANK1 が ROM バンク (#0-#15) のとき」。
 
-Enabler2 の名前には「(Mirror 3FFFh)」が残っているが、**ミラーは無い**
-（2026-10-17、hra1129 さんの回答。ユーザー経由）。
+7FFCh-7FFEh は表に無い。**ミラーは無い**（2026-10-17、hra1129 さんの回答。ユーザー経由）。
 
 ### RTL（`d6d16a3`）の窓
 
@@ -223,7 +222,7 @@ BIOS-ROM の中身は電源投入時に Flash から SRAM へコピーされる
 ssg シートに貼られた説明図は、**等パワーパンニング**（L = cos θ、R = sin θ、
 中央で両側 0.707）を示している。値から θ への写像は図に書かれていない。
 
-音量のレジスタ（SSG 20h-26h、ミキサー 7FF8h-7FFCh）は、xlsx では「0-128、128 が最大、
+音量のレジスタ（SSG 20h-26h、ミキサー 7FF7h-7FFBh）は、xlsx では「0-128、128 が最大、
 既定 128」。hra1129 さんの回答（2026-10-17、ユーザー経由）は
 **0 がミュート、1-127 がゲイン、bit7 が立てば最大**。1-127 の曲線は回答に無い。
 
@@ -290,7 +289,7 @@ b1 の 64K モードについては**情報が無い**。
 
 ### 6.4 SSG（2 系統）
 
-YM2149 相当の SSG が 2 系統。xlsx（`9869ca0`）の `ssg` シートの配置
+YM2149 相当の SSG が 2 系統。xlsx（`6ab414e`）の `ssg` シートの配置
 （**確認済み(読解)**。2026-10-16 に hra1129 さんが xlsx を正と回答）:
 
 | 範囲 | 内容 | RW |
@@ -320,9 +319,9 @@ AY コアの出力は片極性なので、**定位を掛ける前に無音時レ
 
 ### 6.5 デジタルミキサー
 
-xlsx（`9869ca0`）の `MemoryMappedIO` と `MIXIER` シート（**確認済み(読解)**）:
+xlsx（`6ab414e`）の `MemoryMappedIO` と `MIXIER` シート（**確認済み(読解)**）:
 
-- 音源ごとの音量が 7FF8h-7FFCh（SSG、OPLL、OPL2、ADPCM、SCC の順。§3）
+- 音源ごとの音量が 7FF7h-7FFBh（SSG、OPLL、OPL2、ADPCM、SCC の順。§3）
 - **MMIO のみ**。I/O ポートは無い
 - 音量の決まりは §6.1。リセット値は資料に無く、**128（最大）**
   （2026-10-17、hra1129 さんの回答。ユーザー経由）

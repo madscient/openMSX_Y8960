@@ -1,5 +1,5 @@
 # Y8960 の OPL2 のチャンネルごとの定位 (F6h-FEh)、ADPCM の定位 (FFh) と
-# ADPCM の音量 (7FFBh) の回帰テスト。
+# ADPCM の音量 (7FFAh) の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script opl2-panpot.tcl
 #
@@ -104,7 +104,7 @@ proc adpcm_start {} {
 
 proc adpcm {name pan volume} {
 	r 0xFF $pan
-	mem_write 0x7FFB $volume
+	mem_write 0x7FFA $volume
 	after time 0.3 [list rec $name 15 {}]
 }
 
@@ -119,14 +119,14 @@ proc stop {chan after_script} {
 	after time 0.2 next_step
 }
 
-# 手順 0 の 7FF7h は I/O Enabler2 の b0 で、C0h-C1h を開く
+# 手順 0 の 7FFFh は I/O Enabler2 の b0 で、C0h-C1h を開く
 set step 0
 proc next_step {} {
 	global step
 	set s $step
 	incr step
 	switch $s {
-		0 { mem_write 0x7FF7 0x01 ; fm fm_center 128 }
+		0 { mem_write 0x7FFF 0x01 ; fm fm_center 128 }
 		1 { fm fm_left  1 }
 		2 { fm fm_right 255 }
 		3 { ch7 ch7_left }

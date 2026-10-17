@@ -21,7 +21,7 @@ namespace openmsx {
   * between them or mixes them. That choice is the output setting below.
   *
   * The mixer proper is one volume per sound block, written through the
-  * memory mapped I/O at 7FF8h + channel. It has no I/O ports. Channel 3 is
+  * memory mapped I/O at 7FF7h + channel. It has no I/O ports. Channel 3 is
   * the ADPCM, which is mixed into the OPL2 before the OPL2's volume, so its
   * volume is applied inside the OPL2 and never reaches this device.
   */

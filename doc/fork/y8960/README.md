@@ -19,12 +19,12 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-opll-panpot.py` | 上記 WAV の判定 |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
-| `tests/opl2-panpot.tcl` | OPL2 のチャンネルごとの定位 (F6h-FEh)、リズム音の定位、ADPCM の定位 (FFh) と音量 (7FFBh) の回帰テスト。WAV を書き出す |
+| `tests/opl2-panpot.tcl` | OPL2 のチャンネルごとの定位 (F6h-FEh)、リズム音の定位、ADPCM の定位 (FFh) と音量 (7FFAh) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のチャンネルごとの定位と音量、SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
-| `tests/enabler2.tcl` | I/O Enabler2 (7FF7h) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
+| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
 | `tests/ssgs-gpio.tcl` | SSGS の GPIO のレジスタが両系統とも記憶域であることの回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
 | `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
@@ -33,7 +33,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
-| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF8h-7FFCh) の回帰テスト。WAV を書き出す |
+| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFBh) の回帰テスト。WAV を書き出す |
 | `tests/check-mixer-volume.py` | 上記 WAV の判定 |
 | `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-remove.py` | 上記 WAV の判定 |

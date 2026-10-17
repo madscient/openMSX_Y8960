@@ -88,8 +88,8 @@ constexpr uint16_t MmioSsgs       = 0x7FF0; // + 0x7FF1
 constexpr uint16_t MmioOpl2       = 0x7FF2; // + 0x7FF3
 constexpr uint16_t MmioOpll       = 0x7FF4; // + 0x7FF5
 constexpr uint16_t MmioIoEnabler1 = 0x7FF6;
-constexpr uint16_t MmioIoEnabler2 = 0x7FF7;
-constexpr uint16_t MmioVolume     = 0x7FF8; // + Y8960Mixer channel, up to 0x7FFC
+constexpr uint16_t MmioIoEnabler2 = 0x7FFF;
+constexpr uint16_t MmioVolume     = 0x7FF7; // + Y8960Mixer channel, up to 0x7FFB
 
 constexpr byte Enabler1Opll  = 0x01;
 constexpr byte Enabler2Opl2  = 0x01;
