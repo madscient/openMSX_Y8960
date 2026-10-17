@@ -57,7 +57,7 @@ proc run_test {} {
 	# 区別できない
 	debug write "VDP regs" 1 [expr {[debug read "VDP regs" 1] & ~0x20}]
 	# I/O Enabler2 の b7 でタイマーのポートを開ける
-	mem_write 0x7FFF 0x80
+	mem_write 0x7FF7 0x80
 	after time 0.05 step1
 }
 

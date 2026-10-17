@@ -1,5 +1,5 @@
 # Y8960 の SSGS のチャンネルごとの定位 (28h-2Eh) と音量 (20h-26h)、
-# SSG 2 系統の分離、および I/O Enabler2 (7FFFh) の b4 の回帰テスト。
+# SSG 2 系統の分離、および I/O Enabler2 (7FF7h) の b1 の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script ssgs-panpot.tcl
 #
@@ -9,10 +9,11 @@
 #
 # 判別力があるのは left / right / half で、定位が効いていなければ left と
 # right も center と同じ（L=R）になり、音量が効いていなければ half は
-# center と同じ大きさになる。音量は 7bit で 127 が最大なので、64 は 127 の
-# 半分（0.504 倍）。判定器は 3% の幅で見ている。unit1 は 10h 起点に書いた音が 4 番目の
-# チャンネルから出ることを見ており、SSG 2 系統の分離を確かめている。
-# 最初に 7FFFh へ書いているのは、それが無いと SSGS の I/O が閉じたままで
+# center と同じ大きさになる。音量は 128 が最大で、64 はその半分。
+# 判定器は 3% の幅で見ている。center 以下を 128 で鳴らしているのは、bit7 を
+# 最大として扱わないと無音になるのを捕まえるため。unit1 は 10h 起点に書いた音が
+# 4 番目のチャンネルから出ることを見ており、SSG 2 系統の分離を確かめている。
+# 最初に 7FF7h へ書いているのは、それが無いと SSGS の I/O が閉じたままで
 # 何も鳴らないため。
 #
 # チャンネルの音量は 0Fh ではなく 0Bh にしてある。最大にすると 16bit に
@@ -49,7 +50,7 @@ proc note {unit} {
 
 proc capture {name unit vol pan chan} {
 	global OUT
-	mem_write 0x7FFF 0x10        ;# I/O Enabler2 b4: SSG を開く
+	mem_write 0x7FF7 0x02        ;# I/O Enabler2 b1: SSG を開く
 	note $unit
 	w [expr {0x20 + $unit*4}] $vol   ;# ch A の音量
 	w [expr {0x28 + $unit*4}] $pan   ;# ch A の定位
@@ -67,11 +68,11 @@ set step 0
 proc next {} {
 	global step
 	switch $step {
-		0 { capture center 0 127 128 1 }
-		1 { capture left   0 127 1   1 }
-		2 { capture right  0 127 255 1 }
+		0 { capture center 0 128 128 1 }
+		1 { capture left   0 128 1   1 }
+		2 { capture right  0 128 255 1 }
 		3 { capture half   0 64  128 1 }
-		4 { capture unit1  1 127 128 4 }
+		4 { capture unit1  1 128 128 4 }
 		default { exit }
 	}
 }

@@ -19,11 +19,13 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-opll-panpot.py` | 上記 WAV の判定 |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
+| `tests/opl2-panpot.tcl` | OPL2 のチャンネルごとの定位 (F6h-FEh)、リズム音の定位、ADPCM の定位 (FFh) と音量 (7FFBh) の回帰テスト。WAV を書き出す |
+| `tests/check-opl2-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のチャンネルごとの定位と音量、SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
-| `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
-| `tests/ssgs-gpio.tcl` | 本体内蔵版 SSGS の GPIO の回帰テスト |
+| `tests/enabler2.tcl` | I/O Enabler2 (7FF7h) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
+| `tests/ssgs-gpio.tcl` | SSGS の GPIO のレジスタが両系統とも記憶域であることの回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
 | `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
@@ -31,13 +33,12 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
-| `tests/mixer-passthrough.tcl` | B6h-B7h がゲインに繋がっていないことの回帰テスト。WAV を書き出す |
-| `tests/check-mixer-passthrough.py` | 上記 WAV の判定 |
+| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF8h-7FFCh) の回帰テスト。WAV を書き出す |
+| `tests/check-mixer-volume.py` | 上記 WAV の判定 |
 | `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-remove.py` | 上記 WAV の判定 |
 | `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
-| `tests/make-builtin-config.py` | カートリッジ版の拡張 XML から本体内蔵版の構成を組み立てる |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -70,6 +71,10 @@ py $T/check-opll-panpot.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-waveform.tcl"
 py $T/check-opl2-waveform.py "$OUT"
 
+# 2a. OPL2 と ADPCM の定位、ADPCM の音量。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opl2-panpot.tcl"
+py $T/check-opl2-panpot.py "$OUT"
+
 # 3. SSGS の定位と音量、SSG 2 系統の分離
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-panpot.tcl"
 py $T/check-ssgs-panpot.py "$OUT"
@@ -94,8 +99,8 @@ tail -1 "$OUT/adpcm-rommode.txt"
 # 7. ミキサー。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-output.tcl"
 py $T/check-mixer-output.py "$OUT"
-Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-passthrough.tcl"
-py $T/check-mixer-passthrough.py "$OUT"
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-volume.tcl"
+py $T/check-mixer-volume.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-remove.tcl"
 py $T/check-mixer-remove.py "$OUT"
 
@@ -108,20 +113,9 @@ done
 
 # 9. I/O Enabler2 の b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
-```
 
-本体内蔵版のぶんは、構成を組み立ててから回す。
-
-```sh
-BI=/tmp/y8960-builtin   # 任意
-mkdir -p "$BI/machines"; cp Contrib/cbios/* "$BI/machines/"
-py $T/make-builtin-config.py "$BI"
-
-# 10. SSGS の GPIO。$OUT/gpio.txt を目で見る
-Y8960_TEST_OUT="$OUT/gpio.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/ssgs-gpio.tcl"
-
-# 11. 同じ構成で enabler2.tcl を回すと、イネーブラーとトンネルが両方無いことが出る
-Y8960_TEST_OUT="$OUT/en2-bi.txt" OPENMSX_USER_DATA="$BI"     $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/enabler2.tcl"
+# 10. SSGS の GPIO のレジスタ。$OUT/gpio.txt を目で見る
+Y8960_TEST_OUT="$OUT/gpio.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-gpio.tcl"
 ```
 
 既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
@@ -134,14 +128,13 @@ done
 
 **どのテストも、判別力があることを確かめてある。** 期待値どおりに通ることは、
 期待値を外した構成で落ちることを示すまで証拠にならない。テストを足すときも同じ
-確認をすること。既に踏んである確かめ方は次の 2 つ。
+確認をすること。既に踏んである確かめ方は次のとおり。
 
 - 判定スクリプトのある 2 本は、入力を差し替える（`ws2.wav` を `ws0.wav` で
   置き換えると NG になる）
-- `enabler2.tcl` と `ssgs-gpio.tcl` は、**もう一方の版の構成**で回す。
-  期待値は当然外れ、**どの手順が動くかで切り替えが効いていることが分かる**。
-  構成は `make-builtin-config.py` が別の `OPENMSX_USER_DATA` に書き出すので、
-  作業ツリーの `share/` は触らずに済む
+- `enabler2.tcl` は、閉じている間に値が変わらないことを見る手順に判別力がある
+  （テスト冒頭の注記）。`ssgs-gpio.tcl` は、GPIO の書き込みを捨てていた頃の
+  コードで 0xFF が返ることを確かめてある
 - `mapper-cpu-read.tcl` は、キャッシュ無効化の順序を元に戻してビルドし直して
   回した。4 件中 2 件（CPU 側の読み）が落ちる
 - `mapper-windows.tcl` は、マッパーを変更前のコードに戻してビルドし直して

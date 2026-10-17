@@ -19,24 +19,17 @@ namespace openmsx {
   * The cartridge does **not** feed its audio back into the MSX; the two
   * outputs are separate wires and whoever owns the machine either switches
   * between them or mixes them. That choice is the output setting below.
-  * The cartridge defaults to its own output alone, a built-in Y8960 to the
-  * mix, because there is only one output to hear in that case.
   *
-  * The mixer proper takes a left/right gain per sound chip and one overall
-  * left/right gain, and applies both to the Y8960's own devices.
-  *
-  * **Nothing drives those gains.** B6h selects a register and B7h reads or
-  * writes it, the way the PSG is addressed, but what that register array
-  * holds is unspecified: the hardware block does not exist yet. So B6h-B7h
-  * only stores what is written to it and every gain stays at unity. Wiring
-  * them up is a matter of calling setChannelGain() / setMasterGain() from
-  * writeIO() once the register layout is known.
+  * The mixer proper is one volume per sound block, written through the
+  * memory mapped I/O at 7FF8h + channel. It has no I/O ports. Channel 3 is
+  * the ADPCM, which is mixed into the OPL2 before the OPL2's volume, so its
+  * volume is applied inside the OPL2 and never reaches this device.
   */
 class Y8960Mixer final : public MSXDevice, private Observer<Setting>
 {
 public:
-	static constexpr int ChannelCount = 10;
-	static constexpr int RegCount = ChannelCount * 2;
+	static constexpr int ChannelCount = 5;
+	static constexpr int AdpcmChannel = 3;
 
 	/** Which of the two outputs is being listened to. The cartridge does
 	  * not feed its audio back into the MSX, so on real hardware this is
@@ -47,35 +40,23 @@ public:
 	~Y8960Mixer() override;
 
 	void reset(EmuTime time) override;
-	[[nodiscard]] byte readIO(uint16_t port, EmuTime time) override;
-	[[nodiscard]] byte peekIO(uint16_t port, EmuTime time) const override;
-	void writeIO(uint16_t port, byte value, EmuTime time) override;
 
-	/** 音源チップ 1 個ぶんの左右ゲイン。0.0 が無音、1.0 が素通り。 */
-	void setChannelGain(int channel, float left, float right);
-
-	/** Y8960 の音源すべてに掛かる左右ゲイン。0.0 が無音、1.0 が素通り。 */
-	void setMasterGain(float left, float right);
+	void writeVolume(int channel, uint8_t value);
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
 
 private:
-	struct Gain { float left, right; };
-
 	[[nodiscard]] std::optional<int> findChannel(std::string_view name) const;
 	void applyAllGains();
 	void update(const Setting& setting) noexcept override;
 
 private:
 	std::array<std::vector<std::string_view>, ChannelCount> channelDevices;
-	std::array<Gain, ChannelCount> channelGain;
-	Gain masterGain;
-	std::array<byte, RegCount> regs;
-	byte registerLatch;
+	std::array<uint8_t, ChannelCount> volume;
 	std::unique_ptr<EnumSetting<Output>> outputSetting;
 };
-SERIALIZE_CLASS_VERSION(Y8960Mixer, 2);
+SERIALIZE_CLASS_VERSION(Y8960Mixer, 3);
 
 } // namespace openmsx
 

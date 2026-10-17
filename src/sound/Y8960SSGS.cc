@@ -14,11 +14,10 @@ namespace openmsx {
 // The cores run at the same rate the AY8910 does.
 static constexpr int NATIVE_FREQ_INT = 3579545 / 2 / 8;
 
-Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTime time,
-                     AY8910Periphery* periphery)
+Y8960SSGS::Y8960SSGS(const std::string& name_, const DeviceConfig& config, EmuTime time)
 	: ResampledSoundDevice(config.getMotherBoard(), name_, "Y8960 SSGS",
 	                       NUM_CHANNELS, NATIVE_FREQ_INT, true)
-	, unit{Y8960SsgCore(name_ + " unit0", config, time, periphery),
+	, unit{Y8960SsgCore(name_ + " unit0", config, time),
 	       Y8960SsgCore(name_ + " unit1", config, time)}
 	, volume{}
 	, pan{}
@@ -38,7 +37,7 @@ Y8960SSGS::~Y8960SSGS()
 void Y8960SSGS::reset(EmuTime time)
 {
 	for (auto& u : unit) u.reset(time);
-	std::ranges::fill(volume, 0x7F);
+	std::ranges::fill(volume, 0x80);
 	std::ranges::fill(pan, 128);
 	for (auto ch : xrange(NUM_CHANNELS)) updateGain(ch);
 	measureDc();
@@ -88,20 +87,6 @@ void Y8960SSGS::writeRegister(unsigned reg, uint8_t value, EmuTime time)
 		((reg >= PAN_BASE) ? pan : volume)[*ch] = value;
 		updateGain(*ch);
 	}
-}
-
-uint8_t Y8960SSGS::readRegister(unsigned reg, EmuTime time)
-{
-	// Not peekRegister(): reading a GPIO register latches what the periphery
-	// returned, which a peek must not do.
-	if (reg >= REG_END) return 0xFF;
-
-	if (reg < VOLUME_BASE) {
-		return unit[reg / UNIT_REGS].readRegister(reg % UNIT_REGS, time);
-	} else if (auto ch = mixChannel(reg)) {
-		return ((reg >= PAN_BASE) ? pan : volume)[*ch];
-	}
-	return 0xFF;
 }
 
 uint8_t Y8960SSGS::peekRegister(unsigned reg, EmuTime time) const

@@ -20,8 +20,7 @@ MSXTimer::MSXTimer(const DeviceConfig& config)
 	, timer2(config.getMotherBoard().getScheduler(), *this, FREQ, 2)
 	, timer3(config.getMotherBoard().getScheduler(), *this, FREQ, 3)
 	, irq(config.getMotherBoard(), getName() + ".IRQ")
-	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
-	, ioEnabled(!useIoEnabler)
+	, ioEnabled(false)
 {
 	powerUp(getCurrentTime());
 }
@@ -59,7 +58,7 @@ void MSXTimer::reset(EmuTime time)
 	timer1.reset(time);
 	timer2.reset(time);
 	timer3.reset(time);
-	ioEnabled = !useIoEnabler;
+	ioEnabled = false;
 }
 
 byte MSXTimer::readIO(uint16_t port, EmuTime time)

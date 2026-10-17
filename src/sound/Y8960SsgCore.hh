@@ -23,8 +23,8 @@ class DeviceConfig;
   * channel and openMSX only has per-device balance.
   *
   * The YMZ parts have no I/O ports, so registers 14 and 15 are dead storage
-  * unless a periphery is given. Only the Y8960 built into an MSX has one, on
-  * its primary unit, where it stands in for the machine's PSG.
+  * unless a periphery is given. The Y8960 gives none; the parameter stays so
+  * that this keeps following AY8910.
   */
 class Y8960SsgCore final
 {

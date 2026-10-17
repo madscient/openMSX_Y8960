@@ -23,8 +23,7 @@ Y8960OPL2Device::Y8960OPL2Device(const DeviceConfig& config)
 	: MSXDevice(config)
 	, opl2(getName(), config, getAdpcmMemory(config), getCurrentTime())
 	, registerLatch(0)
-	, useIoEnabler(config.getChildDataAsBool("use_io_enabler", true))
-	, ioEnabled(!useIoEnabler)
+	, ioEnabled(false)
 {
 	reset(getCurrentTime());
 }
@@ -33,7 +32,7 @@ void Y8960OPL2Device::reset(EmuTime time)
 {
 	opl2.reset(time);
 	registerLatch = 0;
-	ioEnabled = !useIoEnabler;
+	ioEnabled = false;
 }
 
 byte Y8960OPL2Device::readIO(uint16_t port, EmuTime time)

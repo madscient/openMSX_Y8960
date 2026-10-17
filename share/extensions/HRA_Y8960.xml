@@ -55,22 +55,21 @@
           <opl2>Y8960 OPL2</opl2>
           <ssgs>Y8960 SSGS</ssgs>
           <timer>y8960-timer</timer>
+          <mixer>y8960-mixer</mixer>
         </ROM>
       </secondary>
     </primary>
-    <!-- ミキサーのアドレスは暫定。hra1129 さんは「まだ作ってないので未確定、
-         B6h-B7h あたりがいいかも」との由。ioport.txt の記載とも一致する。
-         レジスタ仕様が無いので B6h-B7h は値を憶えるだけで音には触らない。
+    <!-- ミキサーに I/O ポートは無く、音量はメモリマップド I/O の
+         7FF8h + チャンネル番号で書く。3 は ADPCM で、OPL2 の中で混ざるので
+         ここには書かない。SCC の音源を参照するので ROM より後に置くこと。
          カートリッジは音声を本体に戻さないので、既定は Y8960 側の出力だけ。
-         y8960-mixer_output 設定で msx / mix に切り替えられる。
-         チャンネル番号は外に出る値なので、空きができても詰め直さない -->
+         y8960-mixer_output 設定で msx / mix に切り替えられる -->
     <Y8960-MIXER id="y8960-mixer">
-      <io base="0xB6" num="2"/>
       <default_output>y8960</default_output>
-      <channel num="0" idref="Y8960 OPLL"/>
+      <channel num="0" idref="Y8960 SSGS"/>
+      <channel num="1" idref="Y8960 OPLL"/>
       <channel num="2" idref="Y8960 OPL2"/>
-      <channel num="4" idref="Y8960 SSGS"/>
-      <channel num="9" idref="Y8960 SCC"/>
+      <channel num="4" idref="Y8960 SCC"/>
     </Y8960-MIXER>
   </devices>
 </msxconfig>

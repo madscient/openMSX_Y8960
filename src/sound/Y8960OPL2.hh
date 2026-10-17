@@ -3,12 +3,14 @@
 
 #include "ResampledSoundDevice.hh"
 #include "Y8960Adpcm.hh"
+#include "Y8960Pan.hh"
 
 #include "EmuTime.hh"
 #include "EmuTimer.hh"
 #include "FixedPoint.hh"
 #include "IRQHelper.hh"
 #include "SimpleDebuggable.hh"
+#include "serialize_meta.hh"
 
 #include <array>
 #include <cstdint>
@@ -21,9 +23,22 @@ namespace openmsx {
 class DeviceConfig;
 class Y8960AdpcmMemory;
 
+/** The OPL2 block of the Y8960: an OPL2 with the Y8950's ADPCM-B, a pan per
+  * FM channel (F6h-FEh) and a pan for the ADPCM (FFh).
+  *
+  * The ADPCM is mixed into this block's output, so the mixer's OPL2 volume
+  * covers it too. The mixer's ADPCM volume is the one gain applied to the
+  * ADPCM alone, before that mix; it lives here for that reason.
+  *
+  * The rhythm sounds take the pan of the channel they are generated on: BD
+  * channel 7, HH and SD channel 8, TOM and CYM channel 9, counting from 1.
+  */
 class Y8960OPL2 final : private ResampledSoundDevice, private EmuTimerCallback
 {
 public:
+	static constexpr uint8_t PAN_BASE  = 0xF6; // F6h-FEh: FM channel 1-9
+	static constexpr uint8_t PAN_ADPCM = 0xFF;
+
 	static constexpr int CLOCK_FREQ     = 3579545;
 	static constexpr int CLOCK_FREQ_DIV = 72;
 
@@ -50,6 +65,8 @@ public:
 	void clearRam();
 	void reset(EmuTime time);
 	void writeReg(uint8_t rg, uint8_t data, EmuTime time);
+	/** The mixer's ADPCM volume (7FFBh). */
+	void setAdpcmVolume(uint8_t value, EmuTime time);
 	[[nodiscard]] uint8_t readReg(uint8_t rg, EmuTime time);
 	[[nodiscard]] uint8_t peekReg(uint8_t rg, EmuTime time) const;
 	[[nodiscard]] uint8_t readStatus(EmuTime time) const;
@@ -81,6 +98,7 @@ private:
 	void setRythmMode(int data);
 	void update_key_status();
 	void updateWaveTables();
+	void updatePanGains();
 
 	[[nodiscard]] bool checkMuteHelper();
 
@@ -214,6 +232,11 @@ private:
 
 	std::array<Channel, 9> ch;
 
+	// derived from reg[PAN_BASE..PAN_ADPCM]; the last one is the ADPCM's
+	std::array<y8960::PanGain, 10> panGain;
+	uint8_t adpcmVolume;
+	float adpcmGain; // derived from adpcmVolume
+
 	unsigned pm_phase; // Pitch Modulator
 	unsigned am_phase; // Amp Modulator
 
@@ -230,6 +253,8 @@ private:
 	bool am_mode;
 	bool pm_mode;
 };
+
+SERIALIZE_CLASS_VERSION(Y8960OPL2, 2);
 
 } // namespace openmsx
 
