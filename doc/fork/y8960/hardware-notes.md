@@ -1,13 +1,15 @@
 # Y8960 カートリッジ ハードウェア仕様 調査ノート
 
-調査日: 2026-09-08 / 対象: hra1129/Y8960_Cartridge @ d6d16a3 (main)
+調査日: 2026-09-08 / 改訂: 2026-10-17
+対象: hra1129/Y8960_Cartridge の xlsx は `9869ca0`（2026-10-17）、RTL は `d6d16a3`
 
-**本書は `d6d16a3` の時点の記述である。** 2026-10-16 の `b9de3c1` で xlsx が改訂され、
-DCSG と、SSG 以外のブロックの 2 番目の回路が無くなった。OPLL と SSG にはチャンネルごとの
-定位が、SSG には音量が足された。SSG のレジスタ配置は xlsx のもの（00h-0Fh / 10h-1Fh）が正で、
-本書 §6 の SSGS 節にある YMZ732 の配置は**採らない**（2026-10-16、ユーザー経由で確定）。
-何が変わり、何が未確認かは `implementation-plan.md` §8 の 2026-10-16 の各項にある。
-本書の該当箇所はまだ直していない。
+**xlsx と RTL は同じ時点を指していない。** `d6d16a3` 以降のコミット（`b9de3c1` から
+`9869ca0` まで）が変えたのは `doc/spec/Y8960_Specifications.xlsx` だけで、RTL は
+`d6d16a3` のまま（**確認済み**: `git diff --stat d6d16a3 9869ca0`）。xlsx の改訂で
+DCSG と 2 番目の OPLL / OPL2 が無くなり、窓の番地が詰め直され、定位と音量が足されたが、
+RTL はどれも反映していない。本書の RTL の記述は改訂前の構成のものである。
+
+改訂ごとに何が変わったかは `implementation-plan.md` §8 の 2026-10-16 と 2026-10-17 の各項にある。
 
 **パスの読み方**: 本書が `src/...` と書くとき、断りが無ければ
 hra1129/Y8960_Cartridge の `fpga/Y8960_Cartridge_TangPrimer25K/src/...` を指す。
@@ -15,8 +17,8 @@ hra1129/Y8960_Cartridge の `fpga/Y8960_Cartridge_TangPrimer25K/src/...` を指�
 本リポジトリ（openMSX フォーク）のファイルは `src/sound/...` のように
 openMSX 側の階層で書き、文脈で区別できるようにしている。
 
-**確度について**: 本書の記述はすべて上記リポジトリの成果物を読んで得たもので、
-実機での確認は行っていない（実機は未完成）。各項目の確度は個別に付記する。
+**確度について**: 本書の記述はすべて上記リポジトリの成果物と hra1129 さんの回答から
+得たもので、実機での確認は行っていない（実機は未完成）。各項目の確度は個別に付記する。
 
 - **確認済み(読解)** — 当該ファイルを読んで確認した。ファイル名と行を示す
 - **未検証** — 読解はしたが、実機・シミュレーションで動作を確かめていない
@@ -24,114 +26,129 @@ openMSX 側の階層で書き、文脈で区別できるようにしている。
 
 一次情報は複数あり、**互いに食い違っている**。優先順位は次のとおり。
 
-1. **hra1129 さんからの直接の回答**（Discord など）
+1. **hra1129 さんからの直接の回答**（Discord など。ユーザー経由を含む）
 2. `doc/spec/*.xlsx` / `doc/manual/*.docx`
 3. `fpga/.../src/*.v` (RTL)
 
 **RTL は最下位である。** 2026-09-09 に hra1129 さんから
 「RTL は WIP とみなしてよい、SSGS も反映されていないのでプレースホルダ」との
-確認があった。当初は「RTL が唯一動く形で書かれている」ことを理由に最優先に
-置いていたが、**これは誤りだったので改めた**。実際 DCSG のアドレス、
-OPLL の enabler ビット、SSG のブロック構成のいずれも RTL が古かった。
+確認があった。DCSG のアドレス、OPLL の enabler ビット、SSG のブロック構成の
+いずれも RTL が古かった。
 
 食い違いは §7 に列挙する。
 
 ## 1. 全体構成
 
 MSX 用サウンドカートリッジ。Tang Primer 25K (Gowin FPGA) 上に実装。
-搭載ブロック（**確認済み**: `src/y8960_cartridge_tangprimer25k.v`）:
+xlsx の `modules` シートが挙げるブロック（**確認済み(読解)**）:
 
 | ブロック | 相当チップ | 回路数 | RTL の IP | ライセンス |
 |---|---|---|---|---|
-| SSG | YM2149 | 2 | 自作 (`src/ssg/ssg_core.v`) | MIT |
-| OPLL | YM2413 + 音色バンク拡張 | 2 | IKAOPLL | BSD-2 |
-| OPL2 | YM3812 | 2 | jtopl2 | GPL3 |
-| ADPCM | YM2608 ADPCM-B | 2 | jt10_adpcmb | GPL3 |
-| DCSG | SN76489 | 2 | sn76489_audio | BSD-3 |
+| SSG | YM2149 | 2 系統（1 ブロック） | 自作 (`src/ssg/ssg_core.v`) | MIT |
+| OPLL | YM2413 + 音色バンク拡張 | 1 | IKAOPLL | BSD-2 |
+| OPL2 | YM3812 | 1 | jtopl2 | GPL3 |
+| ADPCM | YM2608 ADPCM-B | 1 | jt10_adpcmb | GPL3 |
 | SCC | Konami SCC + 独自マッパー | 1 | IKASCC | BSD-2 |
 | MSX-TIMER | 独自 | 1 | 自作 (`src/timer/`) | MIT |
+| Digital Mixer | 独自 | 1 | 自作 | MIT |
 
-出典: `doc/spec/Y8960_Specifications.xlsx` の `modules` シート、および上記 RTL。
+DCSG（SN76489 相当）は 2026-10-16 の改訂で無くなった。RTL（`d6d16a3`）には
+まだ DCSG と、OPLL / OPL2 / ADPCM の 2 番目の回路がある
+（**確認済み(読解)**: `src/y8960_cartridge_tangprimer25k.v`）。
 
-音声は 24bit ステレオで I2S 出力。ただし現状の RTL のミキサーは
-**L と R に完全に同じ式**を代入しており、パンポットは未実装（**確認済み**:
-`y8960_cartridge_tangprimer25k.v` の `w_mix_l` / `w_mix_r`）。
+音声は 24bit ステレオで I2S 出力。RTL のミキサーは **L と R に完全に同じ式**を
+代入しており、定位も音量も無い（**確認済み(読解)**: 同 `w_mix_l` / `w_mix_r`）。
+仕様上の定位と音量は §6 と §6.5。
 
 ## 2. I/O ポートマップ
 
-**確認済み**: `src/y8960_address_decode/y8960_address_decode.v` の localparam 群。
+xlsx（`9869ca0`）の各シートの直接 I/O の表（**確認済み(読解)**）:
 
-| ポート | ブロック | リセット時の有効/無効 |
+| ポート | ブロック | RW |
 |---|---|---|
-| A0h-A1h, A2h-A3h | SSG (Addr / Data-W / Data-R) | **有効** |
-| 7Ah-7Bh | OPLL #1 (Addr/Data) | **有効** |
-| 7Ch-7Dh | OPLL #2 (Addr/Data) | 無効 |
+| A0h | SSG レジスタ番号 | WO |
+| A1h | SSG 書き込み | WO（「Read すると 255」） |
+| A2h | SSG 読み出し | RO |
+| 7Ch / 7Dh | OPLL アドレス / データ | WO |
+| C0h / C1h | OPL2 アドレス / データ | （欄が空） |
+
+MSX-TIMER（B0h-B3h）はこの xlsx に無い。出典は 2026-09-09 の hra1129 さんの回答と、
+`src/timer/` の RTL（§6.6）。
+
+SSG / OPLL / OPL2 / MSX-TIMER の直接 I/O は、リセット直後は閉じていて、
+メモリマップド I/O の I/O Enabler で開く。Panasonic FM-PAC と同じ方式
+（**確認済み(読解)**: manual §3.1）。ミキサーには I/O ポートが無い（`MIXIER` シート）。
+
+`ioport.txt` にある `B6h-B7h: MSX-SOUND MIXER` は、ミキサーが MMIO のみになったので
+使われない。
+
+### RTL（`d6d16a3`）の I/O ポート
+
+**確認済み(読解)**: `src/y8960_address_decode/y8960_address_decode.v` の localparam 群。
+2 番目の回路と DCSG を含む改訂前の構成で、リセット時の有効/無効も xlsx と違う。
+
+| ポート | ブロック | リセット時 |
+|---|---|---|
+| A0h-A1h, A2h-A3h | SSG | **有効** |
+| 7Ah-7Bh | OPLL #1 | **有効** |
+| 7Ch-7Dh | OPLL #2 | 無効 |
 | 7Eh-7Fh | DCSG #1/#2 | 無効 |
-| C0h-C1h | OPL2 #1 (Addr/Data) | 無効 |
-| C2h-C3h | OPL2 #2 (Addr/Data) | 無効 |
+| C0h-C1h / C2h-C3h | OPL2 #1 / #2 | 無効 |
 | B0h-B3h | MSX-TIMER | 無効 |
 | 40h-4Fh | System Controller (device_id = 61h) | 常時（enabler 無し） |
-
-アドレス一致は enabler と独立に判定される。つまり無効なブロックのポートに
-アクセスしても、System Controller のデフォルト腕には落ちない（**確認済み**:
-`w_io_known_match` の使われ方）。
-
-`doc/fpga/.../doc/ioport.txt` には `B6h-B7h: MSX-SOUND MIXER` の記載があるが、
-RTL のアドレスデコーダにも top module にも存在しない。**未実装**。
 
 ### 本体デバイスとの衝突
 
 - A0h-A2h は MSX 本体 PSG と衝突する。これは**設計上の意図**である。
-  SSG #1 は `BUILTIN=0` でインスタンス化されており、リードデータを駆動しない
-  （**確認済み**: top の `dual_ssg #(.BUILTIN(0))` と `ssg_core.v` の
-  `generate if(builtin)`）。つまり SSG #1 は本体 PSG と同じレジスタ空間に
-  重ねて発音するだけの存在で、読み出しは本体 PSG が担う。
-- 7Ah-7Bh は MSX-MUSIC (7Ch-7Dh) とは別アドレスなので、リセット直後の
-  既定状態では本体 MSX-MUSIC と衝突しない。
-- C0h-C3h (MSX-AUDIO)、7Ch-7Dh (MSX-MUSIC)、7Eh-7Fh は既定で無効。
-  Panasonic FM-PAC と同じ「起動直後は I/O 無効、メモリマップド I/O で
-  有効化する」方式（**確認済み**: manual §3.1）。
+  RTL の SSG #1 は `BUILTIN=0` でインスタンス化されており、リードデータを駆動しない
+  （**確認済み(読解)**: top の `dual_ssg #(.BUILTIN(0))` と `ssg_core.v` の
+  `generate if(builtin)`）。xlsx でも SSG1 のレジスタ (00h-0Fh) は WO
+- xlsx は SSG2 (10h-1Fh) と音量・定位 (20h-2Fh) を RW としている。A2h から
+  読めるという意味に取れる。openMSX 側の実装はカートリッジの読み出しに一切応じない
+  （§7 の 7）
+- 7Ch-7Dh (MSX-MUSIC)、C0h-C1h (MSX-AUDIO) はリセット直後は閉じているので、
+  本体の同じアドレスの音源とは、開かない限り衝突しない
 
 ## 3. メモリマップド I/O
 
-**確認済み**: 同 `y8960_address_decode.v`。
-
-窓は `A15==0 && A[13:5]==9'b11_1111_111` すなわち **7FE0h-7FFFh**、
-ミラーが **3FE0h-3FFFh**。書き込み専用。`memory_io_en` が 1 のときのみ有効で、
-top では `memory_io_en = ~scc_ma[5] = ~rammode`（**確認済み**）。
-つまり **RAM モードではメモリマップド I/O は消える**。
+xlsx（`9869ca0`）の `MemoryMappedIO` シート（**確認済み(読解)**）。すべて WO。
 
 | アドレス | 内容 |
 |---|---|
-| 7FEAh / 7FEBh | SSG Addr / Data |
-| 7FECh / 7FEDh | OPL2 #2 Addr / Data |
-| 7FEEh / 7FEFh | OPL2 #1 Addr / Data |
-| 7FF0h / 7FF1h | DCSG #2 / DCSG #1 |
-| 7FF2h / 7FF3h | OPLL #2 Addr / Data |
-| 7FF4h / 7FF5h | OPLL #1 Addr / Data |
-| 7FF6h | I/O Enabler 1 |
-| 7FFFh | I/O Enabler 2 |
+| 7FF0h / 7FF1h | SSG レジスタ番号 / 書き込み |
+| 7FF2h / 7FF3h | OPL2 アドレス / データ |
+| 7FF4h / 7FF5h | OPLL アドレス / データ |
+| 7FF6h | I/O Enabler1: b0 = OPLL |
+| 7FF7h | I/O Enabler2: b0 = OPL2、b1 = SSG、b7 = MSX-TIMER |
+| 7FF8h | SSG の音量 |
+| 7FF9h | OPLL の音量 |
+| 7FFAh | OPL2 の音量 |
+| 7FFBh | ADPCM の音量 |
+| 7FFCh | SCC の音量 |
 
-**この表は正しい。窓の中は高位側が #1 である**（**確認済み**: 2026-09-09 に
-hra1129 さんから直接の回答）。直接 I/O 側の並びとは**別々に決まっている**ので、
-片方から他方は導けない。理由はどちらも過去の実装との互換である。
+利用条件は「RAM Mode=0 か、あるいは BANK1 が ROM バンク (#0-#15) のとき」。
 
-| ブロック | 直接 I/O の #1 | 窓の #1 |
-|---|---|---|
-| OPLL | 7Ch-7Dh（高位） | 7FF4h-7FF5h（高位） |
-| OPL2 | C0h-C1h（低位） | 7FEEh-7FEFh（高位） |
-| DCSG | 3Eh（低位） | 7FF1h（高位） |
+Enabler2 の名前には「(Mirror 3FFFh)」が残っているが、**ミラーは無い**
+（2026-10-17、hra1129 さんの回答。ユーザー経由）。
 
-I/O Enabler 1 (7FF6h): b0 = OPLL#1, b1 = OPLL#2
-I/O Enabler 2 (7FFFh): b0 = OPL2#1, b1 = OPL2#2, b2 = DCSG#1, b3 = DCSG#2,
-b4 = SSG, b7 = MSX-TIMER
+### RTL（`d6d16a3`）の窓
+
+**確認済み(読解)**: 同 `y8960_address_decode.v`。
+
+窓は `A15==0 && A[13:5]==9'b11_1111_111` すなわち **7FE0h-7FFFh**、
+ミラーが **3FE0h-3FFFh**。書き込み専用。`memory_io_en` が 1 のときのみ有効で、
+top では `memory_io_en = ~scc_ma[5] = ~rammode`。
+つまり **RAM モードではメモリマップド I/O は消える**。
+
+窓の中の配置は改訂前のもの（SSG 7FEAh、OPL2 7FECh / 7FEEh、DCSG 7FF0h / 7FF1h、
+OPLL 7FF2h / 7FF4h、Enabler1 7FF6h、Enabler2 7FFFh）で、音量レジスタは無い。
 
 窓に当たらないメモリアクセス、および窓に当たっても読み出しの場合は SCC に回る
-（**確認済み**: `w_mem_plain` / `w_mio_default_match`）。
+（**確認済み(読解)**: `w_mem_plain` / `w_mio_default_match`）。
 
 ## 4. SCC / メガ ROM マッパー
 
-**確認済み**: `src/ikascc_patch/IKASCC_vrc_s.v`（IKASCC 純正からの patch）、
+**確認済み(読解)**: `src/ikascc_patch/IKASCC_vrc_s.v`（IKASCC 純正からの patch）、
 `src/ikascc_patch/scc_bank.v`。
 
 IKASCC 内蔵マッパーを patch して 2 モードにしたもの。
@@ -165,7 +182,7 @@ IKASCC 内蔵マッパーを patch して 2 モードにしたもの。
 - **メモリのアドレスは `bankreg[4:0]` だけで決まる。** 8KB × 32 バンク = 256KB。
   `rammode` はアドレスに寄与しない
 - **`rammode` が決めるのは書き込みの可否だけ**（および `memory_io_en = ~scc_ma[5]`
-  によるメモリマップド I/O の窓の有無。**確認済み**: top の当該行）
+  によるメモリマップド I/O の窓の有無。**確認済み(読解)**: top の当該行）
 - **バンク番号による ROM/RAM の区別は無い。** `cpu_write` にバンク番号の分岐が
   一切無いので、RAM モードでは 32 バンクすべてが書ける
 - **4000-5FFFh の書き込み保護も無い**（`w_mem_access = bus_valid & ~bus_io` で、
@@ -175,12 +192,13 @@ IKASCC 内蔵マッパーを patch して 2 モードにしたもの。
 
 メモリマップド I/O の窓は
 `memory_io_en & bus_write & (A15==0) & (A[13:5]==9'b111111111)`
-（**確認済み**: `y8960_address_decode.v`）。**書き込みのみ**で、
-`rammode=1` のとき窓ごと消える。
+（**確認済み(読解)**: `y8960_address_decode.v`）。**書き込みのみ**で、
+`rammode=1` のとき窓ごと消える。xlsx の利用条件（§3）はこれと違い、RAM モードでも
+BANK1 が ROM バンクなら使える。
 
 ## 5. メモリ構成
 
-**確認済み**: `fpga/.../doc/memory_map.txt`。
+**確認済み(読解)**: `fpga/.../doc/memory_map.txt`。
 
 - Serial Flash ROM 8MB: 000000h-77FFFFh = FPGA コンフィグ、780000h-7FFFFFh = SRAM 初期イメージ
 - Serial SRAM 512KB:
@@ -188,59 +206,31 @@ IKASCC 内蔵マッパーを patch して 2 モードにしたもの。
   - 20000h-3FFFFh: BIOS-RAM 8KB × 16 バンク
   - 40000h-7FFFFh: ADPCM RAM 256KB
 
-SCC マッパーが見るのは 00000h-3FFFFh の 256KB（**確認済み**:
+SCC マッパーが見るのは 00000h-3FFFFh の 256KB（**確認済み(読解)**:
 `scc_bank.v` の `cpu_address` が 18bit）。ADPCM は 18bit アドレスで
-40000h 以降を使う（**確認済み**: `sram_arbiter` のポート幅）。
+40000h 以降を使う（**確認済み(読解)**: `sram_arbiter` のポート幅）。
 
 BIOS-ROM の中身は電源投入時に Flash から SRAM へコピーされる
-（**確認済み**: `system_controller.v` の `sram_initialize` 経路）。
+（**確認済み(読解)**: `system_controller.v` の `sram_initialize` 経路）。
 **BIOS ROM イメージ自体はリポジトリに存在しない**。
 
 ## 6. 拡張ブロックの仕様
 
-### 6.1 OPLL の 2 回路とアドレスの対応
+### 6.1 定位と音量の共通の決まり
 
-回路の選択は `bus_address[1]` で行われる（**確認済み**:
-`ikaopll_patch/opll.v:27-28` の `w_cs0_n` / `w_cs1_n`）。
-直接 I/O とメモリマップド I/O のどちらも同じ規則で振り分けられる。
+定位のレジスタ（OPLL 50h-58h、SSG 28h-2Eh、OPL2 F6h-FFh）は、
+**1 で左端、128 で中央、255 で右端、既定 128**（**確認済み(読解)**: 各シートの Note 欄）。
+ssg シートに貼られた説明図は、**等パワーパンニング**（L = cos θ、R = sin θ、
+中央で両側 0.707）を示している。値から θ への写像は図に書かれていない。
 
-| 回路 | 直接 I/O | メモリマップド | 7FF6h の enable ビット | リセット時 |
-|---|---|---|---|---|
-| `u_ikaopll0` (core 0) | **7Ch-7Dh** | 7FF4h-7FF5h | **bit1** | **無効** |
-| `u_ikaopll1` (core 1) | 7Ah-7Bh | 7FF2h-7FF3h | **bit0** | **有効** |
+音量のレジスタ（SSG 20h-26h、ミキサー 7FF8h-7FFCh）は、xlsx では「0-128、128 が最大、
+既定 128」。hra1129 さんの回答（2026-10-17、ユーザー経由）は
+**0 がミュート、1-127 がゲイン、bit7 が立てば最大**。1-127 の曲線は回答に無い。
 
-7Ah と 7FF2h は A[1:0]=10、7Ch と 7FF4h は A[1:0]=00 なので、この対応になる。
+### 6.2 OPLLEX (拡張 OPLL)
 
-**回路とアドレスの対応は xlsx と一致している。** xlsx は 7Ch/7Dh と 7FF4h を
-OPLL1（1 番目）と呼んでおり、これは core 0 に当たる。従来の MSX-MUSIC の
-アドレスが 1 番目に割り当たっているという意味では、素直な設計である。
-
-食い違っているのは次の 2 点。
-
-1. **enable ビットの割り当て**: xlsx の I/O Enabler1 は b0=OPLL1, b1=OPLL2。
-   RTL は b0 が `ff_opll1_io_en`（= 7Ah 側 = core 1 = xlsx の OPLL2）を、
-   b1 が 7Ch 側（core 0 = xlsx の OPLL1）を制御する。**逆である**
-   （**確認済み**: `y8960_address_decode.v:141, 218-219`）
-2. **リセット時の状態**: `ff_opll1_io_en = 1`（7Ah 有効）、
-   `ff_opll2_io_en = 0`（7Ch 無効）。
-   つまり**電源投入直後、従来の MSX-MUSIC アドレス 7Ch-7Dh には出てこない**
-   （**確認済み**: 同 115-116, 207-208 行）。
-   これはマニュアル §3.1 の「起動直後・リセット直後は無効になっています」とも
-   食い違う（SSG の A0-A2 も同様にリセット時有効）
-
-参考: openMSX の FM-PAC 実装 (`src/sound/MSXFmPac.cc`) は `reset()` で
-`enable = 0`、`writeIO` は `enable & 1` のときだけ OPLL に流す。
-つまり FM-PAC は 7Ch-7Dh がリセット時無効で、7FF6h の **bit0** で有効化する。
-Y8960 で FM-PAC と同じ手順（7FF6h に 01h）を踏むと、開くのは 7Ah 側になる。
-
-2026-09-09 のユーザー判断により、**openMSX 側は FM-PAC を正として実装した**
-（b0 が 7Ch-7Dh、b1 が 7Ah-7Bh、リセット直後は両方とも閉じる）。
-RTL の現状は取り違えとして採らない。詳細は `implementation-plan.md` §3.3。
-RTL 側を直すかどうかは hra1129 さんの領分。
-
-### OPLLEX (拡張 OPLL)
-
-YM2413 に、**チャンネルごとに**プリセット音色バンクを選ぶ機能を追加したもの。
+YM2413 に、**チャンネルごとに**プリセット音色バンクを選ぶ機能と、
+チャンネルごとの定位を足したもの。1 回路。直接 I/O は 7Ch/7Dh（OPLL1 と呼ばれている）。
 
 | BANK 値 | 音色セット | 相当チップ |
 |---|---|---|
@@ -249,104 +239,102 @@ YM2413 に、**チャンネルごとに**プリセット音色バンクを選ぶ
 | 2 | OPLL-P | YMF281 |
 | 3 | VRC7 | DS1001 |
 
-新設レジスタ **40h-48h**（ch0-ch8 に対応）の b1:b0 が BANK。
-出典: `doc/spec/Y8960_Specifications.xlsx` の `OPLL-EX` シート
-（**確認済み**: 抽出テキストの C62-C70 行）、および
-madscient/Y8960emu の `doc/Y8960emu_Architecture.md` §3.2（**確認済み**）。
+- **40h-48h**（ch1-9）の b1:b0 が BANK
+- **50h-58h**（ch1-9）がステレオ定位
+- 10h-48h のレジスタはすべて WO
 
-**RTL 側は未実装**。top が使う `src/ikascc_patch/opll.v`（正しくは
-`ikaopll_patch/opll.v`）は素の IKAOPLL を 2 個並べているだけで、
-BANK レジスタも 4 バンクの音色 ROM も入っていない（**確認済み**: 当該ファイル）。
-つまり OPLLEX は現時点では**仕様だけが存在する**。
+出典: `doc/spec/Y8960_Specifications.xlsx` の `OPLL-EX` シート（**確認済み(読解)**）、
+および madscient/Y8960emu の `doc/Y8960emu_Architecture.md` §3.2（**確認済み(読解)**）。
+レジスタ表の見出しはまだ 7Ah/7Bh に触れている。
+
+**リズム音の定位**は、元の ch7-9 の定位をそのまま使う（2026-10-17、hra1129 さんの回答。
+ユーザー経由）。YM2413 の割り当てどおり BD が ch7、HH と SD が ch8、TOM と TCY が ch9。
+
+**楽音とリズム音の比率**: 実チップの OPLL は楽音 (MO) とリズム音 (RO) を別端子に出し、
+外で混ぜる。OPLLEX はチップ内で混ぜる（ユーザー）。比率は資料に無い。
+
+**RTL 側は未実装**。top が使う `ikaopll_patch/opll.v` は素の IKAOPLL を 2 個並べている
+だけで、BANK レジスタも 4 バンクの音色 ROM も定位も入っていない（**確認済み(読解)**）。
 
 音色データの出典は "Copyright free OPLL(x) ROM patches" (David Viens,
 Hubert Lamontagne)、CC BY-SA。
 
-### OPL2EX (拡張 OPL2)
+### 6.3 OPL2EX (拡張 OPL2)
 
-YM3812 (OPL2) に ADPCM-B を足したもの。レジスタ配置は Y8950 (MSX-AUDIO) と同一。
-`07h`, `09h-12h`, `15h-17h` が ADPCM-B 系、それ以外は YM3812 に委譲。
-出典: `doc/spec/*.xlsx` の `OPL2+ADPCM` シート、Y8960emu アーキ文書 §3.1（**確認済み**）。
+YM3812 (OPL2) に ADPCM-B を足したもの。1 回路。直接 I/O は C0h/C1h。
+レジスタ配置は Y8950 (MSX-AUDIO) と同一で、`07h`-`12h`（`0Dh` / `0Eh` を除く）が
+ADPCM-B 系、それ以外は YM3812 に委譲。05h、06h、0Dh、0Eh、13h-1Fh は N/A
+（Y8950 のキーボード、DAC などで、廃止または未使用）。
+出典: `doc/spec/*.xlsx` の `OPL2+ADPCM` シート、Y8960emu アーキ文書 §3.1（**確認済み(読解)**）。
 
-Y8950 との差は **OPL2 の波形選択** (E0h-F5h の WS、および TEST レジスタ 01h の
-b5 = 波形選択イネーブル)。xlsx の C53 行に「OPL2 から追加」と明記（**確認済み**）。
+Y8950 との差（**確認済み(読解)**: 同シート）:
 
-ADPCM メモリは manual §1.3 に「128KB×2ch か 256KB×1 (2ch 共通) を選択可能」と
-あるが、**選択レジスタは RTL にもレジスタ表にも無い**。RTL の
-`sram_arbiter` は ADPCM を 18bit(256KB) 単一空間として持ち、
-2 つの ADPCM ブロックがそれを共有する（**確認済み**）。
+- **OPL2 の波形選択**: E0h-F5h の WS、および TEST レジスタ 01h の b5 = 波形選択
+  イネーブル。E0h-F5h の行に「OPL2から追加」と明記
+- **F6h-FEh**: ch1-9 のステレオ定位
+- **FFh**: ADPCM のステレオ定位
 
-合計 256KB の分け方は 4 通りある（出典: 2026-09-12 のユーザーからの指示）。
+**リズム音**の定位は ch7-9 の定位に従い、楽音と 1 : 1 で混ざる。リズムモードは ch7-9 の
+使い方を内部で変えるだけで、音量には影響しない（2026-10-17、hra1129 さんの回答。ユーザー経由）。
 
-| 状態 | ブロック 0 | ブロック 1 |
-|---|---|---|
-| 共有 | 256KB 全体 | 同じ 256KB 全体 |
-| 片寄せ | 256KB | 無し |
-| 片寄せ（逆） | 無し | 256KB |
-| 分割 | 128KB | 128KB |
+**ADPCM は OPL2 の中で混ざる。** ミキサーの ADPCM の音量は ADPCM だけに掛かり、
+そのあと OPL2 の音量が混ざった全体に掛かる（2026-10-17、同上）。
 
-manual が挙げているのは共有と分割の 2 つで、片寄せの 2 つはそこに無い。
-**切り替え手段はハードウェア側が未実装**なので、どのレジスタがどの値で
-どれを選ぶかは決まっていない。
+**ADPCM のメモリは 256KB の 1 個**（SRAM の 40000h-7FFFFh）。回路が 1 個になったので、
+manual §1.3 の「128KB×2ch か 256KB×1 (2ch 共通) を選択可能」は意味を失った。
 
 **ADPCM の ROM は無い**（出典: 2026-09-12 のユーザーからの回答）。
 Y8950 はレジスタ `08h` の b0 で ADPCM をサンプル ROM 側に切り替えるが、
 Y8960 の ADPCM の後ろには SRAM しかないので、このビットには選ぶ相手が無い。
 b1 の 64K モードについては**情報が無い**。
 
-### SSG — SSGS (YMZ705 / YMZ732 相当)
+### 6.4 SSG（2 系統）
 
-**2026-09-09 に仕様が変わった。** hra1129 さんによれば、このブロックは
-「SSG × 2」ではなく **SSGS（YMZ705 相当）**である。
-2026-08-30 の議論（Pen さんの提案）で **YMZ732 のレジスタ配置に合わせる**ことが
-決まり、hra1129 さんが「現状 00,,,0F 本体互換 / 10,,,1F 追加3ch。
-これを追加の方をずらします」と回答している（**確認済み**: Discord のスクリーンショット）。
+YM2149 相当の SSG が 2 系統。xlsx（`9869ca0`）の `ssg` シートの配置
+（**確認済み(読解)**。2026-10-16 に hra1129 さんが xlsx を正と回答）:
 
-確定したレジスタ配置（**確認済み**: madscient/EPSGemuEngine の
-`src/YmzSsg.h` / `src/YmzSsg.cpp`。YMZ705/732/771 の実装）:
+| 範囲 | 内容 | RW |
+|---|---|---|
+| 00h-0Dh | SSG1 の YM2149 レジスタ | WO |
+| 0Eh / 0Fh | SSG1 の GPIO A / B（未接続） | WO |
+| 10h-1Dh | SSG2 の YM2149 レジスタ | RW |
+| 1Eh / 1Fh | SSG2 の GPIO A / B（GPIO B の下位 4bit は LED） | RW |
+| 20h-22h / 24h-26h | SSG1 / SSG2 の ch A-C の音量 | RW |
+| 28h-2Ah / 2Ch-2Eh | SSG1 / SSG2 の ch A-C のステレオ定位 | RW |
+| 23h, 27h, 2Bh, 2Fh | 未接続 | — |
 
-| 範囲 | 内容 |
-|---|---|
-| `$00-$1F` | SSG-1 |
-| `$20-$3F` | SSG-2 |
-| `$40` 以上 | ADPCM / シーケンサ領域（Y8960 が使うかは未確認） |
+シートの末尾に「20～EF NA 未接続」の行が残っていて、20h-2Fh と重なる。
 
-系統の選択は `(reg >> 5) & 1`。各系統内では `sub = reg & 0x1F` として:
+**GPIO はセカンダリも機能として有効**（2026-10-16、hra1129 さんの回答。ユーザー経由）。
 
-| `sub` | 内容 |
-|---|---|
-| `$00-$0D` | YM2149 と同じレジスタ |
-| `$0E-$0F` | **無い**。YMZ 系は I/O ポートを持たない |
-| `$10-$12` | ch A/B/C の **4bit パンポット** |
+**2026-08-30 に Discord で決まった YMZ732 の配置（`$00-$1F` が SSG-1、`$20-$3F` が SSG-2、
+各系統の `$10-$12` が 4bit パンポット）は採らない。** xlsx が正（2026-10-16）。
 
-パンポット値と L/R レベルの対応は**データシートに記載が無い**。
-EPSGemuEngine は同世代の YMZ280B と同じ分配則を採っている
-（中央値で両側全開、離れるほど反対側だけが線形に絞られ、端の 2 段は片側全振り）。
-これは実装者の判断であって仕様ではない。
+AY コアの出力は片極性なので、**定位を掛ける前に無音時レベル（直流成分）を
+差し引く**必要がある。省くと直流が定位に漏れる（madscient/EPSGemuEngine のコメントより）。
 
-また AY コアの出力は片極性なので、**パンを掛ける前に無音時レベル（直流成分）を
-差し引く**必要がある。省くと直流が定位に漏れる（EPSGemuEngine のコメントより）。
+**RTL（`d6d16a3`）は改訂前**。レジスタポインタは 5bit で **b4 がコア番号**、
+音量と定位は無い（**確認済み(読解)**: `ssg_core.v` の `{ core_number, 4'dN }`）。
+00h-0Fh が SSG #1（読み出しを駆動しない）、10h-1Fh が SSG #2（読み出しあり。
+1Fh の下位 4bit が LED）。
 
-以下は**変更前**の RTL の記述である。`ssg/ssg_core.v` は上記の新配置に
-追いついていない（レジスタポインタが 5bit で b4 がコア番号、パンポット無し）。
+### 6.5 デジタルミキサー
 
-YM2149 相当 × 2。レジスタポインタは 5bit で、**b4 がコア番号**
-（**確認済み**: `ssg_core.v` の `{ core_number, 4'dN }` によるデコード）。
+xlsx（`9869ca0`）の `MemoryMappedIO` と `MIXIER` シート（**確認済み(読解)**）:
 
-- レジスタ 00h-0Fh → SSG #1（本体 PSG と重なる。読み出しは駆動しない）
-- レジスタ 10h-1Fh → SSG #2（読み出しあり。1Fh の下位4bit が LED）
+- 音源ごとの音量が 7FF8h-7FFCh（SSG、OPLL、OPL2、ADPCM、SCC の順。§3）
+- **MMIO のみ**。I/O ポートは無い
+- 音量の決まりは §6.1。リセット値は資料に無く、**128（最大）**
+  （2026-10-17、hra1129 さんの回答。ユーザー経由）
+- ADPCM の音量の掛かり方は §6.3
 
-xlsx の `ssg` シートには F0h-FFh が RW として空欄で並んでいる。用途不明・**未実装**。
+RTL には無い（§1）。
 
-### DCSG
-
-SN76489 相当 × 2。1 バイト書き込みのみ（レジスタラッチ方式）。拡張なし。
-
-### MSX-TIMER
+### 6.6 MSX-TIMER
 
 4 本のカウンタを持つ独立ブロック。B0h = レジスタ番号、B1h = 値、
 B2h = 割り込みフラグ、B3h = カウンタ読み出し
-（**確認済み**: `src/timer/msx_timer.v` の `c_register_index` 他）。
+（**確認済み(読解)**: `src/timer/msx_timer.v` の `c_register_index` 他）。
 分解能は 0-7 の 8 段。**Base Clock 85.909080MHz (= 3579545 × 24) を
 2^(10+2r) で分周したもの**で、11.919578us 〜 195290.369772us
 （**確認済み**: `src/timer/doc/msx_timer.xlsx` を展開して
@@ -363,37 +351,28 @@ Base Clock と Unit Time の列を読み、式と一致することを確かめ�
 シートの例は終端値 5。そこに並ぶ 71.517us 〜 1171742us を分解能と取り違えない。
 
 割り込みは MSX-TIMER と OPL2 内蔵タイマーの 2 系統が
-`w_int_n = w_timer_intr_n & w_opl2_intr_n` で OR される（**確認済み**）。
+`w_int_n = w_timer_intr_n & w_opl2_intr_n` で OR される（**確認済み(読解)**）。
 
 ## 7. 一次情報どうしの食い違い
 
-いずれも**確認済み**（両方の記述を読み比べた）。
-
+いずれも**確認済み(読解)**（両方の記述を読み比べた）。
 本書は食い違いの事実だけを記録する。どちらを採るかの判断は
-`implementation-plan.md` §4.3 にある。
+`implementation-plan.md` にある。
 
 **出典は 3 系統ではなく 4 系統ある。** 上記 3 つに加えて、
 buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様に基づく）が
-さらに別の値を持っている。DCSG は 48h/4Ah、ミキサーは 40h-41h。
-3 つ目と 4 つ目の突き合わせ表は `implementation-plan.md` §4.3 にある。
+さらに別の値を持っている。突き合わせ表は `implementation-plan.md` §4.3 にある。
 
-1. **DCSG の I/O アドレス**: xlsx `dcsg` シートは **3Eh/3Fh**、
-   RTL は **7Eh/7Fh** (`c_dcsg_io = 8'h7E`)。bit6 が違う。
-   **決着済み**: 2026-09-09 に hra1129 さんが 3Eh/3Fh を正と回答。RTL が古い。
-2. **OPLL の enable ビットとリセット時の状態**（§6.1 に詳述）。
-   回路とアドレスの対応は RTL と xlsx で一致しているが、
-   7FF6h の enable ビットの割り当てが xlsx と RTL で逆になっており、
-   さらにリセット時に有効なのが 7Ch-7Dh ではなく 7Ah-7Bh の側である。
-2.1. **OPL2 のメモリマップド側の呼び方**: xlsx は C0h-C1h を OPL2-1、
-   7FECh-7FEDh を OPL2-2 としている。RTL の `bus_address[1]` から読むと
-   どちらも 1 番目の回路に届くように見える（**確認済み**:
-   `opl2_patch/opl2.v:102-103`）。
-   **決着済み**: 2026-09-09 に hra1129 さんが **xlsx を正**と回答。
-   直接 I/O と窓は別々に並びが決まっており（§3）、RTL から窓の側を推論した
-   こちらの読みが誤りだった。DCSG の 7FF0h/7FF1h も同じ。
-
-3. **ROM/RAM バンクの境界**: **出典が 4 つあり、4 つとも違う**
-   （**確認済み**: 2026-09-09 に `d6d16a3` の当該行を読んだ）。
+1. **DCSG の I/O アドレス**（3Eh/3Fh と RTL の 7Eh/7Fh）。**DCSG ごと無くなった**（2026-10-16）
+2. **OPLL の enable ビットとリセット時の状態**: RTL（`d6d16a3`）は 7FF6h の b0 が
+   7Ah 側、b1 が 7Ch 側を開き、リセット時に 7Ah-7Bh が開いている
+   （**確認済み(読解)**: `y8960_address_decode.v:115-116, 141, 207-208, 218-219`）。
+   xlsx は b0 = OPLL1（7Ch）で、2026-10-16 に 2 番目の OPLL が無くなった。
+   openMSX 側は FM-PAC と同じく、b0 で 7Ch-7Dh を開き、リセット直後は閉じる
+3. **窓の配置**: RTL は改訂前の配置で、ミラー 3FE0h-3FFFh がある。xlsx は §3 の配置で、
+   ミラーは無い（回答）
+4. **ROM/RAM バンクの境界**: **出典が 4 つあり、4 つとも違う**
+   （**確認済み(読解)**: 2026-09-09 に `d6d16a3` の当該行を読んだ）。
 
    | 出典 | 記述 |
    |---|---|
@@ -404,17 +383,19 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
 
    同じ `IKASCC_vrc_s.v` のヘッダは「BANK0...3 is ROM only」「BANK0 is ROM only」
    とも書いているが、これに当たるコードも無い。§4.1 を見ること。
-4. **B6h-B7h のサウンドミキサー**: `ioport.txt` にあるが RTL に無い。
-5. **ADPCM メモリの分け方の切替**: manual にあるがレジスタが無い。
-   状態は 4 つある（§6 の OPL2EX）。切り替え手段がハードウェア側で未実装。
+5. **MMIO の窓が使える条件**: RTL は RAM モードなら窓ごと消す。xlsx は「RAM Mode=0 か、
+   BANK1 が ROM バンク (#0-#15)」（§3、§4.1）
 6. **BANK0 の出現アドレス**: manual §4 は「4000h-5FFFh と C000h-DFFFh の2か所」。
    BANK1-3 のミラーの有無は manual の図（画像）にあり、テキスト抽出できていない。
    `IKASCC.v` の `i_ABHI` デコードから復元は可能だが**未確認**。
+7. **SSG の読み出し**: xlsx は A2h を読み出し専用とし、SSG2 と 20h-2Fh を RW と書く（§2）。
+   openMSX 側の実装はカートリッジの読み出しに一切応じない（本体 PSG と衝突するため、
+   として 2026-09-09 に決めた）。xlsx に合わせるかは未決
 
 ## 8. 未完成であることの確認
 
 - `doc/manual/Y8960_Programmer's_manual.docx` は §5 レジスタ仕様が
   「《記入》」のまま、§3.2-3.6・§6.2・§7.2 が空。**骨組みのみ**。
-- OPLLEX の BANK 機能は RTL に無い（§6）。
-- サウンドミキサー(B6h/B7h)、ADPCM メモリ構成切替、SSG の F0h-FFh は未実装。
+- RTL（`d6d16a3`）は 2026-10-16 以降の xlsx の改訂を反映していない（§1）。
+  OPLLEX の BANK 機能、定位、音量、ミキサーは RTL に無い。
 - BIOS ROM イメージが存在しない。
