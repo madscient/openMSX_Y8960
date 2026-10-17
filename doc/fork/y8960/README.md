@@ -33,7 +33,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
-| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFAh) の回帰テスト。WAV を書き出す |
+| `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFAh) とマスター音量 (7FFEh) の回帰テスト。WAV を書き出す |
 | `tests/check-mixer-volume.py` | 上記 WAV の判定 |
 | `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-remove.py` | 上記 WAV の判定 |

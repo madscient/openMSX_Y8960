@@ -87,6 +87,10 @@ Y8960Mixer::~Y8960Mixer()
 void Y8960Mixer::reset(EmuTime /*time*/)
 {
 	std::ranges::fill(volume, 0x80);
+	// The specification gives no reset value for the master volume. It
+	// starts at the maximum like the per-block volumes; anything lower
+	// would leave every block quieter than its own volume says.
+	masterVolume = 0x80;
 	applyAllGains();
 }
 
@@ -94,6 +98,12 @@ void Y8960Mixer::writeVolume(int channel, uint8_t value)
 {
 	assert(channel >= 0 && channel < ChannelCount);
 	volume[channel] = value;
+	applyAllGains();
+}
+
+void Y8960Mixer::writeMasterVolume(uint8_t value)
+{
+	masterVolume = value;
 	applyAllGains();
 }
 
@@ -111,7 +121,10 @@ void Y8960Mixer::applyAllGains()
 	// behind it. The cartridge's own devices are the ones its channels
 	// name; whatever else is registered belongs to the MSX.
 	auto output = outputSetting->getEnum();
-	float y8960Gain = (output != Output::Msx)   ? 1.0f : 0.0f;
+	// The master volume belongs to the cartridge's output only; the MSX's
+	// sound never passes through it.
+	float y8960Gain = (output != Output::Msx)
+	                ? y8960::volumeGain(masterVolume) : 0.0f;
 	float msxGain   = (output != Output::Y8960) ? 1.0f : 0.0f;
 
 	auto& mixer = getMotherBoard().getMSXMixer();
@@ -137,6 +150,9 @@ void Y8960Mixer::serialize(Archive& ar, unsigned version)
 	ar.template serializeBase<MSXDevice>(*this);
 	if (ar.versionAtLeast(version, 3)) {
 		ar.serialize("volume", volume);
+	}
+	if (ar.versionAtLeast(version, 4)) {
+		ar.serialize("masterVolume", masterVolume);
 	}
 	if constexpr (Archive::IS_LOADER) {
 		applyAllGains();

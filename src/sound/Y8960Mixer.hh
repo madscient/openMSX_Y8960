@@ -21,8 +21,9 @@ namespace openmsx {
   * between them or mixes them. That choice is the output setting below.
   *
   * The mixer proper is one volume per sound block, written through the
-  * memory mapped I/O at 7FF7h + channel. It has no I/O ports. The ADPCM has
-  * no volume here: it is mixed into the OPL2 and takes the OPL2's.
+  * memory mapped I/O at 7FF7h + channel, and a master volume at 7FFEh that
+  * scales all of them. It has no I/O ports. The ADPCM has no volume here: it
+  * is mixed into the OPL2 and takes the OPL2's.
   */
 class Y8960Mixer final : public MSXDevice, private Observer<Setting>
 {
@@ -40,6 +41,7 @@ public:
 	void reset(EmuTime time) override;
 
 	void writeVolume(int channel, uint8_t value);
+	void writeMasterVolume(uint8_t value);
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
@@ -52,9 +54,10 @@ private:
 private:
 	std::array<std::vector<std::string_view>, ChannelCount> channelDevices;
 	std::array<uint8_t, ChannelCount> volume;
+	uint8_t masterVolume;
 	std::unique_ptr<EnumSetting<Output>> outputSetting;
 };
-SERIALIZE_CLASS_VERSION(Y8960Mixer, 3);
+SERIALIZE_CLASS_VERSION(Y8960Mixer, 4);
 
 } // namespace openmsx
 

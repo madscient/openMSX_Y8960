@@ -29,7 +29,7 @@ It is built from these devices:
                      per channel
     MSX-TIMER        the cartridge's timer
     Y8960-MIXER      the cartridge's digital mixer (a volume per sound
-                     block) and output switch
+                     block and a master volume) and output switch
     Y8960 ROM type   SCC, the cartridge's mapper, its I/O enablers and the
                      memory-mapped access to the sound chips
 
