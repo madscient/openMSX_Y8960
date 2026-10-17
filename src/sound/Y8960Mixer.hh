@@ -21,15 +21,13 @@ namespace openmsx {
   * between them or mixes them. That choice is the output setting below.
   *
   * The mixer proper is one volume per sound block, written through the
-  * memory mapped I/O at 7FF7h + channel. It has no I/O ports. Channel 3 is
-  * the ADPCM, which is mixed into the OPL2 before the OPL2's volume, so its
-  * volume is applied inside the OPL2 and never reaches this device.
+  * memory mapped I/O at 7FF7h + channel. It has no I/O ports. The ADPCM has
+  * no volume here: it is mixed into the OPL2 and takes the OPL2's.
   */
 class Y8960Mixer final : public MSXDevice, private Observer<Setting>
 {
 public:
-	static constexpr int ChannelCount = 5;
-	static constexpr int AdpcmChannel = 3;
+	static constexpr int ChannelCount = 4;
 
 	/** Which of the two outputs is being listened to. The cartridge does
 	  * not feed its audio back into the MSX, so on real hardware this is

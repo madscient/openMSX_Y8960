@@ -19,7 +19,6 @@ public:
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
 
 	void writePort(bool port, byte value, EmuTime time);
-	void setAdpcmVolume(byte value, EmuTime time) { opl2.setAdpcmVolume(value, time); }
 
 	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
 	  * メモリマップド I/O からの writePort() はこれに影響されない。 */

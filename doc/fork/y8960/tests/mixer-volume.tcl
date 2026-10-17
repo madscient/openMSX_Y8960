@@ -1,4 +1,4 @@
-# デジタルミキサーの音量レジスタ (7FF7h-7FFBh) の回帰テスト。
+# デジタルミキサーの音量レジスタ (7FF7h-7FFAh) の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script mixer-volume.tcl
 #
@@ -10,7 +10,7 @@
 #   vol_reset   リセット直後（128 = 最大）
 #   vol_half    64。半分になる
 #   vol_mute    0。消える
-#   vol_others  SSG を 128 に戻し、他の 4 本 (7FF8h-7FFBh) に 0。SSG は変わらない
+#   vol_others  SSG を 128 に戻し、他の 3 本 (7FF8h-7FFAh) に 0。SSG は変わらない
 #   vol_ff      FFh。bit7 が立てば最大なので reset と同じ
 #
 # **最終ミックスを録っている**（`record -audioonly`）。デバイスごとの
@@ -53,7 +53,7 @@ proc run_test {} {
 set steps {
 	vol_half   {0x7FF7 64}
 	vol_mute   {0x7FF7 0}
-	vol_others {0x7FF7 0x80 0x7FF8 0 0x7FF9 0 0x7FFA 0 0x7FFB 0}
+	vol_others {0x7FF7 0x80 0x7FF8 0 0x7FF9 0 0x7FFA 0}
 	vol_ff     {0x7FF7 0xFF}
 }
 

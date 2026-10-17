@@ -125,7 +125,7 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | OPLL ×1 | 実装済み（チャンネル別音色バンクと定位付き YM2413） |
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`）。バンクメモリは RTL と差があり**保留中** |
 | MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定）。割り込みが CPU に届くことを実測済み |
-| デジタルミキサー | 実装済み。音源ごとの音量（7FF7h-7FFBh、メモリマップド I/O のみ）。ADPCM の音量は OPL2 の中で掛かる |
+| デジタルミキサー | 実装済み。音源ごとの音量（7FF7h-7FFAh、メモリマップド I/O のみ）。ADPCM は OPL2 の音量に従う |
 | 出力の切り替え | 実装済み。`y8960-mixer_output` で y8960 / msx / mix |
 | OPL2 + ADPCM-B ×1 | 実装済み（OPL2 波形選択、チャンネルごとの定位 F6h-FEh、ADPCM の定位 FFh）。ADPCM の発音を実測済み |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |

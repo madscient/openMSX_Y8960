@@ -1,22 +1,20 @@
 # Y8960 の OPL2 のチャンネルごとの定位 (F6h-FEh)、ADPCM の定位 (FFh) と
-# ADPCM の音量 (7FFAh) の回帰テスト。
+# リズム音の比率の回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script opl2-panpot.tcl
 #
 # 出力先は環境変数 Y8960_TEST_OUT のディレクトリ（未設定ならカレント）。
 # fm_center / fm_left / fm_right / ch7_left / bd_left / adpcm_center /
-# adpcm_left / adpcm_half の 8 本の WAV を書き出す。判定は check-opl2-panpot.py が行う。
+# adpcm_left の 7 本の WAV を書き出す。判定は check-opl2-panpot.py が行う。
 #
-# 判別力があるのは fm_left / fm_right / bd_left / adpcm_left / adpcm_half で、
-# 定位が効いていなければ L=R になり、ADPCM の音量が効いていなければ
-# adpcm_half が adpcm_center と同じ大きさになる。bd_left は ch7 を左端、
+# 判別力があるのは fm_left / fm_right / bd_left / adpcm_left で、
+# 定位が効いていなければ L=R になる。bd_left は ch7 を左端、
 # ch8 を右端にして BD を鳴らし、BD が ch7 の定位に従うことを見る。
 # ch7_left は同じスロットの設定で ch7 をメロディとして鳴らしたもので、
 # BD と同じ大きさになる（リズム音はメロディと 1 : 1）。2 倍なら BD が倍になる。
 #
 # デバイスごとの録音 (`_ch<n>_record`) は音源の出力をそのまま録る。
 # ch1-9 が FM、ch10-14 がリズム音 (BD / SD / CYM / HH / TOM)、ch15 が ADPCM。
-# ADPCM の音量は OPL2 の中で掛かるので、この録音に見える。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
 # この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
@@ -102,9 +100,8 @@ proc adpcm_start {} {
 	r 0x07 0xB0                  ;# START | MEMORY DATA | REPEAT
 }
 
-proc adpcm {name pan volume} {
+proc adpcm {name pan} {
 	r 0xFF $pan
-	mem_write 0x7FFA $volume
 	after time 0.3 [list rec $name 15 {}]
 }
 
@@ -131,9 +128,8 @@ proc next_step {} {
 		2 { fm fm_right 255 }
 		3 { ch7 ch7_left }
 		4 { bd bd_left }
-		5 { adpcm_start ; adpcm adpcm_center 128 128 }
-		6 { adpcm adpcm_left 1 128 }
-		7 { adpcm adpcm_half 128 64 }
+		5 { adpcm_start ; adpcm adpcm_center 128 }
+		6 { adpcm adpcm_left 1 }
 		default { exit }
 	}
 }

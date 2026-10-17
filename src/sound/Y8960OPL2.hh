@@ -27,8 +27,7 @@ class Y8960AdpcmMemory;
   * FM channel (F6h-FEh) and a pan for the ADPCM (FFh).
   *
   * The ADPCM is mixed into this block's output, so the mixer's OPL2 volume
-  * covers it too. The mixer's ADPCM volume is the one gain applied to the
-  * ADPCM alone, before that mix; it lives here for that reason.
+  * covers it too.
   *
   * The rhythm sounds take the pan of the channel they are generated on: BD
   * channel 7, HH and SD channel 8, TOM and CYM channel 9, counting from 1.
@@ -65,8 +64,6 @@ public:
 	void clearRam();
 	void reset(EmuTime time);
 	void writeReg(uint8_t rg, uint8_t data, EmuTime time);
-	/** The mixer's ADPCM volume (7FFAh). */
-	void setAdpcmVolume(uint8_t value, EmuTime time);
 	[[nodiscard]] uint8_t readReg(uint8_t rg, EmuTime time);
 	[[nodiscard]] uint8_t peekReg(uint8_t rg, EmuTime time) const;
 	[[nodiscard]] uint8_t readStatus(EmuTime time) const;
@@ -234,8 +231,6 @@ private:
 
 	// derived from reg[PAN_BASE..PAN_ADPCM]; the last one is the ADPCM's
 	std::array<y8960::PanGain, 10> panGain;
-	uint8_t adpcmVolume;
-	float adpcmGain; // derived from adpcmVolume
 
 	unsigned pm_phase; // Pitch Modulator
 	unsigned am_phase; // Amp Modulator
@@ -254,7 +249,7 @@ private:
 	bool pm_mode;
 };
 
-SERIALIZE_CLASS_VERSION(Y8960OPL2, 2);
+SERIALIZE_CLASS_VERSION(Y8960OPL2, 3);
 
 } // namespace openmsx
 

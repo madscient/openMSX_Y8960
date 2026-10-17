@@ -596,8 +596,6 @@ void Y8960OPL2::reset(EmuTime time)
 	reg[0x04] = 0x18;
 	std::fill(&reg[PAN_BASE], &reg[PAN_ADPCM] + 1, uint8_t(128));
 	updatePanGains();
-	adpcmVolume = 0x80;
-	adpcmGain = y8960::volumeGain(adpcmVolume);
 	status = 0x00;
 	statusMask = 0;
 	irq.reset();
@@ -818,13 +816,6 @@ void Y8960OPL2::updatePanGains()
 	}
 }
 
-void Y8960OPL2::setAdpcmVolume(uint8_t value, EmuTime time)
-{
-	updateStream(time);
-	adpcmVolume = value;
-	adpcmGain = y8960::volumeGain(value);
-}
-
 bool Y8960OPL2::checkMuteHelper()
 {
 	for (auto i : xrange(6)) {
@@ -940,8 +931,7 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 			//bufs[13] += 0;
 		}
 
-		// calcSample() advances the ADPCM, so it is called whatever the gain
-		auto a = narrow_cast<float>(adpcm.calcSample()) * adpcmGain;
+		auto a = narrow_cast<float>(adpcm.calcSample());
 		bufs[14][2 * sample + 0] += a * panGain[9].left;
 		bufs[14][2 * sample + 1] += a * panGain[9].right;
 	}
@@ -1354,10 +1344,9 @@ void Y8960OPL2::serialize(Archive& ar, unsigned version)
 	             "rythm_mode",    rythm_mode,
 	             "am_mode",       am_mode,
 	             "pm_mode",       pm_mode);
-	if (ar.versionAtLeast(version, 2)) {
+	if (ar.versionAtLeast(version, 2) && !ar.versionAtLeast(version, 3)) {
+		uint8_t adpcmVolume = 0; // the mixer's ADPCM volume, since dropped
 		ar.serialize("adpcmVolume", adpcmVolume);
-	} else {
-		adpcmVolume = 0x80;
 	}
 
 	if constexpr (Archive::IS_LOADER) {
@@ -1365,7 +1354,6 @@ void Y8960OPL2::serialize(Archive& ar, unsigned version)
 		update_key_status();
 		updateWaveTables();
 		updatePanGains();
-		adpcmGain = y8960::volumeGain(adpcmVolume);
 	}
 }
 
