@@ -3,7 +3,7 @@
 
 #include "RomBlocks.hh"
 #include "Ram.hh"
-#include "SCC.hh"
+#include "Y8960SCC.hh"
 #include "MSXTimer.hh"
 #include "Y8960Mixer.hh"
 #include "Y8960OPL2Device.hh"
@@ -40,6 +40,7 @@ private:
 	bool isRamRegion(unsigned int region) const;
 	bool isSccRegion(unsigned int region) const;
 	bool isSccAddress(uint16_t address) const;
+	static bool isSccPanAddress(uint16_t address);
 	bool isMmioVisible() const;
 	uint8_t getBank(unsigned int region) const;
 	void setBank(unsigned int region, uint8_t bank);
@@ -53,7 +54,7 @@ private:
 	MSXTimer *timer;
 	Y8960Mixer* mixer = nullptr;
 	std::string mixerName;
-	SCC scc;
+	Y8960SCC scc;
 	Ram ram;
 	bool ramEnabled;
 	std::array<uint8_t, 4> bankReg;

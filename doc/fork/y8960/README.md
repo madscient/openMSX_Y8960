@@ -38,6 +38,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-remove.py` | 上記 WAV の判定 |
 | `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
+| `tests/scc-panpot.tcl` | SCC のチャンネルごとの定位 (9900h-9904h) と、その周りの番地が SCC のミラーのままであることの回帰テスト。WAV を書き出す |
+| `tests/check-scc-panpot.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -116,6 +118,10 @@ Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -scr
 
 # 10. SSGS の GPIO のレジスタ。$OUT/gpio.txt を目で見る
 Y8960_TEST_OUT="$OUT/gpio.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-gpio.tcl"
+
+# 11. SCC の定位。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/scc-panpot.tcl"
+py $T/check-scc-panpot.py "$OUT"
 ```
 
 既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
@@ -137,6 +143,9 @@ done
   コードで 0xFF が返ることを確かめてある
 - `mapper-cpu-read.tcl` は、キャッシュ無効化の順序を元に戻してビルドし直して
   回した。4 件中 2 件（CPU 側の読み）が落ちる
+- `scc-panpot.tcl` は、番地の解き方を 4 つの窓に広げた版で 11 件、RAM モードの条件を
+  外した版で 1 件が落ちる。値 0 を中央に戻すと zero の WAV が落ちる（`opll-panpot.tcl` の
+  zero も同じ）
 - `mapper-windows.tcl` は、マッパーを変更前のコードに戻してビルドし直して
   回した。13 件中 6 件が落ちる。残る 7 件のうち 2 件は変更前でも通る
   （バンク0 の SCC 窓は変更前には存在せず、範囲外アクセスは Release ビルドに

@@ -33,7 +33,11 @@
 //  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
 //  				0xB800-0xBFFF. Only 0x9800-0x9FFF is Konami SCC compatible.
 //					In RAM mode 0x4000-0x5FFF is excluded: control page.
-//					SCC sound register
+//					SCC sound register, decoded on the low 8 address bits
+//  	SCC pan:	0x9900-0x9904, channel A-E, write only, in the Konami SCC
+//					compatible window only. Writes there never reach the SCC;
+//					in RAM mode they are dropped. Reads, and the rest of
+//					0x9900-0x99FF, go to the SCC.
 //
 //    Registers available when RamEnable is 0:
 //  	bank 1: 	0x5000 - 0x57ff
@@ -182,6 +186,11 @@ bool RomY8960::isSccAddress(uint16_t address) const
 	       isSccRegion(convAddressToRegion(address));
 }
 
+bool RomY8960::isSccPanAddress(uint16_t address)
+{
+	return (0x9900 <= address) && (address <= 0x9904);
+}
+
 bool RomY8960::isMmioVisible() const
 {
 	// The window 0x7FE0-0x7FFF lies entirely inside the SCC window of the same
@@ -270,7 +279,14 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 
 	// write to SCC
 	if (isSccAddress(address)) {
-		scc.writeMem(narrow_cast<uint8_t>(address & 0xFF), value, time);
+		if (isSccPanAddress(address)) {
+			// The SCC decodes only the low 8 address bits and would take
+			// these for 0x9800-0x9804, so they are kept from it even in RAM
+			// mode, where the pan registers themselves are not writable.
+			if (!ramEnabled) scc.setPan(address - 0x9900, value, time);
+		} else {
+			scc.writeMem(narrow_cast<uint8_t>(address & 0xFF), value, time);
+		}
 		return;
 	}
 
