@@ -35,9 +35,8 @@
 //					In RAM mode 0x4000-0x5FFF is excluded: control page.
 //					SCC sound register, decoded on the low 8 address bits
 //  	SCC pan:	0x9900-0x9904, channel A-E, write only, in the Konami SCC
-//					compatible window only. Writes there never reach the SCC;
-//					in RAM mode they are dropped. Reads, and the rest of
-//					0x9900-0x99FF, go to the SCC.
+//					compatible window only. Writes there never reach the SCC.
+//					Reads, and the rest of 0x9900-0x99FF, go to the SCC.
 //
 //    Registers available when RamEnable is 0:
 //  	bank 1: 	0x5000 - 0x57ff
@@ -281,9 +280,11 @@ void RomY8960::writeMem(uint16_t address, byte value, EmuTime time)
 	if (isSccAddress(address)) {
 		if (isSccPanAddress(address)) {
 			// The SCC decodes only the low 8 address bits and would take
-			// these for 0x9800-0x9804, so they are kept from it even in RAM
-			// mode, where the pan registers themselves are not writable.
-			if (!ramEnabled) scc.setPan(address - 0x9900, value, time);
+			// these for 0x9800-0x9804. The cartridge's RTL of 2026-10-19
+			// drops these writes in RAM mode; that is taken as a hardware
+			// bug, since the firmware runs in RAM mode, so here they reach
+			// the pan in both modes.
+			scc.setPan(address - 0x9900, value, time);
 		} else {
 			scc.writeMem(narrow_cast<uint8_t>(address & 0xFF), value, time);
 		}
