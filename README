@@ -30,8 +30,9 @@ It is built from these devices:
     MSX-TIMER        the cartridge's timer
     Y8960-MIXER      the cartridge's digital mixer (a volume per sound
                      block and a master volume) and output switch
-    Y8960 ROM type   SCC, the cartridge's mapper, its I/O enablers and the
-                     memory-mapped access to the sound chips
+    Y8960 ROM type   SCC with a pan per channel, the cartridge's mapper, its
+                     I/O enablers and the memory-mapped access to the sound
+                     chips
 
 The cartridge does not feed its sound back into the MSX, so by default only
 the Y8960's own output is heard. The setting y8960-mixer_output selects
