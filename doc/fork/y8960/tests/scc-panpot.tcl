@@ -15,7 +15,9 @@
 # - SCC は下位 8bit しか見ないので、9900h-9904h が SCC に届けば波形 ch A の先頭に
 #   落ちる。そうならないことと、9905h 以降・読み出し・他の窓の x900h が SCC の
 #   ミラーのままであることを、届けば値が変わるように波形を仕込んで見ている
-# - RAM モードでは 9900h-9904h が定位にも SCC にも届かないことを見る
+# - RAM モードでも BANK2 に SCC を出していれば 9900h-9904h が定位に届き、SCC には
+#   届かないことを見る。RTL はこの書き込みを捨てるが、不具合とみなしている。BANK2 に
+#   RAM バンクを置けば、9900h は定位に届かない
 #
 # カートリッジはスロット 1（拡張なし）に入る。ここは C-BIOS_MSX2+ に固有で、
 # 機種を変えたら調べ直すこと。
@@ -114,13 +116,19 @@ proc registers {} {
 		cw $reg $restore
 	}
 
-	# RAM モードでは定位にも SCC にも届かない
+	# RAM モードでも定位に届き、SCC には届かない
 	cw 0x48FB 0x01
 	cw 0x48FE 0x3F
 	cw 0x9900 0x66
-	check "RAM mode: 9900h leaves pan ch A alone" [pan 0] 1
+	check "RAM mode: 9900h sets pan ch A" [pan 0] 0x66
 	check "RAM mode: 9900h does not reach wave A\[0\]" [wave 0 0] 0x40
 	cw 0x9800 0x40
+	# BANK2 に RAM バンクを置けば、9900h はメモリで、定位には届かない
+	cw 0x48FE 0x10
+	cw 0x9900 0x77
+	check "RAM mode, RAM bank: 9900h leaves pan ch A alone" [pan 0] 0x66
+	check "RAM mode, RAM bank: 9900h is memory" [cr 0x9900] 0x77
+	cw 0x48FE 0x3F
 	cw 0x48FB 0x00
 	cw 0x9000 0x3F
 
