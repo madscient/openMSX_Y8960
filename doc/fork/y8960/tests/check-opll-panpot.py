@@ -29,11 +29,13 @@ def main(directory):
         print(f"{name:8s} L_peak={l:6d} R_peak={r:6d}")
 
     failures = []
-    for name in ("center", "zero"):
-        if got[name][0] == 0 or got[name][1] == 0:
-            failures.append(f"{name} が無音。音が鳴っていない")
-        if got[name][0] != got[name][1]:
-            failures.append(f"{name} で L と R が違う")
+    if got["center"][0] == 0 or got["center"][1] == 0:
+        failures.append("center が無音。音が鳴っていない")
+    if got["center"][0] != got["center"][1]:
+        failures.append("center で L と R が違う")
+    # 0 は仕様に無く、RTL の定位の表と同じく 1 と同じ左端として扱う
+    if got["zero"] != got["left"]:
+        failures.append("zero が left と同じでない。0 が左端になっていない")
     if got["left"][0] == 0 or got["left"][1] != 0:
         failures.append("left が左に振り切れていない")
     if got["right"][1] == 0 or got["right"][0] != 0:
