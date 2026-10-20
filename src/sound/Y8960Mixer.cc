@@ -148,8 +148,12 @@ template<typename Archive>
 void Y8960Mixer::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<MSXDevice>(*this);
-	if (ar.versionAtLeast(version, 3)) {
+	if (ar.versionAtLeast(version, 5)) {
 		ar.serialize("volume", volume);
+	} else if (ar.versionAtLeast(version, 3)) {
+		std::array<uint8_t, OldChannelCount> oldVolume;
+		ar.serialize("volume", oldVolume);
+		std::ranges::copy(oldVolume, volume.begin());
 	}
 	if (ar.versionAtLeast(version, 4)) {
 		ar.serialize("masterVolume", masterVolume);

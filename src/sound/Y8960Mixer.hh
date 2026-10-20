@@ -28,7 +28,11 @@ namespace openmsx {
 class Y8960Mixer final : public MSXDevice, private Observer<Setting>
 {
 public:
-	static constexpr int ChannelCount = 4;
+	// Channels 4 and 5 (7FFBh / 7FFCh) are the OPM's address and data
+	// ports, not volumes; the channel number stays the offset from 7FF7h,
+	// so they are counted here but never wired to a device.
+	static constexpr int ChannelCount = 7;
+	static constexpr int OldChannelCount = 4; // savestates before version 5
 
 	/** Which of the two outputs is being listened to. The cartridge does
 	  * not feed its audio back into the MSX, so on real hardware this is
@@ -57,7 +61,7 @@ private:
 	uint8_t masterVolume;
 	std::unique_ptr<EnumSetting<Output>> outputSetting;
 };
-SERIALIZE_CLASS_VERSION(Y8960Mixer, 4);
+SERIALIZE_CLASS_VERSION(Y8960Mixer, 5);
 
 } // namespace openmsx
 

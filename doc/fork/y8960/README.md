@@ -41,6 +41,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/scc-panpot.tcl` | SCC のチャンネルごとの定位 (9900h-9904h) と、その周りの番地が SCC のミラーのままであることの回帰テスト。WAV を書き出す |
 | `tests/check-scc-panpot.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
+| `tests/opm.tcl` | OPM の直接 I/O (7Eh/7Fh)、トンネル (7FFBh/7FFCh)、I/O Enabler2 の b2、ステータスと割り込み、ミキサーの OPM の音量 (7FFDh) の回帰テスト。WAV を書き出す |
+| `tests/check-opm.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -122,6 +124,10 @@ Y8960_TEST_OUT="$OUT/gpio.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -sc
 # 11. SCC の定位。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/scc-panpot.tcl"
 py $T/check-scc-panpot.py "$OUT"
+
+# 12. OPM。判定は終了コードで分かる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opm.tcl"
+py $T/check-opm.py "$OUT"
 ```
 
 既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
@@ -147,6 +153,10 @@ done
   項目が落ちる。RAM モードで定位を捨てる版（今の RTL の形）と、窓が閉じていても定位に書く版を
   合わせると 3 件が落ちる。値 0 を中央に戻すと zero の WAV が落ちる（`opll-panpot.tcl` の
   zero も同じ）
+- `opm.tcl` は、XML の結線を外した版（ROM の `<opm>`、ミキサーのチャンネル）、OPM をミキサーの別の
+  チャンネルに繋いだ版、Enabler2 のビットを取り違えたビルド、7Eh の読み出しに応じて閉じたポートへの
+  書き込みを通すビルドで、それぞれ狙った項目が落ちる。left_only だけは壊した版で確かめていない
+  （上流の `YM2151` がステレオであることの番人）
 - `mapper-windows.tcl` は、マッパーを変更前のコードに戻してビルドし直して
   回した。13 件中 6 件が落ちる。残る 7 件のうち 2 件は変更前でも通る
   （バンク0 の SCC 窓は変更前には存在せず、範囲外アクセスは Release ビルドに

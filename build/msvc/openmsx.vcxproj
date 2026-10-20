@@ -727,6 +727,7 @@
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPL2Device.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPLLDevice.cc" />
+    <ClCompile Include="$(OpenMSXSrcDir)\sound\Y8960OPMDevice.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2151.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413.cc" />
     <ClCompile Include="$(OpenMSXSrcDir)\sound\YM2413Burczynski.cc" />
@@ -1376,6 +1377,7 @@
     <None Include="$(OpenMSXSrcDir)\sound\Y8960OPL2Device.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8960OPLL.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8960OPLLDevice.hh" />
+    <None Include="$(OpenMSXSrcDir)\sound\Y8960OPMDevice.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\Y8960Pan.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2151.hh" />
     <None Include="$(OpenMSXSrcDir)\sound\YM2413.hh" />

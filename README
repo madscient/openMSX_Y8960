@@ -27,6 +27,7 @@ It is built from these devices:
     Y8960-ADPCM-RAM  the 256KB ADPCM sample memory
     Y8960-SSGS       two YM2149-compatible SSGs with a volume and a pan
                      per channel
+    Y8960-OPM        YM2151
     MSX-TIMER        the cartridge's timer
     Y8960-MIXER      the cartridge's digital mixer (a volume per sound
                      block and a master volume) and output switch
