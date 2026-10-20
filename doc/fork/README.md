@@ -131,7 +131,7 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | OPM ×1 | 実装済み（YM2151。7Eh-7Fh、7Fh の読み出しでステータス、割り込みあり）。上流の `YM2151` を使う。RTL の書き込みキューと busy は持たない |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |
 | I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、OPM b2、タイマー b7） |
-| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h、OPM 7FFBh）。窓はバンク1 が ROM のときだけ出る。RTL は 2026-10-20 から常に出しており、追従は hra1129 さんへの確認待ち |
+| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h、OPM 7FFBh）。窓はバンク1 が ROM のときだけ出る。RTL が常に出しているのは不具合（2026-10-21、hra1129 さんの回答） |
 
 DCSG と、OPLL / OPL2 の 2 番目の回路は、2026-10-16 の仕様変更で無くなった。
 本体内蔵版は別のハードウェアになるので、このフォークはカートリッジ版だけを扱う。
