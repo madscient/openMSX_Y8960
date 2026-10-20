@@ -161,3 +161,9 @@ GitHub の Releases にこのフォークのビルドを出すための決まり
   （`history.md` の 2026-10-20 23:12 の項）
 - ルートの `README` の既知の制限は直していない。zip の `README.txt` は `e2286a505` の `README` なので、
   直すとリリースが指すコミットと食い違う
+- ユーザーの了承を得て公開した。公開後に確かめたこと（すべて**確認済み**）
+  - タグは lightweight: `git cat-file -t 21.0-y8960.3` が `commit`、指す先は `e2286a505`
+  - タグのソースアーカイブ（zip と tar.gz の両方。ファイルだけを数えて各 2461 件）に `CLAUDE.md` と
+    `doc/fork/` が 0 件。`README`、`HRA_Y8960.xml`、`Y8960OPMDevice` は入っている。同じ数え方で
+    `doc/manual/` は 19 件当たるので、0 件はパターンの書き損じではない
+  - Releases から落とした zip の sha256 が手元の zip と一致
