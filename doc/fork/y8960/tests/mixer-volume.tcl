@@ -4,7 +4,7 @@
 #
 # 出力先は環境変数 Y8960_TEST_OUT のディレクトリ（未設定ならカレント）。
 # vol_reset / vol_half / vol_mute / vol_others / vol_ff / master_half /
-# master_quarter / master_mute / reserved の 9 本の WAV を書き出す。
+# master_quarter / master_mute / opm_regs の 9 本の WAV を書き出す。
 # 判定は check-mixer-volume.py が行う。
 #
 # SSG（7FF7h）だけで鳴らし、その音量を書き換えて録る。
@@ -16,7 +16,8 @@
 #   master_half     マスター (7FFEh) を 64。SSG は FFh のままなので半分
 #   master_quarter  さらに SSG を 64。両方が掛かって 1/4
 #   master_mute     SSG を 128 に戻し、マスターを 0。消える
-#   reserved        マスターを 128 に戻し、7FFBh-7FFDh に 0。reset と同じ
+#   opm_regs        マスターを 128 に戻し、OPM のポートと音量 (7FFBh-7FFDh) に 0。
+#                   reset と同じ
 #
 # **最終ミックスを録っている**（`record -audioonly`）。デバイスごとの
 # `_ch<n>_record` はミキサーの手前で分岐するので、ここでは使えない。
@@ -63,7 +64,7 @@ set steps {
 	master_half    {0x7FFE 64}
 	master_quarter {0x7FF7 64}
 	master_mute    {0x7FF7 0x80 0x7FFE 0}
-	reserved       {0x7FFE 0x80 0x7FFB 0 0x7FFC 0 0x7FFD 0}
+	opm_regs       {0x7FFE 0x80 0x7FFB 0 0x7FFC 0 0x7FFD 0}
 }
 
 proc capture {name} {

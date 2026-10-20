@@ -19,15 +19,16 @@
 //  	OPLL:       tunnel to the OPLL I/O ports (address / data)
 //  	OPL2:       tunnel to the OPL2 I/O ports (address / data)
 //  	SSGS:       tunnel to the SSGS I/O ports (address / data)
+//  	OPM:        tunnel to the OPM I/O ports (address / data)
 //
 //  	I/O Enabler1: open the OPLL I/O ports (0x7C-0x7D)
-//  	I/O Enabler2: open the OPL2 (0xC0-0xC1), SSGS (0xA0-0xA2) and
-//					MSX-TIMER (0xB0-0xB3) I/O ports
+//  	I/O Enabler2: open the OPL2 (0xC0-0xC1), SSGS (0xA0-0xA2), OPM
+//					(0x7E-0x7F) and MSX-TIMER (0xB0-0xB3) I/O ports
 //					All are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
 //
-//  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, SCC) and
-//					its master volume. The mixer has no other way in.
+//  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, SCC, OPM)
+//					and its master volume. The mixer has no other way in.
 //
 //  	SCC:		0x1800-0x1FFF of any bank whose bank register holds #63,
 //  				i.e. 0x5800-0x5FFF / 0x7800-0x7FFF / 0x9800-0x9FFF /
@@ -91,13 +92,18 @@ constexpr uint16_t MmioSsgs         = 0x7FF0; // + 0x7FF1
 constexpr uint16_t MmioOpl2         = 0x7FF2; // + 0x7FF3
 constexpr uint16_t MmioOpll         = 0x7FF4; // + 0x7FF5
 constexpr uint16_t MmioIoEnabler1   = 0x7FF6;
+constexpr uint16_t MmioOpmAddress   = 0x7FFB;
+constexpr uint16_t MmioOpmData      = 0x7FFC;
 constexpr uint16_t MmioIoEnabler2   = 0x7FFF;
-constexpr uint16_t MmioVolume       = 0x7FF7; // + Y8960Mixer channel, up to 0x7FFA
+// + Y8960Mixer channel: 0x7FF7-0x7FFA and 0x7FFD. The OPM's ports sit in
+// between, at channels 4 and 5.
+constexpr uint16_t MmioVolume       = 0x7FF7;
 constexpr uint16_t MmioMasterVolume = 0x7FFE;
 
 constexpr byte Enabler1Opll  = 0x01;
 constexpr byte Enabler2Opl2  = 0x01;
 constexpr byte Enabler2Ssgs  = 0x02;
+constexpr byte Enabler2Opm   = 0x04;
 constexpr byte Enabler2Timer = 0x80;
 
 template<typename T>
@@ -132,6 +138,7 @@ RomY8960::RomY8960(const DeviceConfig& config, Rom&& rom_)
 	opll  = findWiredDevice<Y8960OPLLDevice>(motherBoard, config, "opll");
 	opl2  = findWiredDevice<Y8960OPL2Device>(motherBoard, config, "opl2");
 	ssgs  = findWiredDevice<Y8960SSGSDevice>(motherBoard, config, "ssgs");
+	opm   = findWiredDevice<Y8960OPMDevice> (motherBoard, config, "opm");
 	timer = findWiredDevice<MSXTimer>       (motherBoard, config, "timer");
 	mixerName = config.getChildData("mixer", "");
 
@@ -351,6 +358,14 @@ void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
 			ssgs->writePort(address & 1, value, time);
 		}
 	}
+	// Unlike the other tunnels the OPM's address port is at an odd address,
+	// and both ports lie inside the volume range below.
+	if ((address == MmioOpmAddress) || (address == MmioOpmData)) {
+		if (opm != nullptr) {
+			opm->writePort(address == MmioOpmData, value, time);
+		}
+		return;
+	}
 
 	if (address == MmioIoEnabler2) {
 		if(opl2 != nullptr) {
@@ -358,6 +373,9 @@ void RomY8960::writeMmio(uint16_t address, byte value, EmuTime time)
 		}
 		if(ssgs != nullptr) {
 			ssgs->setIoEnabled((value & Enabler2Ssgs) != 0);
+		}
+		if(opm != nullptr) {
+			opm->setIoEnabled((value & Enabler2Opm) != 0);
 		}
 		if(timer != nullptr) {
 			timer->setIoEnabled((value & Enabler2Timer) != 0);

@@ -5,8 +5,8 @@
 
 SSG の音量 (7FF7h) が 128 / 64 / 0 / FFh のときのピークと、他の 3 本を 0 に
 したときに SSG が変わらないことを見る。マスター音量 (7FFEh) は 64 で半分、
-SSG の 64 と重ねて 1/4、0 で無音になること、7FFBh-7FFDh に書いても
-何も変わらないことを見る。
+SSG の 64 と重ねて 1/4、0 で無音になること、OPM のポートと音量
+(7FFBh-7FFDh) に書いても SSG は変わらないことを見る。
 
 **厳密な一致は求めない。** openMSX のミキサーが直流分を落とす過渡が
 キャプチャにまたがって残り、数 % の差が出る。
@@ -28,7 +28,7 @@ def main():
         sys.exit(__doc__)
     d = sys.argv[1]
     names = ("vol_reset", "vol_half", "vol_mute", "vol_others", "vol_ff",
-             "master_half", "master_quarter", "master_mute", "reserved")
+             "master_half", "master_quarter", "master_mute", "opm_regs")
     got = {n: peak(f"{d}/{n}.wav") for n in names}
     for n in names:
         print(f"{n:14s} peak={got[n]:6d}")
@@ -49,7 +49,7 @@ def main():
         near("master_half", base * 64 / 128)
         near("master_quarter", base * 64 / 128 * 64 / 128)
         near("master_mute", 0)
-        near("reserved", base)
+        near("opm_regs", base)
     for f in failures:
         print("NG:", f)
     print("OK" if not failures else "NG")

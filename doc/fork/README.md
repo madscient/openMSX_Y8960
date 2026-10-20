@@ -125,12 +125,13 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | OPLL ×1 | 実装済み（チャンネル別音色バンクと定位付き YM2413） |
 | SCC + マッパー | 実装済み（ROM 種別 `Y8960`。SCC はチャンネルごとの定位 9900h-9904h 付き）。バンクメモリは RTL と差があり**保留中** |
 | MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定）。割り込みが CPU に届くことを実測済み |
-| デジタルミキサー | 実装済み。音源ごとの音量（7FF7h-7FFAh）とマスター音量（7FFEh）。メモリマップド I/O のみ。ADPCM は OPL2 の音量に従う |
+| デジタルミキサー | 実装済み。音源ごとの音量（7FF7h-7FFAh、OPM は 7FFDh）とマスター音量（7FFEh）。メモリマップド I/O のみ。ADPCM は OPL2 の音量に従う |
 | 出力の切り替え | 実装済み。`y8960-mixer_output` で y8960 / msx / mix |
 | OPL2 + ADPCM-B ×1 | 実装済み（OPL2 波形選択、チャンネルごとの定位 F6h-FEh、ADPCM の定位 FFh）。ADPCM の発音を実測済み |
+| OPM ×1 | 実装済み（YM2151。7Eh-7Fh、7Fh の読み出しでステータス、割り込みあり）。上流の `YM2151` を使う。RTL の書き込みキューと busy は持たない |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |
-| I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、タイマー b7） |
-| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h）。窓はバンク1 が ROM のときだけ出る |
+| I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、OPM b2、タイマー b7） |
+| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h、OPM 7FFBh）。窓はバンク1 が ROM のときだけ出る。RTL は 2026-10-20 から常に出しており、追従は hra1129 さんへの確認待ち |
 
 DCSG と、OPLL / OPL2 の 2 番目の回路は、2026-10-16 の仕様変更で無くなった。
 本体内蔵版は別のハードウェアになるので、このフォークはカートリッジ版だけを扱う。

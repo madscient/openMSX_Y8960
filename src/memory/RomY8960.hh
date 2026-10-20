@@ -9,6 +9,7 @@
 #include "Y8960OPL2Device.hh"
 #include "Y8960SSGSDevice.hh"
 #include "Y8960OPLLDevice.hh"
+#include "Y8960OPMDevice.hh"
 
 #include <string>
 
@@ -51,6 +52,7 @@ private:
 	Y8960OPLLDevice *opll;
 	Y8960OPL2Device *opl2;
 	Y8960SSGSDevice *ssgs;
+	Y8960OPMDevice *opm;
 	MSXTimer *timer;
 	Y8960Mixer* mixer = nullptr;
 	std::string mixerName;
