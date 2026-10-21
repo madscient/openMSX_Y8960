@@ -6,7 +6,7 @@
 # **判定は最終行の RESULT を見る。** openmsx は Tcl の `exit` に渡した値を
 # プロセスの終了コードにしない（**確認済み**: 6 件落ちる構成でも 0 が返った）。
 #
-# 確かめている規則は implementation-plan.md §3.8.1 の 4 つと、#32 以上のバンク値の扱い。
+# 確かめている規則は implementation-plan.md §3.8.1 の 6 つ。
 #
 # **判別力の根拠**: 窓が出ているかどうかは、窓に書いた値が届いた先で見る。
 # SCC 窓なら SCC の波形メモリ、MMIO 窓なら OPLL のレジスタ。窓が無ければ
@@ -205,6 +205,30 @@ mapper_reset
 cw 0x9000 0xBF
 cw 0x9800 0x66
 check "bank 0xBF drops the upper bits (= SCC)" [wave0] 0x66
+
+# --- 互換モードの RAM バンク ---------------------------------------------
+#
+# 互換モードでも #16-#31 は RAM の中身を見せ、書き込みだけを止める（SCC の
+# マッパーはすべてのバンクを ROM として扱い、Y8960 はその一部を RAM にも
+# できるようにしたもの）。MMIO 窓は RAM Mode=0 なら出る。
+#
+# **判別力の根拠**: RAM モードで書いた値を互換モードで読む。ROM として見せて
+# いれば ROM の内容が返る。
+
+mapper_reset
+cw 0x48FB 0x01
+cw 0x48FD 0x10
+cw 0x6020 0x77
+mapper_reset
+cw 0x7000 0x10
+check "compat mode: bank 0x10 reads the RAM" [cr 0x6020] 0x77
+cw 0x6020 0x88
+check "compat mode: bank 0x10 is not writable" [cr 0x6020] 0x77
+cw 0x7000 0x30
+check "compat mode: bank 0x30 reads RAM bank 0x10" [cr 0x6020] 0x77
+cw 0x7FF4 0x08
+cw 0x7FF5 0x4B
+check "compat mode: RAM in bank1 keeps MMIO" [opll 8] 0x4B
 
 if {$fails > 0} {
 	puts $log "RESULT: FAILED $fails"
