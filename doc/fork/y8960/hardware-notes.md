@@ -506,6 +506,7 @@ buppu3/openMSX の `y8960` ブランチの既存実装（2026-01 時点の仕様
    | `IKASCC_vrc_s.v` のヘッダコメント | BANK#0-#7 が ROM、#8-#15 が RAM |
    | `scc_bank.v` のコメント | 互換モードは 0-31 が read only、RAM モードは 0-15 が read only で 16-31 が read/write |
    | **RTL の assign** | **バンク番号による分岐が無い。RAM モードなら全 32 バンクが書ける** |
+   | v0.9.3 の RTL | RAM モードではバンク番号の bit4 が 1 のときだけ書ける（`scc_bank.v:79`）。レジスタは 6 ビットで、#32-#62 は #0-#30 のミラー |
 
    同じ `IKASCC_vrc_s.v` のヘッダは「BANK0...3 is ROM only」「BANK0 is ROM only」
    とも書いているが、これに当たるコードも無い。§4.1 を見ること。

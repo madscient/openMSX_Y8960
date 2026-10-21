@@ -6,7 +6,7 @@
 # **判定は最終行の RESULT を見る。** openmsx は Tcl の `exit` に渡した値を
 # プロセスの終了コードにしない（**確認済み**: 6 件落ちる構成でも 0 が返った）。
 #
-# 確かめている規則は implementation-plan.md §3.8.1 の 4 つ。
+# 確かめている規則は implementation-plan.md §3.8.1 の 4 つと、#32 以上のバンク値の扱い。
 #
 # **判別力の根拠**: 窓が出ているかどうかは、窓に書いた値が届いた先で見る。
 # SCC 窓なら SCC の波形メモリ、MMIO 窓なら OPLL のレジスタ。窓が無ければ
@@ -154,6 +154,57 @@ mapper_reset
 cw 0x48FB 0x01
 cw 0x48FE 0x3F
 check_ne "bank 0x3F in RAM mode does not read as RAM" [cr 0x8000] ""
+
+# --- #32 以上のバンク値 ---------------------------------------------------
+#
+# バンクレジスタは 6 ビットで、ROM か RAM かはバンク番号の bit4 で決まる
+# （v0.9.3 の RTL）。#32-#47 は ROM の、#48-#62 は RAM のミラーで、上位 2 ビットは
+# 捨てられる。これらを RAM 扱いにすると ram の範囲外を指す。
+#
+# **判別力の根拠**: #32 では MMIO 窓が出ること（RAM 扱いなら消える）と、書いた値が
+# 残らないことを見る。ミラーの RAM は、片方の番号で書いた値をもう片方で読む。
+# 範囲外を指していれば、書いた値は #16 の 8KB に現れない。
+
+mapper_reset
+cw 0x48FB 0x01
+cw 0x48FD 0x00
+set rom0 {}
+for {set i 0} {$i < 16} {incr i} { lappend rom0 [cr [expr {0x6000 + $i}]] }
+cw 0x48FD 0x20
+set rom32 {}
+for {set i 0} {$i < 16} {incr i} { lappend rom32 [cr [expr {0x6000 + $i}]] }
+check "bank 0x20 reads as ROM bank 0" $rom32 $rom0
+set before [cr 0x6000]
+cw 0x6000 [expr {$before ^ 0xFF}]
+check "bank 0x20 is not writable" [cr 0x6000] $before
+cw 0x7FF4 0x06
+cw 0x7FF5 0x96
+check "bank 0x20 keeps MMIO (ROM mirror)" [opll 6] 0x96
+
+mapper_reset
+cw 0x48FB 0x01
+cw 0x48FD 0x10
+cw 0x6010 0x5A
+cw 0x48FD 0x30
+check "bank 0x30 reads RAM bank 0x10" [cr 0x6010] 0x5A
+cw 0x6011 0xA5
+cw 0x7FF4 0x07
+cw 0x7FF5 0x69
+check_ne "bank 0x30 hides MMIO (RAM mirror)" [opll 7] 0x69
+cw 0x48FD 0x10
+check "write through bank 0x30 lands in bank 0x10" [cr 0x6011] 0xA5
+
+mapper_reset
+cw 0x48FB 0x01
+cw 0x48FD 0x10
+cw 0x6012 0x3C
+cw 0x48FD 0x50
+check "bank 0x50 drops the upper bits (= 0x10)" [cr 0x6012] 0x3C
+
+mapper_reset
+cw 0x9000 0xBF
+cw 0x9800 0x66
+check "bank 0xBF drops the upper bits (= SCC)" [wave0] 0x66
 
 if {$fails > 0} {
 	puts $log "RESULT: FAILED $fails"
