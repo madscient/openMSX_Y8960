@@ -70,7 +70,8 @@
 //
 // bank (the hardware keeps only the low 6 bits of a bank register)
 //		 0 - 15		ROM bank
-//		16 - 31		RAM bank
+//		16 - 31		RAM bank. Read-only while RamEnable is 0, like every bank
+//					of the SCC mapper this one extends
 //		32 - 62		mirror of 0 - 30: bit 4 alone tells ROM from RAM
 //		63			SCC sound register
 
@@ -244,7 +245,7 @@ byte RomY8960::peekMem(uint16_t address, EmuTime time) const
 {
 	if (isSccAddress(address)) {
 		return scc.peekMem(narrow_cast<uint8_t>(address & 0xFF), time);
-	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
+	} else if (isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
 	} else {
 		return Rom8kBBlocks::peekMem(address, time);
@@ -255,7 +256,7 @@ byte RomY8960::readMem(uint16_t address, EmuTime time)
 {
 	if (isSccAddress(address)) {
 		return scc.readMem(narrow_cast<uint8_t>(address & 0xFF), time);
-	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
+	} else if (isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
 	} else {
 		return Rom8kBBlocks::readMem(address, time);
@@ -267,7 +268,7 @@ const byte* RomY8960::getReadCacheLine(uint16_t address) const
 	if (isSccAddress(address)) {
 		// don't cache SCC
 		return nullptr;
-	} else if (ramEnabled && isRamRegion(convAddressToRegion(address))) {
+	} else if (isRamRegion(convAddressToRegion(address))) {
 		// read from ram
 		return &ram[getRamAddress(address)];
 	} else {
