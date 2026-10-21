@@ -68,9 +68,10 @@
 //    In RAM mode 0x4000-0x5FFF is not writable: writes there only reach the
 //    registers above. Reads show whatever its bank register selected.
 //
-// bank
+// bank (the hardware keeps only the low 6 bits of a bank register)
 //		 0 - 15		ROM bank
 //		16 - 31		RAM bank
+//		32 - 62		mirror of 0 - 30: bit 4 alone tells ROM from RAM
 //		63			SCC sound register
 
 #include "RomY8960.hh"
@@ -171,10 +172,9 @@ void RomY8960::bankSwitch(unsigned page, unsigned block)
 bool RomY8960::isRamRegion(unsigned int region) const
 {
 	uint8_t bank = getBank(region);
-	// SccBank is not a memory bank. Letting it through would make
-	// getRamAddress() index far past the end of `ram`.
+	// SccBank has bit 4 set like a RAM bank, but it is not memory.
 	if ((bank & 0x3F) == SccBank) return false;
-	return bank >= RomBankCounts;
+	return (bank % (RomBankCounts + RamBankCounts)) >= RomBankCounts;
 }
 
 bool RomY8960::isSccRegion(unsigned int region) const
@@ -219,8 +219,7 @@ void RomY8960::setBank(unsigned int region, uint8_t bank)
 
 const unsigned int RomY8960::getRamAddress(uint16_t address) const
 {
-	uint8_t bank = getBank(convAddressToRegion(address)) - RomBankCounts; 
-	assert(bank >= 0);
+	uint8_t bank = (getBank(convAddressToRegion(address)) % (RomBankCounts + RamBankCounts)) - RomBankCounts;
 	assert(bank < RamBankCounts);
 	return (bank * 0x2000) + (address & 0x1FFF);
 }
