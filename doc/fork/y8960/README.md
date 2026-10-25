@@ -25,6 +25,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
 | `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
+| `tests/enabler2-read.tcl` | I/O Enabler2 (7FFFh) が読めることの回帰テスト。CPU の読みキャッシュも見る |
 | `tests/ssgs-gpio.tcl` | SSGS の GPIO のレジスタが両系統とも記憶域であることの回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
 | `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
@@ -118,6 +119,10 @@ done
 # 9. I/O Enabler2 の b7 とトンネル。$OUT/en2.txt を目で見る
 Y8960_TEST_OUT="$OUT/en2.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2.tcl"
 
+# 9a. I/O Enabler2 の読み出し。判定は最終行の RESULT を見る
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/enabler2-read.tcl"
+tail -1 "$OUT/enabler2-read.txt"
+
 # 10. SSGS の GPIO のレジスタ。$OUT/gpio.txt を目で見る
 Y8960_TEST_OUT="$OUT/gpio.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/ssgs-gpio.tcl"
 
@@ -147,6 +152,8 @@ done
 - `enabler2.tcl` は、閉じている間に値が変わらないことを見る手順に判別力がある
   （テスト冒頭の注記）。`ssgs-gpio.tcl` は、GPIO の書き込みを捨てていた頃の
   コードで 0xFF が返ることを確かめてある
+- `enabler2-read.tcl` は、読み出しを入れる前のビルドで落ちることと、CPU の読みの項目が
+  `getReadCacheLine()` の分岐を外したビルドで落ちることを確かめてある
 - `mapper-cpu-read.tcl` は、キャッシュ無効化の順序を元に戻してビルドし直して
   回した。4 件中 2 件（CPU 側の読み）が落ちる
 - `scc-panpot.tcl` は、番地の解き方を 4 つの窓に広げた版で、ミラー・読み出し・他の窓の

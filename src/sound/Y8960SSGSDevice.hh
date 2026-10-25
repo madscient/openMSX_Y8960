@@ -28,6 +28,7 @@ public:
 
 	/** 7FFFh (I/O Enabler2) bit 1. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);
