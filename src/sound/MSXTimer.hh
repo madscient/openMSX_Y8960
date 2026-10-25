@@ -87,6 +87,7 @@ public:
 	  * カウンタと割り込みは閉じている間も動き続ける。実機の enabler は
 	  * アドレスデコードだけを止めるため。 */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 
 	//[[nodiscard]] byte readMem(uint16_t address, EmuTime time) override;
 	//[[nodiscard]] byte peekMem(uint16_t address, EmuTime time) const override;

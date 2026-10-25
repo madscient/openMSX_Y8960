@@ -43,6 +43,8 @@ private:
 	bool isSccAddress(uint16_t address) const;
 	static bool isSccPanAddress(uint16_t address);
 	bool isMmioVisible() const;
+	bool isIoEnabler2Address(uint16_t address) const;
+	[[nodiscard]] byte peekIoEnabler2() const;
 	uint8_t getBank(unsigned int region) const;
 	void setBank(unsigned int region, uint8_t bank);
 	const unsigned int getRamAddress(uint16_t address) const;

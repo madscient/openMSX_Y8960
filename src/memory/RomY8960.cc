@@ -26,6 +26,7 @@
 //					(0x7E-0x7F) and MSX-TIMER (0xB0-0xB3) I/O ports
 //					All are closed after reset, like the FM-PAC. The tunnels
 //					above stay open, otherwise there is no way to open them.
+//					Readable: the bits without a block read as 0.
 //
 //  	Volume:		the mixer's volume per block (SSG, OPLL, OPL2, SCC, OPM)
 //					and its master volume. The mixer has no other way in.
@@ -88,7 +89,8 @@ namespace openmsx {
 
 namespace {
 
-// The memory mapped I/O window. Everything in it is write-only.
+// The memory mapped I/O window. Everything in it is write-only, except
+// I/O Enabler2.
 constexpr uint16_t MmioWindow       = 0x7FE0; // 0x7FE0-0x7FFF
 constexpr uint16_t MmioSsgs         = 0x7FF0; // + 0x7FF1
 constexpr uint16_t MmioOpl2         = 0x7FF2; // + 0x7FF3
@@ -241,9 +243,27 @@ void RomY8960::reset(EmuTime time)
 	scc.reset(time);
 }
 
+bool RomY8960::isIoEnabler2Address(uint16_t address) const
+{
+	return (address == MmioIoEnabler2) && isMmioVisible();
+}
+
+byte RomY8960::peekIoEnabler2() const
+{
+	// The enable bits live in the blocks, which keep them across a savestate.
+	byte value = 0;
+	if ((opl2  != nullptr) && opl2 ->isIoEnabled()) value |= Enabler2Opl2;
+	if ((ssgs  != nullptr) && ssgs ->isIoEnabled()) value |= Enabler2Ssgs;
+	if ((opm   != nullptr) && opm  ->isIoEnabled()) value |= Enabler2Opm;
+	if ((timer != nullptr) && timer->isIoEnabled()) value |= Enabler2Timer;
+	return value;
+}
+
 byte RomY8960::peekMem(uint16_t address, EmuTime time) const
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2Address(address)) {
+		return peekIoEnabler2();
+	} else if (isSccAddress(address)) {
 		return scc.peekMem(narrow_cast<uint8_t>(address & 0xFF), time);
 	} else if (isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
@@ -254,7 +274,9 @@ byte RomY8960::peekMem(uint16_t address, EmuTime time) const
 
 byte RomY8960::readMem(uint16_t address, EmuTime time)
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2Address(address)) {
+		return peekIoEnabler2();
+	} else if (isSccAddress(address)) {
 		return scc.readMem(narrow_cast<uint8_t>(address & 0xFF), time);
 	} else if (isRamRegion(convAddressToRegion(address))) {
 		return ram[getRamAddress(address)];
@@ -265,7 +287,10 @@ byte RomY8960::readMem(uint16_t address, EmuTime time)
 
 const byte* RomY8960::getReadCacheLine(uint16_t address) const
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2Address(address | CacheLine::LOW)) {
+		// I/O Enabler2 (0x7FFF) is the last byte of this line
+		return nullptr;
+	} else if (isSccAddress(address)) {
 		// don't cache SCC
 		return nullptr;
 	} else if (isRamRegion(convAddressToRegion(address))) {

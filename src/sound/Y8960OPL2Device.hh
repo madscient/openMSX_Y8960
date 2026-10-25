@@ -23,6 +23,7 @@ public:
 	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
 	  * メモリマップド I/O からの writePort() はこれに影響されない。 */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
+	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned version);

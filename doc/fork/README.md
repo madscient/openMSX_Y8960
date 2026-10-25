@@ -130,7 +130,7 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | OPL2 + ADPCM-B ×1 | 実装済み（OPL2 波形選択、チャンネルごとの定位 F6h-FEh、ADPCM の定位 FFh）。ADPCM の発音を実測済み |
 | OPM ×1 | 実装済み（YM2151。7Eh-7Fh、7Fh の読み出しでステータス、割り込みあり）。上流の `YM2151` を使う。RTL の書き込みキューと busy は持たない |
 | I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |
-| I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、OPM b2、タイマー b7） |
+| I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、OPM b2、タイマー b7）。読み出しもできる（使っていないビットは 0 の仮置き。RTL には未反映） |
 | メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h、OPM 7FFBh）。窓はバンク1 が ROM のときだけ出る。ハードウェアの v0.9.3 も同じ条件 |
 
 DCSG と、OPLL / OPL2 の 2 番目の回路は、2026-10-16 の仕様変更で無くなった。
