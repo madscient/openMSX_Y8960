@@ -28,7 +28,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/enabler2-read.tcl` | I/O Enabler2 (7FFFh) が読めることの回帰テスト。CPU の読みキャッシュも見る |
 | `tests/ssgs-gpio.tcl` | SSGS の GPIO のレジスタが両系統とも記憶域であることの回帰テスト |
 | `tests/timer-irq.tcl` | MSX-TIMER が CPU へ割り込みを上げることの回帰テスト |
-| `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
+| `tests/timer-resolution.tcl` | MSX-TIMER の分解能が 42.95454MHz の分周どおりであることの回帰テスト |
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
 | `tests/check-adpcm-play.py` | 上記 WAV の判定。ピークと基本周波数を見る |
 | `tests/adpcm-rommode.tcl` | ADPCM の ROM ビット (08h の b0) が SRAM を外すことの回帰テスト。CPU に読ませる |
@@ -188,6 +188,8 @@ done
   `HRA_Y8960.xml` の組み合わせで、それぞれ 2 件、6 件、5 件、3 件が落ちる。残りは変更前でも通る番人。
   `timer-regs.tcl` の「リセット直後の選択はコア 0」は、変更前は初期化されていない値を読むので、
   たまたま通ることがある。`ssgs-write-only.tcl` の 5 番は、変更前のビルドでは A1h の値が reg10 に入る
+- `timer-resolution.tcl` は、クロックが 85.9MHz のままのビルドで 13 件中 11 件が落ちる。残る 2 件
+  （期待値の後でフラグが 1）は速すぎても通る番人
 
 ## 取り込み元
 
