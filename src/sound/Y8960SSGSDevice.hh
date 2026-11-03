@@ -13,8 +13,10 @@ namespace openmsx {
   *   base+1  write the register
   *
   * Same layout as the MSX PSG, but the register number is 6 bits wide here
-  * because there are two units. The ports overlap the MSX PSG, so the
-  * cartridge does not answer reads (that would collide with the PSG).
+  * because there are two units. The cartridge answers A2h reads of the
+  * second unit's registers, but this device answers no reads: taking A2h as
+  * an input overlaps the MSX PSG, and openMSX warns about every overlapping
+  * input port each time the extension is inserted.
   */
 class Y8960SSGSDevice final : public MSXDevice
 {

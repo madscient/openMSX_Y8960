@@ -23,7 +23,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/check-opl2-panpot.py` | 上記 WAV の判定 |
 | `tests/ssgs-panpot.tcl` | SSGS のチャンネルごとの定位と音量、SSG 2 系統の分離の回帰テスト |
 | `tests/check-ssgs-panpot.py` | 上記 WAV の判定 |
-| `tests/ssgs-write-only.tcl` | SSGS がリードに反応しないことの回帰テスト |
+| `tests/ssgs-write-only.tcl` | SSGS がリードに反応せず、A0h と A1h にしか書き込めないことの回帰テスト |
 | `tests/enabler2.tcl` | I/O Enabler2 (7FFFh) の b7 と、SSGS / OPL2 のトンネルの回帰テスト |
 | `tests/enabler2-read.tcl` | I/O Enabler2 (7FFFh) が読めることの回帰テスト。CPU の読みキャッシュも見る |
 | `tests/ssgs-gpio.tcl` | SSGS の GPIO のレジスタが両系統とも記憶域であることの回帰テスト |
@@ -31,7 +31,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/timer-resolution.tcl` | MSX-TIMER の分解能が xlsx の値どおりであることの回帰テスト |
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
 | `tests/check-adpcm-play.py` | 上記 WAV の判定。ピークと基本周波数を見る |
-| `tests/adpcm-rommode.tcl` | ADPCM に rommode が無いことの回帰テスト |
+| `tests/adpcm-rommode.tcl` | ADPCM の ROM ビット (08h の b0) が SRAM を外すことの回帰テスト。CPU に読ませる |
 | `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
 | `tests/check-mixer-output.py` | 上記 WAV の判定 |
 | `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFAh) とマスター音量 (7FFEh) の回帰テスト。WAV を書き出す |
@@ -44,6 +44,9 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
 | `tests/opm.tcl` | OPM の直接 I/O (7Eh/7Fh)、トンネル (7FFBh/7FFCh)、I/O Enabler2 の b2、ステータスと割り込み、ミキサーの OPM の音量 (7FFDh) の回帰テスト。WAV を書き出す |
 | `tests/check-opm.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
+| `tests/opl2-read.tcl` | OPL2 のデータポート (C1h) が 0Fh 以外を FFh で読むことと、ADPCM の PCM_BSY の回帰テスト |
+| `tests/timer-regs.tcl` | MSX-TIMER のレジスタ 3 と B3h の選択の回帰テスト |
+| `tests/sysctrl.tcl` | System Controller (40h-42h) の識別の回帰テスト |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -97,7 +100,7 @@ Y8960_TEST_OUT="$OUT/irq.txt" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -scr
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/adpcm-play.tcl"
 py $T/check-adpcm-play.py "$OUT"
 
-# 6a. ADPCM に rommode が無いこと。判定は最終行の RESULT を見る
+# 6a. ADPCM の ROM ビット。判定は最終行の RESULT を見る
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/adpcm-rommode.tcl"
 tail -1 "$OUT/adpcm-rommode.txt"
 
@@ -133,6 +136,13 @@ py $T/check-scc-panpot.py "$OUT"
 # 12. OPM。判定は終了コードで分かる
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/opm.tcl"
 py $T/check-opm.py "$OUT"
+
+# 13. OPL2 のデータポートと PCM_BSY、MSX-TIMER のレジスタ、System Controller。
+#     判定は最終行の RESULT を見る
+for t in opl2-read timer-regs sysctrl; do
+    Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960         -script "$(pwd)/$T/$t.tcl"
+    tail -1 "$OUT/$t.txt"
+done
 ```
 
 既存機種を壊していないことの確認も併せて行う。終了コード 0 が期待値。
@@ -174,6 +184,10 @@ done
   互換モードの RAM バンクの 4 件は、互換モードで ROM を見せていたコードで 3 件が落ちる。
   「MMIO が出る」は修正前でも通る番人
 - `mapper-cpu-read.tcl` の互換モードの 2 件は、互換モードで ROM を見せていたコードで落ちる
+- `adpcm-rommode.tcl`、`opl2-read.tcl`、`timer-regs.tcl`、`sysctrl.tcl` は、変更前のビルドと変更前の
+  `HRA_Y8960.xml` の組み合わせで、それぞれ 2 件、6 件、5 件、3 件が落ちる。残りは変更前でも通る番人。
+  `timer-regs.tcl` の「リセット直後の選択はコア 0」は、変更前は初期化されていない値を読むので、
+  たまたま通ることがある。`ssgs-write-only.tcl` の 5 番は、変更前のビルドでは A1h の値が reg10 に入る
 
 ## 取り込み元
 

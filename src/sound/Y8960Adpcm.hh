@@ -17,7 +17,8 @@ class Y8960OPL2;
   *
   * A copy of Y8950Adpcm, which the Y8960 cannot use as it stands: the
   * sample memory is a device of its own (Y8960AdpcmMemory) rather than a
-  * member of the block, and the Y8960 has no sample ROM.
+  * member of the block. PCM_BSY also follows the Y8960, which drops it at
+  * the end of a one-shot sample.
   */
 class Y8960Adpcm final : public Schedulable
 {
@@ -87,8 +88,9 @@ private:
 	int delta;
 	uint8_t reg7;
 	uint8_t reg15;
+	bool romBank = false;
 };
-SERIALIZE_CLASS_VERSION(Y8960Adpcm, 1);
+SERIALIZE_CLASS_VERSION(Y8960Adpcm, 2);
 
 } // namespace openmsx
 

@@ -1024,9 +1024,10 @@ void Y8960OPL2::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 		// 05h/06h (keyboard), 0Dh/0Eh (prescale), 15h-17h (DAC),
 		// 18h/19h (I/O port) and 1Ah (PCM) are dropped on the Y8960; the
 		// register list marks them obsolete and there is no hardware behind
-		// them. Bit 3 of 07h (SP-OFF) goes the same way.
+		// them. The list marks bit 3 of 07h (SP-OFF) obsolete too, but the
+		// hardware still mutes the ADPCM output with it, so it is kept.
 
-		case 0x07: // START/REC/MEM DATA/REPEAT/-/-/-/RESET
+		case 0x07: // START/REC/MEM DATA/REPEAT/SP-OFF/-/-/RESET
 		case 0x08: // CSM/KEY BOARD SPLIT/-/-/SAMPLE/DA AD/64K/ROM
 		case 0x09: // START ADDRESS (L)
 		case 0x0A: // START ADDRESS (H)

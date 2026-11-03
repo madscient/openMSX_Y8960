@@ -31,6 +31,8 @@ It is built from these devices:
     MSX-TIMER        the cartridge's timer
     Y8960-MIXER      the cartridge's digital mixer (a volume per sound
                      block and a master volume) and output switch
+    Y8960-SYSTEM-CONTROLLER
+                     answers the cartridge's identification on I/O 40h-42h
     Y8960 ROM type   SCC with a pan per channel, the cartridge's mapper, its
                      I/O enablers and the memory-mapped access to the sound
                      chips
@@ -43,6 +45,10 @@ Known limitations:
 
     - There is no real hardware to compare with. The behaviour follows the
       specification and the FPGA sources as they were read.
+    - The second SSG's registers cannot be read back through port A2h,
+      which the cartridge allows.
+    - The System Controller only identifies the cartridge. Its access to
+      the configuration ROM (I/O 43h-47h) is not emulated.
 
 Notes for this fork are under doc/fork/ in the repository. They are written
 in Japanese and are aimed at developers, not at end users.

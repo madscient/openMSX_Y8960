@@ -79,6 +79,7 @@ void Y8960Adpcm::reset(EmuTime time)
 	reg7 = 0;
 	reg15 = 0;
 	readDelay = 0;
+	romBank = false;
 	writeReg(0x12, 255, time); // volume
 
 	restart(emu);
@@ -159,13 +160,15 @@ void Y8960Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 	switch (rg) {
 	case 0x07: // START/REC/MEM DATA/REPEAT/SP-OFF/-/-/RESET
 		reg7 = data;
+		// PCM_BSY follows START after RESET has been applied, so 81h
+		// leaves it clear. Y8950Adpcm sets it from the written value.
+		if (reg7 & R07_RESET) {
+			reg7 = 0;
+		}
 		if (reg7 & R07_START) {
 			opl2.setStatus(Y8960OPL2::STATUS_PCM_BSY);
 		} else {
 			opl2.resetStatus(Y8960OPL2::STATUS_PCM_BSY);
-		}
-		if (reg7 & R07_RESET) {
-			reg7 = 0;
 		}
 		if (reg7 & R07_START) {
 			// start ADPCM
@@ -193,9 +196,7 @@ void Y8960Adpcm::writeReg(uint8_t rg, uint8_t data, EmuTime time)
 		break;
 
 	case 0x08: // CSM/KEY BOARD SPLIT/-/-/SAMPLE/DA AD/64K/ROM
-		// R08_ROM is ignored. The Y8950 uses it to read samples from ROM
-		// instead of RAM; the Y8960 has only the SRAM behind its ADPCM,
-		// so there is nothing for the bit to select.
+		romBank = data & R08_ROM;
 		addrMask = data & R08_64K ? (1 << 16) - 1 : (1 << 18) - 1;
 		break;
 
@@ -418,13 +419,18 @@ uint8_t Y8960Adpcm::peekData() const
 	}
 }
 
+// With the ROM bit set the Y8960 behaves like a Y8950 with an empty ROM
+// socket: there is no sample ROM behind it, but the bit still takes the
+// SRAM away.
 void Y8960Adpcm::writeMemory(unsigned memPtr, uint8_t value)
 {
+	if (romBank) return;
 	unsigned addr = (memPtr / 2) & addrMask;
 	memory.write(addr, value);
 }
 uint8_t Y8960Adpcm::readMemory(unsigned memPtr) const
 {
+	if (romBank) return 0;
 	unsigned addr = (memPtr / 2) & addrMask;
 	return memory.read(addr);
 }
@@ -502,6 +508,9 @@ int Y8960Adpcm::calcSample(bool doEmu)
 				if (doEmu) {
 					removeSyncPoint();
 					reg7 = 0;
+					// Y8950Adpcm leaves PCM_BSY set here; the
+					// Y8960 drops it together with START.
+					opl2.resetStatus(Y8960OPL2::STATUS_PCM_BSY);
 				}
 			}
 		}
@@ -512,10 +521,16 @@ int Y8960Adpcm::calcSample(bool doEmu)
 }
 
 
+// version 2: romBank
 template<typename Archive>
-void Y8960Adpcm::serialize(Archive& ar, unsigned /*version*/)
+void Y8960Adpcm::serialize(Archive& ar, unsigned version)
 {
 	ar.template serializeBase<Schedulable>(*this);
+	if (ar.versionAtLeast(version, 2)) {
+		ar.serialize("romBank", romBank);
+	} else {
+		romBank = false;
+	}
 	ar.serialize("startAddr",    startAddr,
 	             "stopAddr",     stopAddr,
 	             "addrMask",     addrMask,

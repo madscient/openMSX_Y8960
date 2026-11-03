@@ -23,7 +23,12 @@ void Y8960SSGSDevice::reset(EmuTime time)
 void Y8960SSGSDevice::writeIO(uint16_t port, byte value, EmuTime time)
 {
 	if (!ioEnabled) return;
-	writePort((port & 3) == 1, value, time);
+	// A2h is the read port and A3h is spare; writes to them do nothing.
+	switch (port & 3) {
+	case 0: writePort(false, value, time); break;
+	case 1: writePort(true,  value, time); break;
+	default: break;
+	}
 }
 
 void Y8960SSGSDevice::writePort(bool port, byte value, EmuTime time)
