@@ -1270,6 +1270,16 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 - VGMPlay MSX の MSX-AUDIO の検出（#1124 のきっかけ）は、R#07 に 80h を書いて bit0 が 1 になるのを見て、00h で戻す
   だけ（**確認済み(読解)**: sharksym/vgmplay-sharksym の `src/drivers/MSXAudio.asm` の `MSXAudio_DetectPort`。
   Grauw さんの元のリポジトリは見つけられなかった）。終わりと RESET の差はこの検出に関わらない
+- **jt12**（jotego。YM2610 / YM2610B の HDL）も見た（ユーザーの依頼。**確認済み(読解)**: master の
+  `hdl/adpcm/jt10_adpcmb_cnt.v`、`hdl/jt12_mmr.v`、`hdl/jt12_dout.v` を 2026-11-03 に読んだ）。YM2610 の状態レジスタには
+  PCM BUSY にあたるビットが無く、読めるのは書き込みの busy、タイマーのフラグ、ADPCM の終わりのフラグだけ
+  （`jt12_dout.v`）。PCM_BSY を比べる材料にはならない
+  - 内部の再生中の信号 `chon` は、一回再生の終わり、RESET（START と同時でも）、START を 0 にした書き込みで 0 になる
+    （`jt10_adpcmb_cnt.v:96-99, 116-119`）。START のレジスタ（`acmd_on_b`）は書き込みでしか変わらず、終わりでも 1 のまま
+    （`jt12_mmr.v:380`）
+  - **推測**: 実機の Y8950 の PCM_BSY は、内部の再生中ではなく、書いた START のビットを見せている。根拠は #1124 の測定
+    （終わりでも、START と RESET を同時に書いても 1）とデータシートの「D7 が 1 になると 1」が、この形に合うこと。
+    jt12 は YM2610 の HDL で、Y8950 の内部を示すものではない
 
 **Y8960 との関係**: Y8960 の RTL とマニュアルは終わりと RESET で 0 に下ろす（2026-11-03 の項）。実機の Y8950 とは違う。
 `Y8960Adpcm` は Y8960 のハードウェアに合わせたもので、この調査で変える理由は無い。
