@@ -70,7 +70,9 @@ private:
 class MSXTimer final : public MSXDevice, private MSXTimerIrqCallback
 {
 public:
-	const unsigned FREQ = 3579545 * 24;
+	// The timer's design sheet gives 85.9MHz, but the cartridge clocks the
+	// timer with its 42.95MHz system clock.
+	const unsigned FREQ = 3579545 * 12;
 	explicit MSXTimer(const DeviceConfig& config);
 	~MSXTimer() override;
 
