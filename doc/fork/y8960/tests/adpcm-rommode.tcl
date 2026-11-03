@@ -1,4 +1,4 @@
-# Y8960 の ADPCM に rommode が無いことの回帰テスト。
+# Y8960 の ADPCM の 08h の b0（ROM ビット）が SRAM を外すことの回帰テスト。
 #
 #   openmsx -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script adpcm-rommode.tcl
 #
@@ -6,14 +6,16 @@
 # adpcm-rommode.txt を書き出す。**判定は最終行の RESULT を見る。**
 # openmsx は Tcl の `exit` に渡した値をプロセスの終了コードにしない。
 #
-# Y8950 では 08h の b0 が ADPCM を ROM 側に切り替え、RAM への書き込みが
-# 捨てられて読みは 0 になる。Y8960 には ADPCM の ROM が無いので、このビットを
-# 立てても RAM のままでなければならない。ビットを立てたまま書いて、デバッガブル
-# "Y8960 ADPCM RAM" で読み返せるかどうかで、無視されていることが分かる。
+# Y8960 の ADPCM の後ろにはサンプル ROM が無いが、ROM ビットを立てると、
+# 何もつながっていない ROM を選んだのと同じになる。書き込みは SRAM に届かず、
+# メモリ読み出しは 0 になる（カートリッジの v0.9.5 以降の RTL とマニュアル 6.5）。
 #
-# **判別力**: Y8950 の rommode をそのまま残した実装では、書き込みが捨てられて
-# 番地は初期値 FFh のままになる。書く前に FFh であることも見ているので、
-# たまたま一致したのではない。
+# 読み出しはデバッガ (peekIO) では空読みの数え方が進まないので、CPU に
+# IN A,(C1h) を実行させる。空読み 2 回の後の 3 回目がデータ。
+#
+# **判別力**: ROM ビットを無視する実装では、ROM ビットを立てた書き込みが
+# SRAM に届き、読み出しも SRAM の値になる。同じ手順を ROM ビット無しでも
+# 行って、書き込みと読み出しの経路そのものは働いていることを見ている。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
 # この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
@@ -42,14 +44,14 @@ proc ram {addr} { debug read "Y8960 ADPCM RAM" $addr }
 proc check {name got want} {
 	global log fails
 	if {$got == $want} {
-		puts $log [format "PASS  %-44s %s" $name $got]
+		puts $log [format "PASS  %-48s 0x%02X" $name $got]
 	} else {
 		incr fails
-		puts $log [format "FAIL  %-44s got %s want %s" $name $got $want]
+		puts $log [format "FAIL  %-48s got 0x%02X want 0x%02X" $name $got $want]
 	}
 }
 
-# ニブル単位の開始・終了アドレス。09h/0Ah は値を 3bit 左シフトした位置に入る
+# 開始・終了アドレスは 4 バイト単位
 proc set_range {start_byte stop_byte} {
 	set s [expr {$start_byte / 4}]
 	set e [expr {$stop_byte / 4}]
@@ -59,21 +61,71 @@ proc set_range {start_byte stop_byte} {
 	r 0x0C [expr {($e >> 8) & 0xFF}]
 }
 
-proc run_test {} {
-	global log fails
-	mem_write 0x7FFF 0x01        ;# I/O Enabler2 b0: OPL2 を開く
-
-	check "byte 0x30000 starts out erased" [ram 0x30000] 0xFF
-
-	r 0x08 0x01                  ;# ROM ビット（実機には無い）
-	set_range 0x30000 0x30010
-	r 0x07 0x60                  ;# REC | MEMORY DATA: メモリ書き込みモード
-	debug write ioports 0xC0 0x0F
-	debug write ioports 0xC1 0x3C
+# メモリ書き込みモードで 1 バイト書く
+proc adpcm_write {rom val} {
+	r 0x08 $rom
+	r 0x07 0x60                  ;# REC | MEMORY DATA
+	r 0x0F $val
 	r 0x07 0x00
 	r 0x08 0x00
+}
 
-	check "the ROM bit does not take the RAM away" [ram 0x30000] 0x3C
+# F3        DI
+# 3E 0F     LD A,0Fh
+# D3 C0     OUT (C0h),A
+# DB C1     IN A,(C1h)     空読み
+# DB C1     IN A,(C1h)     空読み
+# DB C1     IN A,(C1h)
+# 32 80 C0  LD (C080h),A   ROM ビットを立てたままの読み
+# 3E 08     LD A,08h
+# D3 C0     OUT (C0h),A
+# AF        XOR A
+# D3 C1     OUT (C1h),A    ROM ビットを下ろす
+# 3E 07     LD A,07h
+# D3 C0     OUT (C0h),A
+# 3E 20     LD A,20h
+# D3 C1     OUT (C1h),A    メモリ読み出しをやり直す
+# 3E 0F     LD A,0Fh
+# D3 C0     OUT (C0h),A
+# DB C1     IN A,(C1h)     空読み
+# DB C1     IN A,(C1h)     空読み
+# DB C1     IN A,(C1h)
+# 32 81 C0  LD (C081h),A   ROM ビット無しの読み
+# 18 FE     JR $
+set stub {0xF3 0x3E 0x0F 0xD3 0xC0 0xDB 0xC1 0xDB 0xC1 0xDB 0xC1 0x32 0x80 0xC0
+          0x3E 0x08 0xD3 0xC0 0xAF 0xD3 0xC1
+          0x3E 0x07 0xD3 0xC0 0x3E 0x20 0xD3 0xC1
+          0x3E 0x0F 0xD3 0xC0 0xDB 0xC1 0xDB 0xC1 0xDB 0xC1 0x32 0x81 0xC0
+          0x18 0xFE}
+
+proc run_test {} {
+	global stub
+	mem_write 0x7FFF 0x01        ;# I/O Enabler2 b0: OPL2 を開く
+	set_range 0x30000 0x30003
+
+	check "byte 0x30000 starts out erased"           [ram 0x30000] 0xFF
+	adpcm_write 0x01 0x5A
+	check "a write with the ROM bit leaves SRAM"     [ram 0x30000] 0xFF
+	adpcm_write 0x00 0x3C
+	check "a write without the ROM bit reaches SRAM" [ram 0x30000] 0x3C
+
+	# CPU に読ませる。メモリ読み出しモードに入った直後の状態から始める
+	r 0x08 0x01
+	r 0x07 0x20                  ;# MEMORY DATA: メモリ読み出しモード
+	set i 0xC000
+	foreach b $stub { debug write memory $i $b ; incr i }
+	debug write memory 0xC080 0xEE
+	debug write memory 0xC081 0xEE
+	reg pc 0xC000
+	after time 0.05 finish
+}
+
+proc finish {} {
+	global log fails stub
+	# 結果の置き場 (C080h-) はスタブより後ろでなければならない
+	check "CPU stopped at the JR \$ of the stub"      [reg pc] [expr {0xC000 + [llength $stub] - 2}]
+	check "a read with the ROM bit gives 0"          [debug read memory 0xC080] 0x00
+	check "a read without the ROM bit gives SRAM"    [debug read memory 0xC081] 0x3C
 
 	if {$fails > 0} {
 		puts $log "RESULT: FAILED $fails"

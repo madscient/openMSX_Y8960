@@ -35,18 +35,21 @@ void Y8960OPL2Device::reset(EmuTime time)
 	ioEnabled = false;
 }
 
+// Unlike the Y8950, the data port reads back only the ADPCM data register
+// (0Fh); every other register reads FFh. The register debuggable still shows
+// the written values through Y8960OPL2::peekReg().
 byte Y8960OPL2Device::readIO(uint16_t port, EmuTime time)
 {
 	if (!ioEnabled) return 0xFF;
-	return (port & 1) ? opl2.readReg(registerLatch, time)
-	                  : opl2.readStatus(time);
+	if (!(port & 1)) return opl2.readStatus(time);
+	return (registerLatch == 0x0F) ? opl2.readReg(registerLatch, time) : 0xFF;
 }
 
 byte Y8960OPL2Device::peekIO(uint16_t port, EmuTime time) const
 {
 	if (!ioEnabled) return 0xFF;
-	return (port & 1) ? opl2.peekReg(registerLatch, time)
-	                  : opl2.peekStatus(time);
+	if (!(port & 1)) return opl2.peekStatus(time);
+	return (registerLatch == 0x0F) ? opl2.peekReg(registerLatch, time) : 0xFF;
 }
 
 void Y8960OPL2Device::writeIO(uint16_t port, byte value, EmuTime time)

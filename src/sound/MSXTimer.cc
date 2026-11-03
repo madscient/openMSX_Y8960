@@ -54,6 +54,7 @@ void MSXTimer::reset(EmuTime time)
 	irq.reset();
 	irqState = 0;
 	registerLatch = 0;
+	counterSelectLatch = 0;
 	timer0.reset(time);
 	timer1.reset(time);
 	timer2.reset(time);
@@ -191,7 +192,8 @@ void MSXTimer::writeIO(uint16_t port, byte value, EmuTime time)
 		if (value & 0x08) timer3.resetIrqFlag(time);
 		break;
 	case 0x03:
-		counterSelectLatch = value & 0x03;
+		// A value other than 0-3 selects no counter, and B3h then reads FFh.
+		counterSelectLatch = (value & 0xFC) ? 0x04 : value;
 		break;
 	}
 }
@@ -459,7 +461,7 @@ uint8_t MSXTimerCore::peekReg(uint8_t rg, EmuTime ) const
     case 0x02:
         return ff_count_enable & 1;
     }
-    return 0xFF;
+    return 0x00; // register 3 does not exist; the hardware reads it as 0
 }
 
 uint8_t MSXTimerCore::readReg(uint8_t rg, EmuTime time)

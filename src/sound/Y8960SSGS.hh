@@ -29,9 +29,9 @@ namespace openmsx {
   *   2Ch-2Eh  pan of unit 1 channel A, B, C
   *
   * 23h, 27h, 2Bh and 2Fh are not connected. 0Eh/0Fh and 1Eh/1Fh are the
-  * units' GPIO registers. Nothing is behind them here, so they are plain
-  * storage; the LEDs the sheet puts on the second unit's port B are not
-  * represented.
+  * units' GPIO registers, kept as plain storage. On the cartridge the second
+  * unit's port A reads a DIP switch, but no read reaches it here because
+  * the device answers no reads (see Y8960SSGSDevice).
   *
   * This is one stereo sound device rather than two mono ones because the
   * pan is per channel, while openMSX only has a balance per device.
