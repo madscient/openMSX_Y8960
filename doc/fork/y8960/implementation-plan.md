@@ -1263,11 +1263,20 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 | 実機の Y8950（#1124 の測定） | 1 のまま | 1 のまま（A1h） | 0 |
 | openMSX `Y8950Adpcm` | 1 のまま | 1 のまま | 0 |
 | emu8950（`emuadpcm.c`） | 0 | 変えない | 変えない |
-| ymfm（MAME の Y8950 もこれ） | 0 | 0 | 0 |
+| ymfm（master） | 0 | 0 | 0 |
+| MAME（0.284 以降。ymfm の PR #40 を取り込んだもの） | 1 のまま | 変えない | 0 |
 | libvgm（MAME の旧 `ymdeltat.c`） | 0 | 0 | 変えない |
 
 - blueMSX（libretro 版）は 2018 年より前の openMSX の写しで、bit0 を実装していない（常に 0）。WebMSX は Y8950 を持たない
-- emu8950、ymfm、libvgm のどれも、該当箇所のコメントとコミットの題に測定を根拠にした記述は無い（それ以上は見ていない）
+- emu8950、ymfm（master）、libvgm のどれも、該当箇所のコメントとコミットの題に測定を根拠にした記述は無い（それ以上は見ていない）
+- **ymfm の PR #40**（作者本人、2022-07、未マージ）は、ADPCM-B の EOS と PLAYING を手動で消すまで残るビットにする。
+  RESET は再生を止めるが外から見える PLAYING を変えず、一回再生の終わりでも残す。RESET 以外の R#07 の書き込みは PLAYING を
+  消し、START があれば立て直す。PR の説明では、hyano/opna-analyze の YM2608 の実機の試験に合わせたとある（試験の中身は
+  見ていない）。MAME は 2025-11-30 にこれを取り込み（`66deabe17`、0.284）、作者は 2026-07-27 に ymfm にも入れると書いた
+  （**確認済み(読解)**: PR の差分とコメント、MAME の `3rdparty/ymfm/src/ymfm_adpcm.cpp:576-602` と `ymfm_opl.cpp:1013-1016`）
+  - #1124 の測定とは、測った 3 つの場面で合う。合わないかもしれないのは、止まっているときに 81h を書く場面で、
+    openMSX は 1、MAME は 0 のまま。どちらも測られていない
+  - 2026-11-03 の項の訂正の行で「ymfm は bit0 を下ろす」と書いたのは master の話で、MAME は違う
 - **訂正**: 2026-11-03 の項の「ymfm は外から見える PLAYING は残す」は誤り。`y8950::read_status()` は
   `adpcm_b_channel` の `STATUS_PLAYING` をそのまま bit0 に出し（`ymfm_opl.cpp:912-928`）、一回再生の終わりで
   `STATUS_PLAYING` を下ろす（`ymfm_adpcm.cpp:492`）。R#04 のマスク（`status_mask()` は 78h）は bit0 を隠さない
