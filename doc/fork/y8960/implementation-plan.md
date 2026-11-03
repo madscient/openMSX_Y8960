@@ -1268,6 +1268,13 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 | libvgm（MAME の旧 `ymdeltat.c`） | 0 | 0 | 変えない |
 
 - blueMSX（libretro 版）は 2018 年より前の openMSX の写しで、bit0 を実装していない（常に 0）。WebMSX は Y8950 を持たない
+  - **blueMSX-plus**（Hesoten、次に同じことをする先。ユーザーの予定）は Y8950 の実装を三つ持つ
+    （**確認済み(読解)**: `main` の 2026-11-03 の HEAD。`blueMSX/Src/SoundChips/` の下）。`MsxAudio.cpp` が作るのは古い写し
+    `OpenMsxY8950.cpp` / `OpenMsxY8950Adpcm.cpp` で、libretro 版と同じく bit0 が無い。`readStatus()` の
+    `status & (0x80 | statusMask)` と `changeStatusMask()` の `status &= statusMask` は、上流が `7c458d06c` と `f9cb92629` で
+    直す前の形。ほかに今の上流の写し `OpenMsxY8950Latest/`（PCM_BSY は上流と同じ）と、emu8950 と Latest を登録する
+    バックエンドの仕組み（`OpenMsxY8950Backend.cpp`、`ec2e02cc6`）がある。**どれが既定で、どこから選ばれるかは見ていない**。
+    emu8950 の側が使われるなら、#16 の挙動がそのまま出る
 - emu8950、ymfm（master）、libvgm のどれも、該当箇所のコメントとコミットの題に測定を根拠にした記述は無い（それ以上は見ていない）
 - **ymfm の PR #40**（作者本人、2022-07、未マージ）は、ADPCM-B の EOS と PLAYING を手動で消すまで残るビットにする。
   RESET は再生を止めるが外から見える PLAYING を変えず、一回再生の終わりでも残す。RESET 以外の R#07 の書き込みは PLAYING を
