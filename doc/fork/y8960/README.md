@@ -221,7 +221,8 @@ py doc/fork/y8960/level/tone-levels.py "$OUT/tones-openmsx.wav" "$OUT/tones-mga.
   ユーザーに一声かける
 - `tones.tcl` は書き込みごとに 1ms 進める。同じ時刻に続けて書くと、NukeYKT の OPLL が番地の書き込みを捨てて鳴らない。
   `tone-levels.py` は区間の数が mark の数と合わないと止まるので、鳴らない音源があれば気づく
-- `tone-levels.py` の案の 3 列は全体の大きさの揃え方の違いで、比は同じ
+- `tone-levels.py` の案の 3 列は全体の大きさの揃え方の違いで、比は同じ。今の値は「最大を 30000」で揃えた。
+  実機は本体の音とはミックスされないので、本体内蔵の音源と大きさを合わせる必要は無い
 - 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、
   `tones-mga.ps1` が通す番地とポートの範囲に収める
 
