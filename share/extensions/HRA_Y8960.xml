@@ -10,6 +10,8 @@
     <type>sound expansion</type>
   </info>
   <devices>
+    <!-- 各音源の <volume> は、実機で測った音源どうしの比に合わせ、最大の OPM を 30000 にした。
+         上流の相当品（fmpac.xml、audio.xml、scc.xml など）の値とは違う -->
     <MSX-TIMER id="y8960-timer">
       <io base="0xB0" num="4"/>
     </MSX-TIMER>
@@ -25,13 +27,13 @@
     <Y8960-SSGS id="Y8960 SSGS">
       <io base="0xA0" num="4" type="O"/>
       <sound>
-        <volume>21000</volume>
+        <volume>15003</volume>
       </sound>
     </Y8960-SSGS>
     <Y8960-OPLL id="Y8960 OPLL">
       <io base="0x7C" num="2" type="O"/>
       <sound>
-        <volume>13000</volume>
+        <volume>7009</volume>
       </sound>
     </Y8960-OPLL>
     <!-- ADPCM のサンプルメモリ 256KB。SRAM の 40000h-7FFFFh にあたる。
@@ -41,7 +43,7 @@
       <io base="0xC0" num="2"/>
       <adpcm_memory>Y8960 ADPCM RAM</adpcm_memory>
       <sound>
-        <volume>12000</volume>
+        <volume>7433</volume>
       </sound>
     </Y8960-OPL2>
     <!-- 7Eh=アドレス、7Fh=データ。7Fh を読むとステータス -->
@@ -56,7 +58,7 @@
         <ROM id="Y8960 SCC">
           <mem base="0x4000" size="0x8000"/>
           <sound>
-            <volume>11500</volume>
+            <volume>7509</volume>
           </sound>
           <mappertype>Y8960</mappertype>
           <rom/>
