@@ -195,3 +195,40 @@ GitHub の Releases にこのフォークのビルドを出すための決まり
   - タグのソースアーカイブ（zip と tar.gz の両方。ファイルだけを数えて各 2461 件）に `CLAUDE.md` と
     `doc/fork/` が 0 件。`README` と `HRA_Y8960.xml` は入っている。`doc/manual/` は 19 件当たる
   - Releases から落とした zip の sha256 が手元の zip と一致
+
+### 2026-11-04 — 21.0-y8960.5
+
+- 対象は `f5749337a`。コードは `7b5eb0efd` と同じで、その後は `implementation-plan.md` の記録だけ。前回からの変更は
+  v0.9.5〜v0.9.9 への追従（System Controller の識別、MSX-TIMER の 42.95454MHz とレジスタの読み、ADPCM の ROM ビットと
+  PCM_BSY、C1h の読み、A2h / A3h への書き込みを捨てる）。`main` と origin が一致していることを見てから進めた
+- 基にしたハードウェアは hra1129/Y8960_Cartridge の v0.9.9（`3aadaf3`。`hardware-notes.md` の冒頭の表）。
+  ユーザーの指示「v0.9.9 準拠版として」に従い、リリースノートに明記した
+- Win11 機で組んだ。Win10 機の `7b5eb0efd` の zip（`implementation-plan.md` §8 の 2026-11-04 の項）は使っていない
+- `-t:Rebuild`（`openmsx.sln` だけ）: 0 エラー / 81 警告 / 8 分 44 秒、`LNK4286` 0 件。ログに出たコンパイルは 614 本
+- zip は 755 ファイル / 8,443,201 バイト。sha256 は `3e93a810…87eb`。`CLAUDE.md` と `doc/fork/` は 0 件
+  （同じ数え方で `doc/manual` は 19 件）
+- 展開した zip でスモークテスト（**確認済み**）。`-testconfig` は `HRA_Y8960` / `audio` / `audio2` / `2nd_PSG` が 0、
+  存在しない拡張は 1、`Panasonic_FS-CA1` は 1（2026-10-21 の項と同じく、使い捨てのユーザーデータに ROM が無いため）。
+  `doc/fork/y8960/tests/` の 24 本のうち判定のある 19 本はすべて通った。同じ手順を `21.0-y8960.4` の zip で回すと、
+  `timer-resolution` が 11 件、`adpcm-rommode` が 2 件、`opl2-read` が 6 件、`timer-regs` が 5 件、`sysctrl` が 3 件
+  落ち、残りは通る。Win10 機の記録と同じ。目で見る 5 本のうち 4 本は `.4` の出力とバイト単位で同一。`ssgs-write-only`
+  だけが違い、違いは 5 番が期待値に合ったことと、40h-4Fh の行が出たことの 2 つ
+- リリースノートの差分の節は v0.9.9 に合わせて組み直した。根拠は `implementation-plan.md` §8 の 2026-11-03 の各項
+  （**確認済み(読解)**、そこで読んだもの）
+  - 書き換えた: SSG の読み出し（v0.9.9 は A2h でポインタが SSG2 のレジスタを指すときだけ応じる）、System Controller
+    （識別だけを持ち、43h-47h と BIOS ROM は無い。40h に 80h 以外を書いたときの選択の解除の差を足した）
+  - そのまま版だけ直した: SCC の窓、#63 の MMIO、#63 の他の番地、OPM の busy、音
+  - 変更点に、2 枚挿しができなくなったことと、PCM_BSY が実機の Y8950 と違うことを書いた
+- 既知の制限の文を「実機と比べていない」から「実機を体系的に測ったものではない」に変えた。一部の挙動は実機の情報
+  （ハードウェア側の `history.md` の記録、ユーザーの手元の試作品）から決めていて、「比べていない」とは言い切れないため。ルートの `README` の既知の制限は直していない（前回と同じ理由）
+- ドラフトを確かめてから公開した（ユーザーの指示は「リリースして」）。公開後に確かめたこと（すべて**確認済み**）
+  - タグは lightweight: `git cat-file -t 21.0-y8960.5` が `commit`、指す先は `f5749337a`
+  - タグのソースアーカイブ（zip と tar.gz の両方。ファイルだけを数えて各 2463 件）に `CLAUDE.md` と `doc/fork/` が 0 件。
+    ルートの `README`、`HRA_Y8960.xml`、`Y8960SystemController.cc` は入っている。`doc/manual/` は 19 件当たる
+  - Releases から落とした zip の sha256 が手元の zip と一致
+- **Win11 機のデプロイ先も入れ替えた**（ユーザーの指示）。入れ替える前の exe は `.3` とも `.4` とも sha1 が違い、日付は
+  2026-10-21 10:58（この機械の `derived/package-20261021.log` と同じ時刻。どのコミットから組んだかは分からない）。
+  使っているプロセスが無いことを見てから、差のあった `openmsx.exe`、`README.txt`、`share/extensions/HRA_Y8960.xml` の
+  3 つを `derived/r5/backup-deployed/` に退避して写した。デプロイ先にしか無い Catapult は触っていない（**確認済み**:
+  写す前と後にファイルごとの sha1 で比べ、後は差 0 件）。配置した exe で `-testconfig` が 0（存在しない拡張は 1）、
+  `sysctrl.tcl` が通った
