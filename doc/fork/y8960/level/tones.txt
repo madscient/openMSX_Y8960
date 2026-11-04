@@ -1,0 +1,239 @@
+# 音源どうしの音量比を測る音列。実機（tones-mga.ps1）と openMSX（tones.tcl）が同じものを流す。
+#
+# 書式は 1 行 1 命令。値は 16 進（wait だけ 10 進のミリ秒）。# から行末までは読まない。
+#   mem ADDR VAL   カートリッジのスロットのメモリに書く
+#   io  PORT VAL   I/O に書く
+#   mark LABEL     ここから測る区間が始まる。解析は mark の順に区間を対応づける
+#   wait MS        待つ
+#
+# どの区間も 1 音源の 1ch だけを約 1kHz・最大の音量で鳴らす。ミキサーの音量レジスタは
+# リセット値（128）のまま触らない。経路は CANCAN.COM と同じにした（実機で通っている経路）。
+#   SSG2: MMIO 7FF0h/7FF1h の R#10h-  OPLL: MMIO 7FF4h/7FF5h  SCC: 9000h=3Fh で 9800h-
+#   OPL2: I/O C0h/C1h                  OPM: I/O 7Eh/7Fh（どちらも I/O Enabler2 で開く）
+# 前半は定位を中央（リセット値）のまま、後半は左端にして、定位の掛け方も比べる。
+# 変調器は AR=0 で黙らせ、FM 音源はキャリア 1 つの正弦波にする。
+
+mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM
+
+# --- 準備（まだ鳴らさない） ---
+
+# SSG2 ch A: 1789772.5 / (16 * 112) = 998.8Hz、トーンだけ
+mem 7FF0 10
+mem 7FF1 70
+mem 7FF0 11
+mem 7FF1 00
+mem 7FF0 17
+mem 7FF1 3E
+
+# SCC ch1: 32 点の正弦波（振幅 127）、3579545 / (32 * 112) = 998.8Hz、音量 15
+mem 9000 3F
+mem 9800 00
+mem 9801 19
+mem 9802 31
+mem 9803 47
+mem 9804 5A
+mem 9805 6A
+mem 9806 75
+mem 9807 7D
+mem 9808 7F
+mem 9809 7D
+mem 980A 75
+mem 980B 6A
+mem 980C 5A
+mem 980D 47
+mem 980E 31
+mem 980F 19
+mem 9810 00
+mem 9811 E7
+mem 9812 CF
+mem 9813 B9
+mem 9814 A6
+mem 9815 96
+mem 9816 8B
+mem 9817 83
+mem 9818 81
+mem 9819 83
+mem 981A 8B
+mem 981B 96
+mem 981C A6
+mem 981D B9
+mem 981E CF
+mem 981F E7
+mem 9880 6F
+mem 9881 00
+mem 988A 0F
+
+# OPLL ch1: ユーザー音色。キャリアは MUL 1、持続、AR 15、SL 0、RR 15。変調器は AR 0。
+# F-Num 330、BLOCK 5 で 330 * 49716 / 2^14 = 1001.4Hz。音色 0、音量 0（最大）
+mem 7FF4 00
+mem 7FF5 21
+mem 7FF4 01
+mem 7FF5 21
+mem 7FF4 02
+mem 7FF5 3F
+mem 7FF4 03
+mem 7FF5 00
+mem 7FF4 04
+mem 7FF5 00
+mem 7FF4 05
+mem 7FF5 F0
+mem 7FF4 06
+mem 7FF5 00
+mem 7FF4 07
+mem 7FF5 0F
+mem 7FF4 10
+mem 7FF5 4A
+mem 7FF4 30
+mem 7FF5 00
+
+# OPL2 ch1: 変調器（スロット 0）は TL 3F・AR 0、キャリア（スロット 3）は MUL 1、持続、TL 0、
+# AR 15、SL 0、RR 15、正弦波。F-Num 659、BLOCK 5 で 659 * 49716 / 2^15 = 999.9Hz
+io C0 20
+io C1 21
+io C0 23
+io C1 21
+io C0 40
+io C1 3F
+io C0 43
+io C1 00
+io C0 60
+io C1 00
+io C0 63
+io C1 F0
+io C0 80
+io C1 0F
+io C0 83
+io C1 0F
+io C0 E0
+io C1 00
+io C0 E3
+io C1 00
+io C0 C0
+io C1 00
+io C0 A0
+io C1 93
+
+# OPM ch1: CON 7、L と R。M1・M2・C1 は TL 7F・AR 0。C2 だけ MUL 1、TL 0、AR 31、D1R 0、
+# D1L 0、RR 15。KC 5Dh（約 988Hz）
+io 7E 20
+io 7F C7
+io 7E 60
+io 7F 7F
+io 7E 68
+io 7F 7F
+io 7E 70
+io 7F 7F
+io 7E 80
+io 7F 00
+io 7E 88
+io 7F 00
+io 7E 90
+io 7F 00
+io 7E 58
+io 7F 01
+io 7E 78
+io 7F 00
+io 7E 98
+io 7F 1F
+io 7E B8
+io 7F 00
+io 7E D8
+io 7F 00
+io 7E F8
+io 7F 0F
+io 7E 28
+io 7F 5D
+io 7E 30
+io 7F 00
+
+wait 1000
+
+# --- 定位は中央 ---
+
+mark ssg-center
+mem 7FF0 18
+mem 7FF1 0F
+wait 2500
+mem 7FF0 18
+mem 7FF1 00
+wait 1000
+
+mark scc-center
+mem 988F 01
+wait 2500
+mem 988F 00
+wait 1000
+
+mark opll-center
+mem 7FF4 20
+mem 7FF5 1B
+wait 2500
+mem 7FF4 20
+mem 7FF5 0B
+wait 1000
+
+mark opl2-center
+io C0 B0
+io C1 36
+wait 2500
+io C0 B0
+io C1 16
+wait 1000
+
+mark opm-center
+io 7E 08
+io 7F 40
+wait 2500
+io 7E 08
+io 7F 00
+wait 1000
+
+# --- 定位は左端（値 1。OPM は L だけ） ---
+
+mem 7FF0 2C
+mem 7FF1 01
+mem 9900 01
+mem 7FF4 50
+mem 7FF5 01
+io C0 F6
+io C1 01
+io 7E 20
+io 7F 47
+
+mark ssg-left
+mem 7FF0 18
+mem 7FF1 0F
+wait 2500
+mem 7FF0 18
+mem 7FF1 00
+wait 1000
+
+mark scc-left
+mem 988F 01
+wait 2500
+mem 988F 00
+wait 1000
+
+mark opll-left
+mem 7FF4 20
+mem 7FF5 1B
+wait 2500
+mem 7FF4 20
+mem 7FF5 0B
+wait 1000
+
+mark opl2-left
+io C0 B0
+io C1 36
+wait 2500
+io C0 B0
+io C1 16
+wait 1000
+
+mark opm-left
+io 7E 08
+io 7F 40
+wait 2500
+io 7E 08
+io 7F 00
+wait 1000
