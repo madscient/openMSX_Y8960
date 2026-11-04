@@ -47,6 +47,10 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/opl2-read.tcl` | OPL2 のデータポート (C1h) が 0Fh 以外を FFh で読むことと、ADPCM の PCM_BSY の回帰テスト |
 | `tests/timer-regs.tcl` | MSX-TIMER のレジスタ 3 と B3h の選択の回帰テスト |
 | `tests/sysctrl.tcl` | System Controller (40h-42h) の識別の回帰テスト |
+| `level/tones.txt` | 音源どうしの音量比を測る音列。実機と openMSX で同じものを流す |
+| `level/tones.tcl` | 上記を openMSX で流して WAV に録る |
+| `level/tones-mga.ps1` | 上記を実機のカートリッジで MGA から流し、オーディオインターフェースで録る |
+| `level/tone-levels.py` | 2 つの録音を区間ごとに比べ、`<volume>` の案を出す |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -190,6 +194,36 @@ done
   たまたま通ることがある。`ssgs-write-only.tcl` の 5 番は、変更前のビルドでは A1h の値が reg10 に入る
 - `timer-resolution.tcl` は、クロックが 85.9MHz のままのビルドで 13 件中 11 件が落ちる。残る 2 件
   （期待値の後でフラグが 1）は速すぎても通る番人
+
+## 音源どうしの音量比を実機に合わせる
+
+`share/extensions/HRA_Y8960.xml` の `<volume>` 5 本（SSGS、OPLL、OPL2、OPM、SCC）を、実機で測った比に合わせるための
+道具が `level/` にある。ハードウェアの版が上がって音量が変わったら測り直す。回帰テストではない。
+
+`level/tones.txt` の音列は、5 音源の 1ch ずつを約 1kHz・最大の音量で、定位を中央と左端にして鳴らす。
+同じ音列を openMSX と実機で流し、区間ごとの基本波の振幅を比べる。
+
+```sh
+# openMSX の側。$OUT/tones-openmsx.wav ができる
+Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/doc/fork/y8960/level/tones.tcl"
+
+# 実機の側（Windows の PowerShell）。カートリッジを MGA に挿し、音声出力をオーディオインターフェースにつなぐ。
+# 録音デバイスの番号を -ListDevices で見てから流す。$OUT/tones-mga.wav ができる
+powershell -ExecutionPolicy Bypass -File doc/fork/y8960/level/tones-mga.ps1 -ListDevices
+powershell -ExecutionPolicy Bypass -File doc/fork/y8960/level/tones-mga.ps1 -Port COMn -Device <番号> -OutDir <OUT>
+
+# 比べる。区間ごとの値、定位の掛け方の比較、<volume> の案が出る
+py doc/fork/y8960/level/tone-levels.py "$OUT/tones-openmsx.wav" "$OUT/tones-mga.wav"
+```
+
+- `tones-mga.ps1` は、送る前に音列の全体を検査し、音源のレジスタへの書き込みしか通さない。System Controller には
+  触れないので Flash は変わらない。ポートは MGA の USB の ID を確かめてから開く。実機に送るので、走らせる前に
+  ユーザーに一声かける
+- `tones.tcl` は書き込みごとに 1ms 進める。同じ時刻に続けて書くと、NukeYKT の OPLL が番地の書き込みを捨てて鳴らない。
+  `tone-levels.py` は区間の数が mark の数と合わないと止まるので、鳴らない音源があれば気づく
+- `tone-levels.py` の案の 3 列は全体の大きさの揃え方の違いで、比は同じ
+- 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、
+  `tones-mga.ps1` が通す番地とポートの範囲に収める
 
 ## 取り込み元
 
