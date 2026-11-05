@@ -1269,6 +1269,36 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-05 (9) — MSX-AUDIO の実チップは FS-CA1（ADPCM の RAM を 256KB に増設）。7FFFh で I/O を開く
+
+ユーザーの情報: 自宅の MSX-AUDIO は FS-CA1 で、ADPCM の RAM を 256KB に増設してある。
+
+**FS-CA1 は 7FFFh の bit0 を立てるまで C0h/C1h を開かない**（**確認済み(読解)**: openMSX の
+`Y8950Periphery.cc` の `PanasonicAudioPeriphery::writeMem` と `setIOPorts`。リセットではどちらの範囲も閉じている）。
+MGA は Z80 を走らせないので、カートリッジの BIOS が開いてくれることもない（**推測**: MGA が SPON の後にカートリッジの
+ROM を実行しないことからの推論）。そこで次のようにした。
+
+- `tones-mga.ps1 -Target MSXAUDIO` はメモリへの書き込みを 7FFFh だけ許す
+- `rhythm.txt` に `only MSXAUDIO mem 7FFF 01`、`adpcm-tones.py --target MSXAUDIO` の音列の先頭に `mem 7FFF 01`
+- 08h は既定の 00h のまま（256KB の RAM。openMSX の汎用の `audio.xml` と同じ）
+- `adpcm-tones.py` の 04h を 78h（T1・T2・EOS・BUF_RDY をすべてマスク）にした。前の 18h は T1・T2 のマスクを外していた。
+  Y8960 の音列の結果は変わらない（**確認済み**: openMSX で adpcm-sine - opl2-center が -0.39dB、adpcm-square が +1.62dB のまま）
+
+**openMSX の FS-CA1 で試した結果**（ROM は blueMSX の Shared Roms にあった `fs-ca1.rom`。SHA1 が
+`Panasonic_FS-CA1.xml` の値の 1 つと一致したものを `derived/openmsx-user/systemroms/` に置いた）
+
+- `rhythm.txt`: 鳴る。bd / sd / tom - 同じ音色の楽音が +6.02 / +2.03 / +6.04dB（上流の Y8950 と同じ 2 倍）
+- 7FFFh を書かない版でも鳴った。C-BIOS がカートリッジの ROM の初期化を呼び、FS-CA1 の BIOS が自分で開いた
+  可能性がある（**推測**）。openMSX ではこの書き込みの要否を判別できない
+- **ADPCM の音列は、openMSX の FS-CA1 では鳴らなかった**（未解決）
+  - 定義どおりの RAM 32KB: 録音の全体が無音（OPL2 の基準音も）。データを 12000 バイトまで減らすと基準音は鳴り、
+    20000 バイトでは無音。BIOS の無い NMS-1205（RAM 32KB）でも無音。上流の `Y8950Adpcm::writeMemory` は RAM の外への
+    書き込みを捨てるだけで、無音になる理由は読んだ範囲に無い
+  - RAM だけを 256KB にした定義（`derived/openmsx-user/extensions/` に作った写し）: OPL2 の基準音は鳴り、ADPCM だけが
+    鳴らない。同じ音列が汎用の `audio`（RAM 256KB）では鳴る。違いは FS-CA1 の周辺回路と、起動時に走るその BIOS
+  - ユーザーの実チップの測定は MGA からで、BIOS は走らず RAM は 256KB。上の現象が実機でも起きるかは分からない。
+    実機で ADPCM が鳴らなかったら、FS-CA1 の周辺回路（7FFEh のバンク、SP-OFF の扱い）から見る
+
 ### 2026-11-05 (8) — OPLL のリズム音と、実チップ（FM-PAC・MSX-AUDIO）を MGA で測る備えを足した
 
 ユーザーの情報: 実チップの OPLL は MO と RO を別々の端子に出し、外で混ぜる。外の混ぜ方はたいてい 1 : 1 なので、

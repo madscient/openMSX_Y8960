@@ -265,7 +265,7 @@ py doc/fork/y8960/level/pan9-levels.py "$OUT/pan9/tones-openmsx.wav" "$OUT/pan9/
 |---|---|---|---|
 | `Y8960`（既定） | Y8960 | 音源のレジスタのメモリと、OPL2・OPM の I/O | すべて |
 | `FMPAC` | FM-PAC（YM2413） | 7FF4h・7FF5h（I/O の有効化なしで効く） | `opll-rhythm.txt` |
-| `MSXAUDIO` | MSX-AUDIO（Y8950） | I/O の C0h・C1h | `rhythm.txt`、`adpcm-tones.py --target MSXAUDIO` |
+| `MSXAUDIO` | MSX-AUDIO（Y8950） | I/O の C0h・C1h と、メモリの 7FFFh（FS-CA1 は b0 で C0h・C1h を開く） | `rhythm.txt`、`adpcm-tones.py --target MSXAUDIO` |
 
 音列の「`only <対象> <命令>`」の行は、その対象のときだけ流す（`rhythm.txt` の I/O Enabler2 の書き込み）。
 `tones.tcl` は環境変数 `Y8960_TARGET` で同じ対象を受け取る。openMSX の上流の実装と比べるときは、
@@ -283,7 +283,8 @@ powershell -ExecutionPolicy Bypass -File doc/fork/y8960/level/tones-mga.ps1 -Tar
 py doc/fork/y8960/level/tone-levels.py --seq doc/fork/y8960/level/opll-rhythm.txt --ref opll-ch1 \
     --names Y8960,YM2413 "$OUT/opll-y8960/tones-mga.wav" "$OUT/opll-fmpac/tones-mga.wav"
 
-# Y8950: MSX-AUDIO の実チップ。ADPCM の RAM の種類によっては --r08 で 08h を替える
+# Y8950: MSX-AUDIO の実チップ。08h の既定 00h は 256Kbit の DRAM（256KB に増設した FS-CA1 など）。
+# 64Kbit の DRAM のカートリッジでは --r08 で 08h を替える
 py doc/fork/y8960/level/adpcm-tones.py --target MSXAUDIO "$OUT/adpcm-y8950.txt"
 ```
 - 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、

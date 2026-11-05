@@ -19,6 +19,7 @@
 # （推測: 同じ OPL の系列の石であることと、openMSX の Y8950 と Y8960OPL2 が同じ式を使っていることだけが根拠）。
 
 only Y8960 mem 7FFF 05      # I/O Enabler2: b0 OPL2、b2 OPM
+only MSXAUDIO mem 7FFF 01   # FS-CA1: b0 で C0h/C1h を開く。openMSX の NMS-1205 と HX-MU900 はこの書き込みを捨てる
 
 # --- 準備（まだ鳴らさない） ---
 
