@@ -1269,6 +1269,19 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-05 (10) — FPGA のコアの元のコードでのリズム音の重み
+
+ユーザーの問い:「IKAOPLL、JTOPL のオリジナルは 2 倍してるのね」。読んだ結果（**確認済み(読解)**: Y8960_Cartridge の
+`src/opl2/src` と `src/opl2_patch`、`src/ikaopll/src` と `src/ikaopll_patch` を比べた）。
+
+- JTOPL は元のコードから `rhy2x` でリズムを 2 倍にしている。Y8960 の改変版もそのまま
+- IKAOPLL の元のコードに決め打ちの 2 倍は無い。足し合わせの出力は MOVOL と ROVOL（最上位の入力端子、既定値なし、
+  README にも試験台にも値が無い）で重みを決める。Y8960 の改変版との違いは定位を足したところだけ
+- Y8960 の `opll.v` は 2026-01-18 の最初のコミットから MOVOL 10・ROVOL 15（リズム 1.5 倍）で、v0.9.10 の作業で 15・15
+  （1 : 1）になった。今のハードウェアは OPL2 が 2 倍、OPLL が 1 : 1 で揃っていない
+
+`rhythm-in-emulators.md` の一覧に 2 行足した。
+
 ### 2026-11-05 (9) — MSX-AUDIO の実チップは FS-CA1（ADPCM の RAM を 256KB に増設）。7FFFh で I/O を開く
 
 ユーザーの情報: 自宅の MSX-AUDIO は FS-CA1 で、ADPCM の RAM を 256KB に増設してある。
