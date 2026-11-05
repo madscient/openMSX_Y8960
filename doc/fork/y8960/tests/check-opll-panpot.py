@@ -42,10 +42,11 @@ def main(directory):
         failures.append("right が右に振り切れていない")
     if got["bd_left"][0] == 0 or got["bd_left"][1] != 0:
         failures.append("bd_left が左に振り切れていない。BD が ch7 の定位に従っていない")
-    # コアはリズム音を 2 倍で出し、そのままだと 16bit を超えて 32768 で張り付く。
-    # ラッパーが 1:1 に戻していれば収まる
-    if got["bd_left"][0] >= 32767:
-        failures.append("bd_left がクリップしている。リズム音が 2 倍のまま")
+    # BD は音量 4（12dB 下げ）で鳴らす。リズム音を 1 : 1 で出すと音量 0 の peak が 32640 なので、
+    # 2 倍なら 32640 * 2 * 10^(-12/20)、1 : 1 ならその半分
+    want = 32640 * 2 * 10 ** (-12 / 20)
+    if abs(got["bd_left"][0] - want) > want * 0.03:
+        failures.append(f"bd_left の大きさが違う。リズム音が 2 倍になっていない (want {want:.0f})")
 
     if failures:
         for f in failures:

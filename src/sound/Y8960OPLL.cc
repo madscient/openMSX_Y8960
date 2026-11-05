@@ -121,15 +121,14 @@ void Y8960OPLL::generateChannels(std::span<float*> bufs, unsigned num)
 
 	for (auto i : xrange(NUM_CHANNELS)) {
 		const auto& g = gain[PAN_OF_OUTPUT[i]];
-		// The core doubles the rhythm sounds against the melody, as the
-		// openMSX YM2413 cores do for the MSX-MUSIC's external mixing. The
-		// OPLLEX mixes inside the chip, at 1:1 until the hardware says
-		// otherwise (decided 2026-10-16), so take the doubling back out.
-		float part = (i < NUM_MELODY) ? 1.0f : 0.5f;
+		// The core puts the rhythm sounds out at twice the melody, as every
+		// other OPLL emulator does. That is kept, although the Y8960 hardware
+		// currently mixes them 1:1; the hardware is expected to follow the
+		// real chip.
 		const float* src = &scratch[size_t(i) * num];
 		for (auto s : xrange(num)) {
-			bufs[i][2 * s + 0] += src[s] * g.left  * part;
-			bufs[i][2 * s + 1] += src[s] * g.right * part;
+			bufs[i][2 * s + 0] += src[s] * g.left;
+			bufs[i][2 * s + 1] += src[s] * g.right;
 		}
 	}
 }

@@ -43,7 +43,7 @@ Y8960 のリズム音を楽音と 1 : 1 で混ぜるか 2 倍にするかを決�
 | openMSX `YMF262` | OPL3 | `2 *` | 分けない | 実チップの方式 | ymf262.c v0.2 |
 | blueMSX `Fmopl.c` | OPL | BD・TOM・TC・HH は `* 2`、SD は `* 8` | 分けない | 旧式。雑音は `rand() & 1` | fmopl.c（1999〜2000 年） |
 | JTOPL（FPGA） | OPL / OPL2 | `jtopl_acc.v` の `rhy2x` でリズムの 6 スロットを ×2（コメント「all rhythm channels are amplified by two」） | 分けない | 実チップの方式（`jtopl_pg_rhy.v`） | Y8960_Cartridge の `src/opl2/src`（元のコード）。`src/opl2_patch` も同じ |
-| IKAOPLL（FPGA） | OPLL | 決め打ちの重みは無い。足し合わせの出力は楽音に `i_ACC_SIGNED_MOVOL`、リズムに `i_ACC_SIGNED_ROVOL` を掛ける。既定値は無く、組み込む側が決める | 実チップと同じ MO / RO の端子も出す | 実チップの方式 | Y8960_Cartridge の `src/ikaopll/src`（元のコード） |
+| IKAOPLL（FPGA） | OPLL | 決め打ちの重みは無い。足し合わせの出力は楽音に `i_ACC_SIGNED_MOVOL`、リズムに `i_ACC_SIGNED_ROVOL` を掛ける。端子に既定値は無く、組み込む側が決める。hra1129 さんによれば IKAOPLL のマニュアルに推奨値がある（取り込まれた写しの `README.txt` には無く、マニュアルは読んでいない） | 実チップと同じ MO / RO の端子も出す | 実チップの方式 | Y8960_Cartridge の `src/ikaopll/src`（元のコード） |
 
 ## Y8960 の側との対応
 
@@ -51,7 +51,8 @@ Y8960 のリズム音を楽音と 1 : 1 で混ぜるか 2 倍にするかを決�
   OPLL は IKAOPLL の足し合わせが各スロットを 1 フレームに 1 回ずつ足し、MOVOL と ROVOL が同じ 15 なので 1 : 1
   （どちらも**確認済み(読解)**）。`opll.v` は最初のコミット（2026-01-18）から MOVOL 10・ROVOL 15（リズムが 1.5 倍）で、
   v0.9.10 の作業で MOVOL が 15 になった。同じカートリッジの中で、OPL2 は 2 倍、OPLL は 1 : 1 と揃っていない
-- **このフォークのエミュレーション**: OPL2 も OPLL も 1 : 1（2026-10-16 (8) と 2026-10-17 の決定）
+- **このフォークのエミュレーション**: OPL2 も OPLL も、ほかのエミュレータと同じく 2 倍（`implementation-plan.md` §8 の
+  2026-11-05 (11)。それまでは 1 : 1 だった）。ハードウェアの OPLL は実チップに寄せてもらうよう、ユーザーが依頼した
 - **SD の作り方**: このフォークの `Y8960OPL2` は Y8950 から引き継いだ旧式（自分の位相 MSB と白色雑音）で、ハードウェアの
   JTOPL は実チップの方式（HH の位相 bit8）。openMSX で測った基本波は、振幅が半分の両極の矩形波の計算値に近かった
   （-3.99dB と -3.92dB）。ハードウェアの側はまだ測っていない。周波数の出どころが違うので、`level/rhythm.txt` は
