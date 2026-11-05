@@ -18,6 +18,9 @@
 #   FMPAC    memory writes only to the OPLL (7FF4h, 7FF5h; they work without enabling the I/O)
 #   MSXAUDIO I/O writes only to the Y8950 (C0h, C1h), and memory writes only to 7FFFh: the
 #            FS-CA1 opens C0h/C1h with bit 0 of 7FFFh (openMSX: PanasonicAudioPeriphery)
+#   MSE      I/O writes only to the OPLL (7Ch, 7Dh) and the PSG (A0h, A1h) of the MSX SOUND
+#            ENHANCER, no memory writes. A line "mem 7FF4 xx" / "mem 7FF5 xx" is sent as "io 7C xx" /
+#            "io 7D xx", so the FM-PAC OPLL sequences run unchanged. The PSG is a YMZ294: write only
 # A sequence line "only <target> <command>" runs only on that target.
 # Never sends break: a prototype MGA stopped responding after one.
 param(
@@ -25,7 +28,7 @@ param(
     [string]$Device,
     [string]$OutDir = '.',
     [string]$Sequence = (Join-Path $PSScriptRoot 'tones.txt'),
-    [ValidateSet('Y8960', 'FMPAC', 'MSXAUDIO')]
+    [ValidateSet('Y8960', 'FMPAC', 'MSXAUDIO', 'MSE')]
     [string]$Target = 'Y8960',
     [switch]$ListDevices,
     [int]$RecordOnly = 0
@@ -188,12 +191,14 @@ function Test-MemAddr([int]$a) {
         }
         'FMPAC' { return ($a -eq 0x7FF4 -or $a -eq 0x7FF5) }
         'MSXAUDIO' { return ($a -eq 0x7FFF) }
+        'MSE' { return $false }
         default { return $false }
     }
 }
 $ioPorts = switch ($Target) {
     'Y8960' { @(0xC0, 0xC1, 0x7E, 0x7F) }
     'MSXAUDIO' { @(0xC0, 0xC1) }
+    'MSE' { @(0x7C, 0x7D, 0xA0, 0xA1) }
     default { @() }
 }
 $cmds = New-Object System.Collections.Generic.List[object]
@@ -203,11 +208,16 @@ foreach ($raw in Get-Content -LiteralPath $Sequence -Encoding UTF8) {
     if ($line -eq '') { continue }
     $f = $line -split '\s+'
     if ($f[0] -eq 'only') {
-        if (@('Y8960', 'FMPAC', 'MSXAUDIO') -notcontains $f[1]) { throw "Unknown target: $line" }
+        if (@('Y8960', 'FMPAC', 'MSXAUDIO', 'MSE') -notcontains $f[1]) { throw "Unknown target: $line" }
         if ($f[2] -eq 'mark') { throw "A mark must not depend on the target: $line" }
         if ($f[1] -ne $Target) { $skipped++; continue }
         $f = $f[2..($f.Count - 1)]
         $line = $f -join ' '
+    }
+    # The OPLL of the MSX SOUND ENHANCER answers at the MSX-MUSIC I/O ports, not at 7FF4h/7FF5h
+    if ($Target -eq 'MSE' -and $f[0] -eq 'mem' -and @('7FF4', '7FF5') -contains $f[1].ToUpper()) {
+        $f[1] = if ($f[1].ToUpper() -eq '7FF4') { '7C' } else { '7D' }
+        $f[0] = 'io'
     }
     if ($f[0] -eq 'mem' -or $f[0] -eq 'io') {
         $a = [Convert]::ToInt32($f[1], 16); $v = [Convert]::ToInt32($f[2], 16)
@@ -315,6 +325,14 @@ try {
     $r = Cmd 'SPON'
     if ($r[-1] -ne 'OK') { throw "SPON failed: $($r -join ' | ')" }
     Log 'SPON'
+    # SPON alone leaves the Y8950 of the FS-CA1 in its power-up state: IORD C0h read E7 with the timer
+    # flags already set, and 06 after SRST. The Y8960 does not need it and is left alone.
+    if ($Target -ne 'Y8960') {
+        $r = Cmd 'SRST'
+        if ($r[-1] -ne 'OK') { throw "SRST failed: $($r -join ' | ')" }
+        Log 'SRST'
+        Start-Sleep -Milliseconds 100
+    }
 
     # The Y8960 copies the BIOS from the Flash to the SerialSRAM after power on. MGA does not
     # see /WAIT, so wait until bank 0 at 4000h steadily shows the ROM header "AB".

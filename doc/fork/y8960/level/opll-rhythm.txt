@@ -2,6 +2,8 @@
 #
 #   Y8960:  tones-mga.ps1 -Sequence opll-rhythm.txt / Y8960_TONES=opll-rhythm.txt
 #   FM-PAC: tones-mga.ps1 -Target FMPAC -Sequence opll-rhythm.txt
+#   SOUND ENHANCER の OPLL: tones-mga.ps1 -Target MSE -Sequence opll-rhythm.txt
+#       （7FF4h/7FF5h の書き込みを、I/O の 7Ch/7Dh に読み替えて送る）
 #   tone-levels.py --seq opll-rhythm.txt --ref opll-ch1 で測る。
 #
 # OPLL のリズム音は内蔵の固定の音色で鳴るので、OPL2 の rhythm.txt のように同じ音色の楽音とは比べられない。
