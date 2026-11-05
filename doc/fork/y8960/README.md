@@ -13,6 +13,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `README.md` (本書) | 文書の役割の記録・索引 |
 | `hardware-notes.md` | Y8960 ハードウェア仕様の調査結果。一次情報の出典と確度つき |
 | `implementation-plan.md` | 実装計画・決定事項・実行経緯 |
+| `rhythm-in-emulators.md` | ほかの OPL / OPLL 系エミュレータでのリズム音の大きさ。情報リソース |
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
 | `tests/opll-regs-mirror.tcl` | OPLL のレジスタの写しが BANK レジスタ (40h-48h) で壊れないことの回帰テスト |
 | `tests/opll-panpot.tcl` | OPLL のチャンネルごとの定位 (50h-58h) とリズム音の定位の回帰テスト。WAV を書き出す |
@@ -52,6 +53,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/tones-mga.ps1` | 上記を実機のカートリッジで MGA から流し、オーディオインターフェースで録る |
 | `level/tone-levels.py` | 2 つの録音を区間ごとに比べ、`<volume>` の案を出す。区間どうしの差も出す |
 | `level/rhythm.txt` | OPL2 のリズム音（BD・SD・TOM）と、同じ音色の楽音の大きさを比べる音列 |
+| `level/opll-rhythm.txt` | OPLL のリズム音と ch1 の楽音の大きさを比べる音列 |
 | `level/adpcm-tones.py` | ADPCM の正弦波と矩形波を、SSG2・OPL2・OPM の 1ch と比べる音列を書き出す |
 | `level/pan9.txt` | OPL2 の F6h-FEh がどの ch に掛かるかを見る音列 |
 | `level/pan9-levels.py` | 上記の録音から、区間ごとに左に寄った ch が仕様どおりかを判定する |
@@ -252,6 +254,38 @@ py doc/fork/y8960/level/pan9-levels.py "$OUT/pan9/tones-openmsx.wav" "$OUT/pan9/
   HH と TC は正弦波の成分が無く、両者で作り方も違うので、参考に鳴らすだけ
 - `adpcm-tones.py` は、復号器の式（Y8950 の ADPCM。ハードウェアは jt10_adpcmb）で 1 サンプルずつ符号を選ぶ。
   ADPCM のメモリへの書き込みは 1 バイトにつき 1 回なので、MGA では転送に時間がかかる
+- `opll-rhythm.txt` は、内蔵の音色が減衰するので区間の中で 250ms ごとに打ち直す。HH・SD・TC・TOM は基本波が
+  定まらないので、RMS の差を見る
+
+### 実チップのカートリッジと比べる
+
+`tones-mga.ps1 -Target` で、MGA に挿したカートリッジの種類を選ぶ。書き込みを許す番地と、起動の待ち方が変わる。
+
+| `-Target` | カートリッジ | 許す書き込み | 流せる音列 |
+|---|---|---|---|
+| `Y8960`（既定） | Y8960 | 音源のレジスタのメモリと、OPL2・OPM の I/O | すべて |
+| `FMPAC` | FM-PAC（YM2413） | 7FF4h・7FF5h（I/O の有効化なしで効く） | `opll-rhythm.txt` |
+| `MSXAUDIO` | MSX-AUDIO（Y8950） | I/O の C0h・C1h | `rhythm.txt`、`adpcm-tones.py --target MSXAUDIO` |
+
+音列の「`only <対象> <命令>`」の行は、その対象のときだけ流す（`rhythm.txt` の I/O Enabler2 の書き込み）。
+`tones.tcl` は環境変数 `Y8960_TARGET` で同じ対象を受け取る。openMSX の上流の実装と比べるときは、
+拡張を `fmpac` や `audio` にして `Y8960_TARGET` を `FMPAC` / `MSXAUDIO` にする。`fmpac` の拡張は
+`fmpac.rom` をユーザーデータの `systemroms/` に置く必要がある。
+
+2 つの録音の表示名は `tone-levels.py --names A,B` で替える（既定は `openMSX,実機`）。実チップと Y8960 の実機や、
+上流と Y8960 のエミュレーションを比べるときに使う。左右はパワーで平均するので、モノラルの実チップを片側だけに
+録っても値が出る。
+
+```sh
+# OPLL: FM-PAC の実チップ
+powershell -ExecutionPolicy Bypass -File doc/fork/y8960/level/tones-mga.ps1 -Target FMPAC \
+    -Sequence doc/fork/y8960/level/opll-rhythm.txt -Port COMn -Device <番号> -OutDir "$OUT/opll-fmpac"
+py doc/fork/y8960/level/tone-levels.py --seq doc/fork/y8960/level/opll-rhythm.txt --ref opll-ch1 \
+    --names Y8960,YM2413 "$OUT/opll-y8960/tones-mga.wav" "$OUT/opll-fmpac/tones-mga.wav"
+
+# Y8950: MSX-AUDIO の実チップ。ADPCM の RAM の種類によっては --r08 で 08h を替える
+py doc/fork/y8960/level/adpcm-tones.py --target MSXAUDIO "$OUT/adpcm-y8950.txt"
+```
 - 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、
   `tones-mga.ps1` が通す番地とポートの範囲に収める
 

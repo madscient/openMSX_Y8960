@@ -10,15 +10,22 @@
 #
 # Writes <OutDir>/tones-mga.wav (16bit stereo 48kHz) and tones-mga.txt (the times of the marks).
 #
-# What is sent is limited before anything goes out: memory writes only to the sound registers
-# (7FF0h-7FFFh, 9000h, 9800h-98FFh, 9900h-9904h) and I/O writes only to OPL2 and OPM (C0h, C1h,
-# 7Eh, 7Fh). The System Controller (I/O 40h-4Fh) is never touched, so the Flash cannot change.
+# -Target names the cartridge in MGA (default Y8960). What is sent is limited before anything
+# goes out, per target:
+#   Y8960    memory writes only to the sound registers (7FF0h-7FFFh, 9000h, 9800h-98FFh,
+#            9900h-9904h), I/O writes only to OPL2 and OPM (C0h, C1h, 7Eh, 7Fh). The System
+#            Controller (I/O 40h-4Fh) is never touched, so the Flash cannot change
+#   FMPAC    memory writes only to the OPLL (7FF4h, 7FF5h; they work without enabling the I/O)
+#   MSXAUDIO I/O writes only to the Y8950 (C0h, C1h)
+# A sequence line "only <target> <command>" runs only on that target.
 # Never sends break: a prototype MGA stopped responding after one.
 param(
     [string]$Port,
     [string]$Device,
     [string]$OutDir = '.',
     [string]$Sequence = (Join-Path $PSScriptRoot 'tones.txt'),
+    [ValidateSet('Y8960', 'FMPAC', 'MSXAUDIO')]
+    [string]$Target = 'Y8960',
     [switch]$ListDevices,
     [int]$RecordOnly = 0
 )
@@ -173,15 +180,33 @@ if (-not $Device -or (-not $Port -and $RecordOnly -le 0)) { throw 'Give -Port an
 
 # --- Read and check the whole sequence before anything is sent ---
 function Test-MemAddr([int]$a) {
-    return (($a -ge 0x7FF0 -and $a -le 0x7FFF) -or $a -eq 0x9000 -or
-            ($a -ge 0x9800 -and $a -le 0x98FF) -or ($a -ge 0x9900 -and $a -le 0x9904))
+    switch ($Target) {
+        'Y8960' {
+            return (($a -ge 0x7FF0 -and $a -le 0x7FFF) -or $a -eq 0x9000 -or
+                    ($a -ge 0x9800 -and $a -le 0x98FF) -or ($a -ge 0x9900 -and $a -le 0x9904))
+        }
+        'FMPAC' { return ($a -eq 0x7FF4 -or $a -eq 0x7FF5) }
+        default { return $false }
+    }
 }
-$ioPorts = @(0xC0, 0xC1, 0x7E, 0x7F)
+$ioPorts = switch ($Target) {
+    'Y8960' { @(0xC0, 0xC1, 0x7E, 0x7F) }
+    'MSXAUDIO' { @(0xC0, 0xC1) }
+    default { @() }
+}
 $cmds = New-Object System.Collections.Generic.List[object]
+$skipped = 0
 foreach ($raw in Get-Content -LiteralPath $Sequence -Encoding UTF8) {
     $line = ($raw -split '#', 2)[0].Trim()
     if ($line -eq '') { continue }
     $f = $line -split '\s+'
+    if ($f[0] -eq 'only') {
+        if (@('Y8960', 'FMPAC', 'MSXAUDIO') -notcontains $f[1]) { throw "Unknown target: $line" }
+        if ($f[2] -eq 'mark') { throw "A mark must not depend on the target: $line" }
+        if ($f[1] -ne $Target) { $skipped++; continue }
+        $f = $f[2..($f.Count - 1)]
+        $line = $f -join ' '
+    }
     if ($f[0] -eq 'mem' -or $f[0] -eq 'io') {
         $a = [Convert]::ToInt32($f[1], 16); $v = [Convert]::ToInt32($f[2], 16)
         if ($v -lt 0 -or $v -gt 0xFF) { throw "Value out of range: $line" }
@@ -289,18 +314,22 @@ try {
     if ($r[-1] -ne 'OK') { throw "SPON failed: $($r -join ' | ')" }
     Log 'SPON'
 
-    # The cartridge copies the BIOS from the Flash to the SerialSRAM after power on. MGA does not
+    # The Y8960 copies the BIOS from the Flash to the SerialSRAM after power on. MGA does not
     # see /WAIT, so wait until bank 0 at 4000h steadily shows the ROM header "AB".
-    $t = [System.Diagnostics.Stopwatch]::StartNew()
-    $run = 0
-    while ($run -lt 10) {
-        $v = MemRd 0x4000
-        if ($v -eq 0x41) { $run++ } else { $run = 0 }
-        if ($t.ElapsedMilliseconds -gt 10000) { throw "4000h did not settle to 41h (last $v)" }
-        Start-Sleep -Milliseconds 20
+    # Other cartridges are ready at once, and some (NMS-1205) have no ROM to look at.
+    Log "target $Target, $skipped lines for other targets skipped"
+    if ($Target -eq 'Y8960') {
+        $t = [System.Diagnostics.Stopwatch]::StartNew()
+        $run = 0
+        while ($run -lt 10) {
+            $v = MemRd 0x4000
+            if ($v -eq 0x41) { $run++ } else { $run = 0 }
+            if ($t.ElapsedMilliseconds -gt 10000) { throw "4000h did not settle to 41h (last $v)" }
+            Start-Sleep -Milliseconds 20
+        }
+        if ((MemRd 0x4001) -ne 0x42) { throw '4001h is not 42h' }
+        Log ('ROM header seen {0} ms after SPON' -f $t.ElapsedMilliseconds)
     }
-    if ((MemRd 0x4001) -ne 0x42) { throw '4001h is not 42h' }
-    Log ('ROM header seen {0} ms after SPON' -f $t.ElapsedMilliseconds)
     Start-Sleep -Milliseconds 500
 
     $rec = New-Object Y8960WaveIn ($devIndex, 48000, 2)

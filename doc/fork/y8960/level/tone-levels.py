@@ -30,6 +30,7 @@ DEVICES = {
 }
 FRAME = 0.010
 MIN_SEGMENT = 1.0
+MERGE_GAP = 0.4
 TRIM = 0.5
 LOBE = 5
 
@@ -58,6 +59,8 @@ def labels(seq):
     out = []
     for line in Path(seq).read_text(encoding='utf-8').splitlines():
         f = line.split('#', 1)[0].split()
+        if f and f[0] == 'only' and 'mark' in f:
+            sys.exit(f'mark を対象ごとに分けてはいけない: {line}')
         if f and f[0] == 'mark':
             out.append(f[1])
     return out
@@ -74,6 +77,16 @@ def segments(x, rate):
     # 床から 20dB 上か、最大から 45dB 下の高い方。openMSX の無音は 0 なので床だけでは決まらない
     th = max(floor * 10.0, peak * 10 ** (-45 / 20))
     on = level > th
+    # 打ち直す音列（opll-rhythm.txt）の打ちと打ちの間の無音は区間の中として扱う。BD は 1 打ちが
+    # 約 50ms で消え、次まで約 200ms 無音になる。区間どうしの間は 1 秒ある
+    gap = 0
+    for i, v in enumerate(on):
+        if v:
+            if 0 < gap < MERGE_GAP / FRAME and i - gap > 0 and on[i - gap - 1]:
+                on[i - gap:i] = True
+            gap = 0
+        else:
+            gap += 1
     segs, start = [], None
     for i, v in enumerate(np.append(on, False)):
         if v and start is None:
@@ -101,7 +114,8 @@ def tone(x, rate, a, b):
         k = int(np.argmax(np.where(band, p, 0)))
         lo, hi = max(k - LOBE, 0), k + LOBE + 1
         amp = 2.0 * math.sqrt(p[lo:hi].sum() / (n * (w ** 2).sum()))
-        res.append((freqs[k], amp))
+        rms = math.sqrt(((y[:, c] - y[:, c].mean()) ** 2).mean())
+        res.append((freqs[k], amp, rms))
     clipped = int((np.abs(y) >= 0.9999).sum())
     return res, clipped
 
@@ -120,23 +134,27 @@ def measure(path, names):
         sys.exit(f'区間の数が mark の数 {len(names)} と合わない')
     out = {}
     for name, (a, b) in zip(names, segs):
-        ((fl, al), (fr, ar)), clipped = tone(x, rate, a, b)
-        out[name] = (al, ar)
+        ((fl, al, rl), (fr, ar, rr)), clipped = tone(x, rate, a, b)
+        out[name] = (al, ar, rl, rr)
         mark = f'  飽和 {clipped} サンプル' if clipped else ''
         print(f'  {name:12s} {a / rate:6.2f}-{b / rate:6.2f} 秒  {fl:7.1f}Hz  '
-              f'L {db(al):7.2f}  R {db(ar):7.2f} dBFS{mark}')
+              f'L {db(al):7.2f}  R {db(ar):7.2f} dBFS  RMS L {db(rl):7.2f}  R {db(rr):7.2f}{mark}')
     return out
 
 
 def relative(recs, pairs):
-    # L と R の平均で比べる。定位は中央の区間どうしを比べる前提
-    print('\n区間どうしの差（dB、L と R の平均）')
-    head = ''.join(f'{n:>10s}' for n, _ in recs)
-    print(f'  {"":26s}{head}' + ('  実機 - openMSX' if len(recs) == 2 else ''))
-    for p, q in pairs:
-        v = [(db(r[p][0]) + db(r[p][1]) - db(r[q][0]) - db(r[q][1])) / 2 for _, r in recs]
-        tail = f'  {v[1] - v[0]:+10.2f}' if len(v) == 2 else ''
-        print(f'  {p + " - " + q:26s}' + ''.join(f'{x:+10.2f}' for x in v) + tail)
+    # L と R はパワーで平均する。モノラルのカートリッジを片側だけに録っても値が出る。
+    # 定位は中央の区間どうしを比べる前提
+    def both(v, i):
+        return math.sqrt((v[i] ** 2 + v[i + 1] ** 2) / 2)
+    for title, i in (('基本波', 0), ('RMS', 2)):
+        print(f'\n区間どうしの差（dB、{title}、L と R のパワーの平均）')
+        head = ''.join(f'{n:>10s}' for n, _ in recs)
+        print(f'  {"":26s}{head}' + (f'  {recs[1][0]} - {recs[0][0]}' if len(recs) == 2 else ''))
+        for p, q in pairs:
+            v = [db(both(r[p], i)) - db(both(r[q], i)) for _, r in recs]
+            tail = f'  {v[1] - v[0]:+10.2f}' if len(v) == 2 else ''
+            print(f'  {p + " - " + q:26s}' + ''.join(f'{x:+10.2f}' for x in v) + tail)
 
 
 def volumes(xml):
@@ -162,7 +180,10 @@ def main():
     ap.add_argument('--rel', action='append', default=[], metavar='A=B',
                     help='区間 A の大きさを区間 B との差で出す。何度でも書ける')
     ap.add_argument('--ref', metavar='B', help='すべての区間を区間 B との差で出す')
+    ap.add_argument('--names', default='openMSX,実機', metavar='A,B',
+                    help='2 つの録音の表示名。実チップどうしやエミュレーションどうしを比べるときに替える')
     a = ap.parse_args()
+    n1, n2 = a.names.split(',', 1)
 
     names = labels(a.seq)
     pairs = [tuple(r.split('=', 1)) for r in a.rel]
@@ -171,23 +192,24 @@ def main():
     for p in pairs:
         if len(p) != 2 or not set(p) <= set(names):
             sys.exit(f'--rel / --ref の区間が音列に無い: {"=".join(p)}')
-    recs = [('openMSX', measure(a.emu, names))]
+    recs = [(n1, measure(a.emu, names))]
     if a.hw:
-        recs.append(('実機', measure(a.hw, names)))
+        recs.append((n2, measure(a.hw, names)))
     if pairs:
         relative(recs, pairs)
     if not a.hw:
         return
     emu, hw = recs[0][1], recs[1][1]
 
-    print('\n実機 - openMSX（dB）')
+    print(f'\n{n2} - {n1}（dB）')
     diff = {}
     for n in names:
         dl, dr = db(hw[n][0]) - db(emu[n][0]), db(hw[n][1]) - db(emu[n][1])
         diff[n] = (dl, dr)
         print(f'  {n:12s} L {dl:+7.2f}  R {dr:+7.2f}')
 
-    print('\n定位: 左端と中央の差（dB）。実機と openMSX で同じなら定位の掛け方が同じ')
+    if any(f'{chip}-left' in hw for chip in DEVICES):
+        print('\n定位: 左端と中央の差（dB）。実機と openMSX で同じなら定位の掛け方が同じ')
     for chip in DEVICES:
         c, l = f'{chip}-center', f'{chip}-left'
         if c in hw and l in hw:

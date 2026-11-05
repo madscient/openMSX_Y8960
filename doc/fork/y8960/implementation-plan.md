@@ -1269,6 +1269,65 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-05 (8) — OPLL のリズム音と、実チップ（FM-PAC・MSX-AUDIO）を MGA で測る備えを足した
+
+ユーザーの情報: 実チップの OPLL は MO と RO を別々の端子に出し、外で混ぜる。外の混ぜ方はたいてい 1 : 1 なので、
+NukeYKT がリズム音を 2 倍にしている理由は分からない。自宅では MGA 経由で OPLL と Y8950 の実チップも測れる。
+FM-PAC の ROM は blueMSX の Shared Roms にある。
+
+**OPLL のリズム音の今の扱い**（ユーザーの問いへの答え）。
+
+- エミュレーション: 1 : 1（2026-10-16 (8) の決定。NukeYKT コアの 2 倍を `Y8960OPLL::generateChannels()` で 0.5 倍して
+  打ち消す）
+- ハードウェア（v0.9.11）: `opll.v` は IKAOPLL に MOVOL 15・ROVOL 15 を渡す。IKAOPLL の足し合わせ（`IKAOPLL_dac.v`
+  の `dac_acc_*`）は、帰還を止める期間（`i_INHIBIT_FDBK`）以外のスロットを 1 フレームに 1 回ずつ足すので、リズム音は
+  楽音と 1 : 1 と読める（**確認済み(読解)**。足し込みの許可とデータの 1 クロックの遅れが噛み合っているかは
+  シミュレーションで見ていない）
+- **NukeYKT の 2 倍の出どころの未確認の候補**: IKAOPLL はリズムのサンプルを `u_percussion_sr` に溜め、帰還を止める
+  期間に流し直す（`perc_sr_d = i_INHIBIT_FDBK ? perc_sr_q : i_DAC_OPDATA`）。RO の端子にはその間も出るなら、実チップの
+  RO は 1 フレームに 2 回同じリズム音を出し、外で 1 : 1 に混ぜても楽音の 2 倍になる（**推測**: `RO_CTRL` が流し直しの
+  期間に立つかを読み切っていない）。決まるのは FM-PAC の実チップの測定。`opll-bd - opll-ch1` が Y8960 より
+  +6dB 大きければ実チップは 2 倍
+
+**足したもの**（`level/`）
+
+- `opll-rhythm.txt` — ch1 の楽音と、BD・SD・TOM・TC・HH。書き込みは 7FF4h/7FF5h だけで、Y8960 と FM-PAC で同じものを
+  流す。内蔵の音色は減衰するので、区間の中で 250ms ごとに 10 回打ち直す
+- `tones-mga.ps1 -Target Y8960|FMPAC|MSXAUDIO` — 許す書き込みと起動の待ち方を対象ごとに替える。BIOS のコピーを待つのは
+  Y8960 だけ（NMS-1205 には見るべき ROM が無い）。音列の `only <対象> <命令>` は対象が一致するときだけ流す
+- `tones.tcl` は `Y8960_TARGET` で同じ `only` を扱う。`rhythm.txt` の I/O Enabler2 の書き込みを `only Y8960` にした
+- `adpcm-tones.py --target MSXAUDIO` は SSG2・OPM の比較と I/O Enabler2 を外す。`--r08` で 08h を替えられる
+- `tone-levels.py`: RMS を足した。区間どうしの差は L と R のパワーの平均にした（モノラルの実チップを片側だけに
+  録っても値が出る）。0.4 秒未満の途切れを区間の中として扱う（BD は 1 打ちが約 50ms で消え、次まで約 200ms 無音に
+  なる）。`--names` で 2 つの録音の表示名を替える
+
+**見送った案**: 打ち直しの間を 5ms に縮めて途切れを無くす案。openMSX で試すと打ち直しがほとんど鳴らず
+（**確認済み**: 10ms ごとの大きさがほぼ無音）、キーの離し方の細部に頼る形になるので取りやめ、解析の側で途切れをつないだ。
+
+**openMSX で流した結果**（**確認済み**: 1 回ずつ。FM-PAC の ROM は SHA1 が `fmpac.xml` の値と一致したものを
+`derived/openmsx-user/systemroms/` に置いた）。
+
+| 比べたもの | 差（RMS、dB） | 上流 - Y8960 |
+|---|---|---|
+| OPLL: opll-bd - opll-ch1 | Y8960 -13.84、上流の FM-PAC -7.81 | +6.03 |
+| OPLL: opll-sd / tom - opll-ch1 | | +6.02 / +6.02 |
+| OPLL: opll-tc / hh - opll-ch1 | | +5.55 / +5.63（ノイズの揺れ） |
+| OPL2: bd / sd / tom - 同じ音色の楽音（基本波） | Y8960 -0.00 / -3.99 / +0.02、上流の Y8950（`-ext audio`）+6.02 / +2.04 / +6.04 | +6.02 / +6.03 / +6.02 |
+
+上流はどちらもリズム音が楽音の 2 倍、Y8960 は 1 : 1 で、解析はこの差を捕まえる。上流の Y8950 の ADPCM は
+`adpcm-tones.py --target MSXAUDIO` の音列で正弦波が opl2-center の -0.39dB（Y8960 と同じ）。
+
+`tones-mga.ps1` の検査（**確認済み**: 12 通り）。通るべき 8 通り（Y8960 で 5 本、MSXAUDIO で `rhythm.txt` と Y8950 用の
+ADPCM、FMPAC で `opll-rhythm.txt`）は検査を通り、対象と合わない 4 通り（MSXAUDIO で `tones.txt`・Y8960 用の ADPCM・
+`opll-rhythm.txt`、FMPAC で `rhythm.txt`）は送る前に止まった。
+
+**未確認**: 実チップのカートリッジの ADPCM の RAM の種類と 08h の値。Y8950 の実チップで ADPCM を流す前に、手元の
+カートリッジを確かめる。
+
+**ほかのエミュレータの実装**（ユーザーの指示:「念のためまとめておいて」）は `rhythm-in-emulators.md` にまとめた。
+読んだ実装（emu2413、emu8950、Nuked-OPLL、ymfm、DBOPL、Nuked-OPL2-Lite / OPL3、openMSX の各コア）はどれもリズム音を
+楽音の実質 2 倍で混ぜ、理由を書いたコメントはどこにも無い（**確認済み(読解)**）。実チップが 2 倍かは測定で決める。
+
 ### 2026-11-05 (7) — 帰宅後の実機の測定に備えて、リズム音・ADPCM・9ch の定位の音列と解析を作った
 
 ユーザーの指示: 測定は帰宅してから。測れるように準備だけしておく。リズム音は、正弦波の持続音の音色を ch7-9 に置き、

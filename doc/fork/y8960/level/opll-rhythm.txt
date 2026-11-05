@@ -1,0 +1,397 @@
+# OPLL のリズム音と楽音の大きさを比べる音列。書式は tones.txt と同じ。
+#
+#   Y8960:  tones-mga.ps1 -Sequence opll-rhythm.txt / Y8960_TONES=opll-rhythm.txt
+#   FM-PAC: tones-mga.ps1 -Target FMPAC -Sequence opll-rhythm.txt
+#   tone-levels.py --seq opll-rhythm.txt --ref opll-ch1 で測る。
+#
+# OPLL のリズム音は内蔵の固定の音色で鳴るので、OPL2 の rhythm.txt のように同じ音色の楽音とは比べられない。
+# 基準の ch1 の楽音（tones.txt の opll-center と同じ正弦波）との差を、Y8960・実チップ・openMSX で比べる。
+# 書き込みは 7FF4h/7FF5h だけ。FM-PAC はこの番地への書き込みが I/O の有効化（7FF6h）なしで効く
+# （openMSX の MSXFmPac.cc のコメントと実装）。
+# リズム音の周波数は ch7-9 とも F-Num 330、BLOCK 5。音量は 36h-38h を 0（最大）。
+# HH・SD・TC はノイズと位相で決まり正弦波ではないので、基本波の値は目安。RMS も並べて見る。
+
+# --- 準備（まだ鳴らさない） ---
+
+mem 7FF4 0E                 # 楽音モード
+mem 7FF5 00
+
+# ch1: ユーザー音色。キャリアは MUL 1、持続、AR 15、SL 0、RR 15。変調器は AR 0。
+# F-Num 330、BLOCK 5 で 1001.4Hz。音色 0、音量 0（最大）（tones.txt と同じ）
+mem 7FF4 00
+mem 7FF5 21
+mem 7FF4 01
+mem 7FF5 21
+mem 7FF4 02
+mem 7FF5 3F
+mem 7FF4 03
+mem 7FF5 00
+mem 7FF4 04
+mem 7FF5 00
+mem 7FF4 05
+mem 7FF5 F0
+mem 7FF4 06
+mem 7FF5 00
+mem 7FF4 07
+mem 7FF5 0F
+mem 7FF4 10
+mem 7FF5 4A
+mem 7FF4 30
+mem 7FF5 00
+
+# ch7-9: F-Num 330、BLOCK 5、キーは切ったまま。リズムの音量はすべて 0（最大）
+mem 7FF4 16
+mem 7FF5 4A
+mem 7FF4 17
+mem 7FF5 4A
+mem 7FF4 18
+mem 7FF5 4A
+mem 7FF4 26
+mem 7FF5 0B
+mem 7FF4 27
+mem 7FF5 0B
+mem 7FF4 28
+mem 7FF5 0B
+mem 7FF4 36
+mem 7FF5 00
+mem 7FF4 37
+mem 7FF5 00
+mem 7FF4 38
+mem 7FF5 00
+
+wait 1000
+
+# --- 楽音モード ---
+
+mark opll-ch1
+mem 7FF4 20
+mem 7FF5 1B
+wait 2500
+mem 7FF4 20
+mem 7FF5 0B
+wait 1000
+
+# --- リズムモード（0Eh の b5） ---
+# 内蔵の音色は減衰するので、区間の中で 250ms ごとに 10 回打ち直す（200ms 鳴らして 50ms 離す）。
+# 打ちと打ちの間は無音になるが、tone-levels.py は 0.4 秒未満の途切れを区間の中として扱う
+
+mem 7FF4 0E
+mem 7FF5 20
+
+mark opll-bd
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 30
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+wait 1000
+
+mark opll-sd
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 28
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+wait 1000
+
+mark opll-tom
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 24
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+wait 1000
+
+mark opll-tc
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 22
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+wait 1000
+
+mark opll-hh
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+mem 7FF4 0E
+mem 7FF5 21
+wait 200
+mem 7FF4 0E
+mem 7FF5 20
+wait 50
+wait 1000
+
+mem 7FF4 0E
+mem 7FF5 00
