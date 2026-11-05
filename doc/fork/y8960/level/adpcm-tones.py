@@ -189,20 +189,23 @@ def main():
     w.append('')
     if a.target == 'Y8960':
         w.append('mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM')
+    else:
+        w.append('mem 7FFF 01                 # FS-CA1: b0 で C0h/C1h を開く')
     w.append('')
     w.append(reference)
     w.append('')
     w.append('# ADPCM のメモリに書く（07h=60h）。BUF_RDY は読まない。MGA の 1 回の書き込みは')
-    w.append('# メモリへの書き込みより十分に長い。BUF_RDY と EOS はリセット値のままマスクしておき、/INT を出さない')
+    w.append('# メモリへの書き込みより十分に長い。04h=78h で T1・T2・EOS・BUF_RDY をすべてマスクし、/INT を出さない')
+    w.append('# （リセット値でマスクされるとは限らない。カートリッジの BIOS が割り込みを拾う環境もある）')
     stop = len(data) // 4 - 1
     for r, v in ((0x07, 0x01), (0x08, a.r08), (0x09, 0x00), (0x0A, 0x00), (0x0B, stop & 0xFF),
                  (0x0C, stop >> 8), (0x10, DELTA_N & 0xFF), (0x11, DELTA_N >> 8), (0x12, 0xFF),
-                 (0x07, 0x60), (0x04, 0x80)):
+                 (0x04, 0x78), (0x07, 0x60), (0x04, 0x80)):
         w.append(f'io C0 {r:02X}')
         w.append(f'io C1 {v:02X}')
     w.append('io C0 0F')
     w.extend(f'io C1 {b:02X}' for b in data)
-    for r, v in ((0x07, 0x01), (0x04, 0x80), (0x04, 0x18)):
+    for r, v in ((0x07, 0x01), (0x04, 0x80), (0x04, 0x78)):
         w.append(f'io C0 {r:02X}')
         w.append(f'io C1 {v:02X}')
     w.append('')

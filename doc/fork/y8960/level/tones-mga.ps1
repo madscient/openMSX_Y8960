@@ -16,7 +16,8 @@
 #            9900h-9904h), I/O writes only to OPL2 and OPM (C0h, C1h, 7Eh, 7Fh). The System
 #            Controller (I/O 40h-4Fh) is never touched, so the Flash cannot change
 #   FMPAC    memory writes only to the OPLL (7FF4h, 7FF5h; they work without enabling the I/O)
-#   MSXAUDIO I/O writes only to the Y8950 (C0h, C1h)
+#   MSXAUDIO I/O writes only to the Y8950 (C0h, C1h), and memory writes only to 7FFFh: the
+#            FS-CA1 opens C0h/C1h with bit 0 of 7FFFh (openMSX: PanasonicAudioPeriphery)
 # A sequence line "only <target> <command>" runs only on that target.
 # Never sends break: a prototype MGA stopped responding after one.
 param(
@@ -186,6 +187,7 @@ function Test-MemAddr([int]$a) {
                     ($a -ge 0x9800 -and $a -le 0x98FF) -or ($a -ge 0x9900 -and $a -le 0x9904))
         }
         'FMPAC' { return ($a -eq 0x7FF4 -or $a -eq 0x7FF5) }
+        'MSXAUDIO' { return ($a -eq 0x7FFF) }
         default { return $false }
     }
 }
