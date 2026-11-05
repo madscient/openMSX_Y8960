@@ -50,7 +50,11 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/tones.txt` | 音源どうしの音量比を測る音列。実機と openMSX で同じものを流す |
 | `level/tones.tcl` | 上記を openMSX で流して WAV に録る |
 | `level/tones-mga.ps1` | 上記を実機のカートリッジで MGA から流し、オーディオインターフェースで録る |
-| `level/tone-levels.py` | 2 つの録音を区間ごとに比べ、`<volume>` の案を出す |
+| `level/tone-levels.py` | 2 つの録音を区間ごとに比べ、`<volume>` の案を出す。区間どうしの差も出す |
+| `level/rhythm.txt` | OPL2 のリズム音（BD・SD・TOM）と、同じ音色の楽音の大きさを比べる音列 |
+| `level/adpcm-tones.py` | ADPCM の正弦波と矩形波を、SSG2・OPL2・OPM の 1ch と比べる音列を書き出す |
+| `level/pan9.txt` | OPL2 の F6h-FEh がどの ch に掛かるかを見る音列 |
+| `level/pan9-levels.py` | 上記の録音から、区間ごとに左に寄った ch が仕様どおりかを判定する |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -223,6 +227,31 @@ py doc/fork/y8960/level/tone-levels.py "$OUT/tones-openmsx.wav" "$OUT/tones-mga.
   `tone-levels.py` は区間の数が mark の数と合わないと止まるので、鳴らない音源があれば気づく
 - `tone-levels.py` の案の 3 列は全体の大きさの揃え方の違いで、比は同じ。今の値は「最大を 30000」で揃えた。
   実機は本体の音とはミックスされないので、本体内蔵の音源と大きさを合わせる必要は無い
+
+ほかの音列も、`tones.tcl` には環境変数 `Y8960_TONES`、`tones-mga.ps1` には `-Sequence` で渡して同じように流す。
+録音の名前は音列によらず `tones-openmsx.wav` / `tones-mga.wav` なので、音列ごとに出力先を分ける。
+解析は Python 3 と numpy が要る。
+
+```sh
+# OPL2 のリズム音。リズム音と同じ音色の楽音との差が、openMSX と実機で並ぶ
+py doc/fork/y8960/level/tone-levels.py --seq doc/fork/y8960/level/rhythm.txt \
+    --rel bd=ch7-melody --rel sd=ch8-melody --rel tom=ch9-melody --ref opl2-ch1 \
+    "$OUT/rhythm/tones-openmsx.wav" "$OUT/rhythm/tones-mga.wav"
+
+# ADPCM。音列は 2 万行を超えるので、測るたびに書き出す
+py doc/fork/y8960/level/adpcm-tones.py "$OUT/adpcm.txt"
+py doc/fork/y8960/level/tone-levels.py --seq "$OUT/adpcm.txt" --ref opl2-center \
+    "$OUT/adpcm/tones-openmsx.wav" "$OUT/adpcm/tones-mga.wav"
+
+# OPL2 の定位。録音ごとに判定し、仕様と違う区間があれば終了コード 1
+py doc/fork/y8960/level/pan9-levels.py "$OUT/pan9/tones-openmsx.wav" "$OUT/pan9/tones-mga.wav"
+```
+
+- `rhythm.txt` の SD は正弦波ではないので、基本波を比べる。ハードウェア（JTOPL）は ch8 の変調器の位相の bit8 から、
+  エミュレーションは ch8 のキャリアの位相から作る。キャリアの MUL を変調器の 2 倍にして、両方を同じ周波数に出している。
+  HH と TC は正弦波の成分が無く、両者で作り方も違うので、参考に鳴らすだけ
+- `adpcm-tones.py` は、復号器の式（Y8950 の ADPCM。ハードウェアは jt10_adpcmb）で 1 サンプルずつ符号を選ぶ。
+  ADPCM のメモリへの書き込みは 1 バイトにつき 1 回なので、MGA では転送に時間がかかる
 - 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、
   `tones-mga.ps1` が通す番地とポートの範囲に収める
 

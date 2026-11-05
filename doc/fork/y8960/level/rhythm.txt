@@ -1,0 +1,229 @@
+# OPL2 のリズム音と楽音の大きさを比べる音列。書式は tones.txt と同じ。
+#
+#   tones-mga.ps1 -Sequence rhythm.txt / Y8960_TONES=rhythm.txt で流し、
+#   tone-levels.py --seq rhythm.txt --rel bd=ch7-melody --rel tom=ch9-melody --rel sd=ch8-melody で測る。
+#
+# リズム音と、同じ音色を楽音モードで鳴らした音を、同じスロットの設定で並べて鳴らす。
+# 定位は中央（リセット値）、変調器を黙らせた正弦波、約 1kHz。
+#   BD : ch7 の 2 演算子。変調器を黙らせるとキャリアの正弦波になり、楽音と同じ波形
+#   TOM: ch9 の変調器の正弦波。楽音モードで変調器だけを聞くため、ch9 は CON=1 にしてキャリアを黙らせる
+#   SD : ch8 のキャリア。位相がノイズと変調器の位相で決まり、正弦波ではない。基本波だけを比べる。
+#        ハードウェア（JTOPL）は変調器の位相の bit8 から作るので変調器の 2 倍の周波数、
+#        エミュレーションはキャリア自身の位相から作るのでキャリアの周波数に出る。
+#        キャリアの MUL を変調器の 2 倍にして、両方が同じ周波数に出るようにした
+#   HH・TC: 正弦波の成分が無く、ハードウェアとエミュレーションで作り方が違う。参考に鳴らすだけ
+# 基準に OPL2 ch1 の楽音（tones.txt の opl2-center と同じ音）を最初に置く。
+
+mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM
+
+# --- 準備（まだ鳴らさない） ---
+
+io C0 BD                    # 楽音モード
+io C1 00
+
+# ch1: 変調器（00h）は TL 3F・AR 0、キャリア（03h）は MUL 1、持続、TL 0、AR 15、SL 0、RR 15、正弦波。
+# F-Num 659、BLOCK 5 で 999.9Hz
+io C0 20
+io C1 21
+io C0 23
+io C1 21
+io C0 40
+io C1 3F
+io C0 43
+io C1 00
+io C0 60
+io C1 00
+io C0 63
+io C1 F0
+io C0 80
+io C1 0F
+io C0 83
+io C1 0F
+io C0 E0
+io C1 00
+io C0 E3
+io C1 00
+io C0 C0
+io C1 00
+io C0 A0
+io C1 93
+
+# ch7: ch1 と同じ。変調器 10h、キャリア 13h。CON 0
+io C0 30
+io C1 21
+io C0 33
+io C1 21
+io C0 50
+io C1 3F
+io C0 53
+io C1 00
+io C0 70
+io C1 00
+io C0 73
+io C1 F0
+io C0 90
+io C1 0F
+io C0 93
+io C1 0F
+io C0 F0
+io C1 00
+io C0 F3
+io C1 00
+io C0 C6
+io C1 00
+io C0 A6
+io C1 93
+io C0 B6
+io C1 16
+
+# ch8: 変調器（11h）は MUL 1 で黙らせる（HH の区間の前に鳴らす）、キャリア（14h）は MUL 2。
+# F-Num 330、BLOCK 5 で変調器 500.7Hz、キャリア 1001.4Hz。CON 0
+io C0 31
+io C1 21
+io C0 34
+io C1 22
+io C0 51
+io C1 3F
+io C0 54
+io C1 00
+io C0 71
+io C1 00
+io C0 74
+io C1 F0
+io C0 91
+io C1 0F
+io C0 94
+io C1 0F
+io C0 F1
+io C1 00
+io C0 F4
+io C1 00
+io C0 C7
+io C1 00
+io C0 A7
+io C1 4A
+io C0 B7
+io C1 15
+
+# ch9: 変調器（12h）が正弦波、キャリア（15h）は黙らせる（TC の区間の前に鳴らす）。CON 1。
+# F-Num 659、BLOCK 5 で 999.9Hz
+io C0 32
+io C1 21
+io C0 35
+io C1 21
+io C0 52
+io C1 00
+io C0 55
+io C1 3F
+io C0 72
+io C1 F0
+io C0 75
+io C1 00
+io C0 92
+io C1 0F
+io C0 95
+io C1 0F
+io C0 F2
+io C1 00
+io C0 F5
+io C1 00
+io C0 C8
+io C1 01
+io C0 A8
+io C1 93
+io C0 B8
+io C1 16
+
+wait 1000
+
+# --- 楽音モード ---
+
+mark opl2-ch1
+io C0 B0
+io C1 36
+wait 2500
+io C0 B0
+io C1 16
+wait 1000
+
+mark ch7-melody
+io C0 B6
+io C1 36
+wait 2500
+io C0 B6
+io C1 16
+wait 1000
+
+mark ch8-melody
+io C0 B7
+io C1 35
+wait 2500
+io C0 B7
+io C1 15
+wait 1000
+
+mark ch9-melody
+io C0 B8
+io C1 36
+wait 2500
+io C0 B8
+io C1 16
+wait 1000
+
+# --- リズムモード（ch7-9 の B0h のキーは切ったまま） ---
+
+io C0 BD
+io C1 20
+
+mark bd
+io C0 BD
+io C1 30
+wait 2500
+io C0 BD
+io C1 20
+wait 1000
+
+mark sd
+io C0 BD
+io C1 28
+wait 2500
+io C0 BD
+io C1 20
+wait 1000
+
+mark tom
+io C0 BD
+io C1 24
+wait 2500
+io C0 BD
+io C1 20
+wait 1000
+
+# HH は ch8 の変調器、TC は ch9 のキャリアの音量で鳴る
+io C0 51
+io C1 00
+io C0 71
+io C1 F0
+io C0 55
+io C1 00
+io C0 75
+io C1 F0
+
+mark hh
+io C0 BD
+io C1 21
+wait 2500
+io C0 BD
+io C1 20
+wait 1000
+
+mark tc
+io C0 BD
+io C1 22
+wait 2500
+io C0 BD
+io C1 20
+wait 1000
+
+io C0 BD
+io C1 00
