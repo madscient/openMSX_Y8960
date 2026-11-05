@@ -16,7 +16,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `rhythm-in-emulators.md` | ほかの OPL / OPLL 系エミュレータでのリズム音の大きさ。情報リソース |
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
 | `tests/opll-regs-mirror.tcl` | OPLL のレジスタの写しが BANK レジスタ (40h-48h) で壊れないことの回帰テスト |
-| `tests/opll-panpot.tcl` | OPLL のチャンネルごとの定位 (50h-58h) とリズム音の定位の回帰テスト。WAV を書き出す |
+| `tests/opll-panpot.tcl` | OPLL のチャンネルごとの定位 (50h-58h)、リズム音の定位と大きさの回帰テスト。WAV を書き出す |
 | `tests/check-opll-panpot.py` | 上記 WAV の判定 |
 | `tests/opl2-waveform.tcl` | OPL2 波形選択 (E0h-F5h) の回帰テスト。WAV を書き出す |
 | `tests/check-opl2-waveform.py` | 上記 WAV の判定 |
@@ -198,6 +198,8 @@ done
   `HRA_Y8960.xml` の組み合わせで、それぞれ 2 件、6 件、5 件、3 件が落ちる。残りは変更前でも通る番人。
   `timer-regs.tcl` の「リセット直後の選択はコア 0」は、変更前は初期化されていない値を読むので、
   たまたま通ることがある。`ssgs-write-only.tcl` の 5 番は、変更前のビルドでは A1h の値が reg10 に入る
+- `opl2-panpot.tcl` と `opll-panpot.tcl` の bd_left の大きさは、リズム音を 1 : 1 で出すビルドで落ちる
+  （BD が期待値の半分になる）
 - `timer-resolution.tcl` は、クロックが 85.9MHz のままのビルドで 13 件中 11 件が落ちる。残る 2 件
   （期待値の後でフラグが 1）は速すぎても通る番人
 

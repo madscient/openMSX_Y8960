@@ -4,7 +4,8 @@
   python check-opl2-panpot.py <WAV のあるディレクトリ>
 
 定位が効いていなければ *_left / *_right も center と同じ L=R になる。
-リズム音を 2 倍で出していれば bd_left が ch7_left の倍になる。
+BD はキャリアを 6dB 下げて鳴らすので、リズム音を 2 倍で出していれば bd_left が ch7_left と同じ大きさ、
+1 : 1 なら半分になる。
 そこが判別力のある部分である。
 """
 import struct
@@ -42,10 +43,10 @@ def main(directory):
             failures.append(f"{name} が左に振り切れていない")
     if got["fm_right"][1] == 0 or got["fm_right"][0] != 0:
         failures.append("fm_right が右に振り切れていない")
-    # BD は ch7 のスロットをそのまま使う。リズム音がメロディと 1 : 1 なら同じ大きさ
+    # BD は ch7 のスロットをキャリアだけ 6dB 下げて使う。リズム音がメロディの 2 倍なら同じ大きさ
     want = got["ch7_left"][0]
     if abs(got["bd_left"][0] - want) > want * 0.03 + 2:
-        failures.append(f"bd_left が ch7_left と同じ大きさでない (want {want})")
+        failures.append(f"bd_left が ch7_left と同じ大きさでない。リズム音が 2 倍になっていない (want {want})")
 
     if failures:
         for f in failures:
