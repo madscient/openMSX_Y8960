@@ -1,8 +1,9 @@
 """ADPCM と FM・SSG の大きさを比べる音列を書き出す。書式は tones.txt と同じ。
 
     py adpcm-tones.py OUT/adpcm.txt
+    py adpcm-tones.py --target MSXAUDIO [--r08 02] OUT/adpcm-y8950.txt     Y8950 の実チップ用
 
-書き出した音列は tones-mga.ps1 -Sequence / Y8960_TONES で流し、
+書き出した音列は tones-mga.ps1 -Sequence（Y8950 は -Target MSXAUDIO も）/ Y8960_TONES で流し、
 tone-levels.py --seq OUT/adpcm.txt --ref opl2-center で測る。音列は 2 万行を超えるので
 リポジトリには置かず、測るたびにここで作る（同じ入力からは同じものができる）。
 
@@ -13,6 +14,7 @@ ADPCM（ハードウェアは jt10_adpcmb、openMSX は Y8960Adpcm::calcSample�
 比べる相手は tones.txt と同じ SSG2・OPL2・OPM の 1ch（約 1kHz）。
 """
 
+import argparse
 import math
 import sys
 
@@ -150,8 +152,17 @@ wait 1000
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('out')
+    ap.add_argument('--target', choices=['Y8960', 'MSXAUDIO'], default='Y8960',
+                    help='MSXAUDIO は Y8950 の実チップ用。比べる相手は OPL2 ch1 だけになる')
+    ap.add_argument('--r08', type=lambda s: int(s, 16), default=0x00,
+                    help='レジスタ 08h に書く値（16 進）。既定 00（256Kbit の RAM）')
+    a = ap.parse_args()
+    # REFERENCE と PLAY_REFERENCE は空行で区切った SSG2・OPL2・OPM の 3 つの塊
+    keep = [0, 1, 2] if a.target == 'Y8960' else [1]
+    reference = '\n\n'.join(REFERENCE.strip().split('\n\n')[i] for i in keep)
+    play_reference = '\n\n'.join(PLAY_REFERENCE.strip().split('\n\n')[i] for i in keep)
     n = int(RATE * SECONDS) // PERIOD * PERIOD
     waves = {
         'sine': [round(32767 * math.sin(2 * math.pi * i / PERIOD)) for i in range(n)],
@@ -174,13 +185,17 @@ def main():
     w.append(f'# ADPCM は 1 周期 {PERIOD} サンプル、{RATE:.1f}Hz（{RATE / PERIOD:.1f}Hz の音）で {n} サンプルずつ、'
              f'計 {len(data)} バイト。')
     w.extend(notes)
+    w.append(f'# 対象 {a.target}、08h = {a.r08:02X}h')
     w.append('')
-    w.append('mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM')
-    w.append(REFERENCE)
+    if a.target == 'Y8960':
+        w.append('mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM')
+    w.append('')
+    w.append(reference)
+    w.append('')
     w.append('# ADPCM のメモリに書く（07h=60h）。BUF_RDY は読まない。MGA の 1 回の書き込みは')
     w.append('# メモリへの書き込みより十分に長い。BUF_RDY と EOS はリセット値のままマスクしておき、/INT を出さない')
     stop = len(data) // 4 - 1
-    for r, v in ((0x07, 0x01), (0x08, 0x00), (0x09, 0x00), (0x0A, 0x00), (0x0B, stop & 0xFF),
+    for r, v in ((0x07, 0x01), (0x08, a.r08), (0x09, 0x00), (0x0A, 0x00), (0x0B, stop & 0xFF),
                  (0x0C, stop >> 8), (0x10, DELTA_N & 0xFF), (0x11, DELTA_N >> 8), (0x12, 0xFF),
                  (0x07, 0x60), (0x04, 0x80)):
         w.append(f'io C0 {r:02X}')
@@ -192,7 +207,9 @@ def main():
         w.append(f'io C1 {v:02X}')
     w.append('')
     w.append('wait 1000')
-    w.append(PLAY_REFERENCE)
+    w.append('')
+    w.append(play_reference)
+    w.append('')
     for name, (s, e) in ranges.items():
         w.append(f'io C0 09\nio C1 {s & 0xFF:02X}\nio C0 0A\nio C1 {s >> 8:02X}')
         w.append(f'io C0 0B\nio C1 {e & 0xFF:02X}\nio C0 0C\nio C1 {e >> 8:02X}')
@@ -202,9 +219,9 @@ def main():
         w.append('io C0 07\nio C1 01')
         w.append('wait 1000')
         w.append('')
-    with open(sys.argv[1], 'w', encoding='utf-8', newline='\n') as f:
+    with open(a.out, 'w', encoding='utf-8', newline='\n') as f:
         f.write('\n'.join(w) + '\n')
-    print(f'{sys.argv[1]}: {len(data)} バイト、{sum(1 for x in w for _ in x.splitlines())} 行')
+    print(f'{a.out}: {len(data)} バイト、{sum(1 for x in w for _ in x.splitlines())} 行')
     for s in notes:
         print(s[1:])
 

@@ -13,12 +13,21 @@ set sound_driver null
 set OUT [expr {[info exists ::env(Y8960_TEST_OUT)] ? $::env(Y8960_TEST_OUT) : "."}]
 set SEQ [expr {[info exists ::env(Y8960_TONES)] ? $::env(Y8960_TONES) \
 	: [file join [file dirname [info script]] tones.txt]}]
+# 「only <対象> <命令>」の行は、対象が一致するときだけ流す（tones-mga.ps1 の -Target と同じ）。
+# 対象は環境変数 Y8960_TARGET（省くと Y8960）。実チップのカートリッジと比べるときは、
+# 拡張を fmpac や audio にして FMPAC / MSXAUDIO を渡す
+set TARGET [expr {[info exists ::env(Y8960_TARGET)] ? $::env(Y8960_TARGET) : "Y8960"}]
 
 set f [open $SEQ r]
 set ::cmds {}
 foreach line [split [read $f] "\n"] {
 	set line [string trim [regsub {#.*$} $line ""]]
-	if {$line ne ""} { lappend ::cmds $line }
+	if {$line eq ""} continue
+	if {[lindex $line 0] eq "only"} {
+		if {[lindex $line 1] ne $TARGET} continue
+		set line [lrange $line 2 end]
+	}
+	lappend ::cmds $line
 }
 close $f
 

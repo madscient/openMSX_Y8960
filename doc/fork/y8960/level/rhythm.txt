@@ -13,8 +13,12 @@
 #        キャリアの MUL を変調器の 2 倍にして、両方が同じ周波数に出るようにした
 #   HH・TC: 正弦波の成分が無く、ハードウェアとエミュレーションで作り方が違う。参考に鳴らすだけ
 # 基準に OPL2 ch1 の楽音（tones.txt の opl2-center と同じ音）を最初に置く。
+#
+# MSX-AUDIO の実チップ（Y8950）でも流せる（tones-mga.ps1 -Target MSXAUDIO）。Y8950 は波形の選択（E0h-F5h）を
+# 持たないが、書くのは正弦波の 00h なので結果は変わらない。Y8950 のリズム音の作り方は OPL2 と同じと見ている
+# （推測: 同じ OPL の系列の石であることと、openMSX の Y8950 と Y8960OPL2 が同じ式を使っていることだけが根拠）。
 
-mem 7FFF 05                 # I/O Enabler2: b0 OPL2、b2 OPM
+only Y8960 mem 7FFF 05      # I/O Enabler2: b0 OPL2、b2 OPM
 
 # --- 準備（まだ鳴らさない） ---
 
