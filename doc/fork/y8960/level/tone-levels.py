@@ -2,6 +2,8 @@
 
     py tone-levels.py EMU.wav              openMSX の録音だけを測る
     py tone-levels.py EMU.wav HW.wav       実機と比べ、<volume> の案を出す
+    py tone-levels.py --seq rhythm.txt --rel bd=ch7-melody EMU.wav [HW.wav]
+                                           区間どうしの差を、録音ごとに出す（--ref B は全区間を B と比べる）
 
 区間は録音の音量から切り出し、tones.txt の mark の順に対応づける。数が合わなければ止まる。
 振幅は区間の中ほど（前後 0.5 秒を除く）を Hann 窓で FFT し、300-3000Hz の最大のピークの
@@ -126,6 +128,17 @@ def measure(path, names):
     return out
 
 
+def relative(recs, pairs):
+    # L と R の平均で比べる。定位は中央の区間どうしを比べる前提
+    print('\n区間どうしの差（dB、L と R の平均）')
+    head = ''.join(f'{n:>10s}' for n, _ in recs)
+    print(f'  {"":26s}{head}' + ('  実機 - openMSX' if len(recs) == 2 else ''))
+    for p, q in pairs:
+        v = [(db(r[p][0]) + db(r[p][1]) - db(r[q][0]) - db(r[q][1])) / 2 for _, r in recs]
+        tail = f'  {v[1] - v[0]:+10.2f}' if len(v) == 2 else ''
+        print(f'  {p + " - " + q:26s}' + ''.join(f'{x:+10.2f}' for x in v) + tail)
+
+
 def volumes(xml):
     root = ET.parse(xml).getroot()
     out = {}
@@ -140,18 +153,32 @@ def volumes(xml):
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser()
     ap.add_argument('emu')
     ap.add_argument('hw', nargs='?')
     ap.add_argument('--seq', default=HERE / 'tones.txt')
     ap.add_argument('--xml', default=HERE.parents[3] / 'share' / 'extensions' / 'HRA_Y8960.xml')
+    ap.add_argument('--rel', action='append', default=[], metavar='A=B',
+                    help='区間 A の大きさを区間 B との差で出す。何度でも書ける')
+    ap.add_argument('--ref', metavar='B', help='すべての区間を区間 B との差で出す')
     a = ap.parse_args()
 
     names = labels(a.seq)
-    emu = measure(a.emu, names)
+    pairs = [tuple(r.split('=', 1)) for r in a.rel]
+    if a.ref:
+        pairs += [(n, a.ref) for n in names if n != a.ref]
+    for p in pairs:
+        if len(p) != 2 or not set(p) <= set(names):
+            sys.exit(f'--rel / --ref の区間が音列に無い: {"=".join(p)}')
+    recs = [('openMSX', measure(a.emu, names))]
+    if a.hw:
+        recs.append(('実機', measure(a.hw, names)))
+    if pairs:
+        relative(recs, pairs)
     if not a.hw:
         return
-    hw = measure(a.hw, names)
+    emu, hw = recs[0][1], recs[1][1]
 
     print('\n実機 - openMSX（dB）')
     diff = {}
@@ -168,6 +195,8 @@ def main():
                   f'   R: 実機 {db(hw[l][1]) - db(hw[c][1]):+7.2f}  openMSX {db(emu[l][1]) - db(emu[c][1]):+7.2f}')
 
     # 比は中央の区間の差で決まる。全体の大きさは自由なので、3 通りの揃え方を並べる
+    if not all(f'{chip}-center' in diff for chip in DEVICES):
+        return
     cur = volumes(a.xml)
     d = {chip: sum(diff[f'{chip}-center']) / 2 for chip in DEVICES if f'{chip}-center' in diff}
     raw = {chip: cur[DEVICES[chip]] * 10 ** (v / 20) for chip, v in d.items()}
