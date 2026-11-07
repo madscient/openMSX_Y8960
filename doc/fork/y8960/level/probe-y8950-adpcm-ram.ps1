@@ -1,5 +1,5 @@
 ﻿# FS-CA1 の ADPCM の RAM に、数か所のアドレスへ 4 バイトずつ書き、読み戻して、RAM が働いているかを見る。
-#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2] [-Revert Mask,Order,Handshake,End]
+#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2] [-Revert Mask,Order,Handshake,End] [-Init None|Reset|Bios]
 # 音は使わない。書くのは C0h・C1h・7FFFh だけ。C0h（状態）と C1h は読む。SRST を SPON の後に挟む。
 # -R08 は 08h に書く値（00h が 256Kbit の DRAM、02h が 64Kbit の DRAM）。
 # 手順は『Y8950 MSX-AUDIO アプリケーション・マニュアル』§III-7 (iii) の RAM-WRITE と RAM/ROM-READ に従う。
@@ -8,13 +8,19 @@
 #   Order     07h のモードをアドレスの後に書き、その前に 07h=01h を書く
 #   Handshake 1 バイトごとの BUF_RDY の待ちと 04h=80h をしない。0Fh は最初に 1 回だけ選ぶ
 #   End       終わりを 07h=00h でなく 07h=01h にする
+# -Init は、SRST の後、手順の前に書く初期化。実機の MSX では FS-CA1 の BIOS が起動時に初期化してから手順が走るので、その差を見るため。
+#   None  何も書かない
+#   Reset 07h=01h、07h=00h
+#   Bios  openMSX で FS-CA1 の BIOS が起動時に書いた値を、RAM の検査の前まで同じ順に書く
 # 状態は読むたびに記録する（D3 が BUF_RDY、D4 が EOS）。同じ値の連続は「値*回数」と縮める。ready は各バイトの前の待ち、
 # post は各バイトの直後で 04h=80h より前（04h=80h は EOS も消すので、EOS がいつ立つかは post でしか見えない）、after は 4 バイトの後。
 # 期待: 書いた 4 バイトが、ダミーの 2 回の後の 4 回に返る。全部 00 なら、RAM が値を保持していない。
 param(
     [string]$Port,
     [int]$R08 = 0,
-    [string]$Revert = ''
+    [string]$Revert = '',
+    [ValidateSet('None', 'Reset', 'Bios')]
+    [string]$Init = 'None'
 )
 $ErrorActionPreference = 'Stop'
 # -File で渡すとカンマ区切りが配列にならないので、ここで分ける
@@ -32,6 +38,9 @@ $maskValue = if ($revMask) { 0x78 } else { 0x00 }
 $endValue = if ($revEnd) { 0x01 } else { 0x00 }
 # メモリの 1 バイトはマニュアルの例から 125µs 以内に済むはずで、MGA の 1 コマンドは約 1.4ms。30 回で打ち切る
 $PollMax = 30
+# (レジスタ, 値) を並べたもの。openMSX の HB-F1XDJ で、7FFFh=01h の後に BIOS が書いた順
+$biosInit = @(0x18, 0x08, 0x19, 0x00, 0x02, 0x00, 0x03, 0xBF, 0x07, 0x01, 0x07, 0x00, 0x08, 0x00,
+    0x04, 0x78, 0x04, 0x80, 0x16, 0x00, 0x17, 0x04, 0xBD, 0x00, 0x12, 0xFF)
 
 $sp = New-Object System.IO.Ports.SerialPort $Port, 115200, 'None', 8, 'One'
 $sp.DtrEnable = $true
@@ -145,7 +154,9 @@ try {
     if ($r[-1] -ne 'OK') { throw "SRST failed: $($r -join ' | ')" }
     Start-Sleep -Milliseconds 100
     MemWr 0x7FFF 0x01
-    Write-Host ('08h = {0:X2}, 04h = {1:X2}, end 07h = {2:X2}, revert: {3}' -f $R08, $maskValue, $endValue, ($(if ($revList.Count) { $revList -join ',' } else { 'none' })))
+    if ($Init -eq 'Reset') { YWr 0x07 0x01; YWr 0x07 0x00 }
+    elseif ($Init -eq 'Bios') { for ($i = 0; $i -lt $biosInit.Count; $i += 2) { YWr $biosInit[$i] $biosInit[$i + 1] } }
+    Write-Host ('08h = {0:X2}, 04h = {1:X2}, end 07h = {2:X2}, init: {4}, revert: {3}' -f $R08, $maskValue, $endValue, ($(if ($revList.Count) { $revList -join ',' } else { 'none' })), $Init)
     Write-Host ('status after SRST: {0:X2}' -f (IoRd 0xC0))
 
     $t = 0
