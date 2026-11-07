@@ -1,14 +1,37 @@
-﻿# FS-CA1 の ADPCM の RAM に、数か所のアドレスへ 4 バイトずつ書き、読み戻して、RAM が働いているか、大きさがどれだけかを見る。
-#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2]
-# 音は使わない。書くのは C0h・C1h・7FFFh だけ。C1h は読むだけ。SRST を SPON の後に挟む。-R08 は 08h に書く値
-# （00h が 256KB、02h が 64KB の扱い）。
-# 読み戻しは、07h=20h の後の最初の 2 回がダミー（直前に書いたか読んだデータが返る）で、3 回目から RAM の中身。
-# 期待: 書いた 4 バイトが 3〜6 回目に返る。全部 00 なら、RAM が値を保持していない。
-param([string]$Port, [int]$R08 = 0)
+﻿# FS-CA1 の ADPCM の RAM に、数か所のアドレスへ 4 バイトずつ書き、読み戻して、RAM が働いているかを見る。
+#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2] [-Revert Mask,Order,Handshake,End]
+# 音は使わない。書くのは C0h・C1h・7FFFh だけ。C0h（状態）と C1h は読む。SRST を SPON の後に挟む。
+# -R08 は 08h に書く値（00h が 256Kbit の DRAM、02h が 64Kbit の DRAM）。
+# 手順は『Y8950 MSX-AUDIO アプリケーション・マニュアル』§III-7 (iii) の RAM-WRITE と RAM/ROM-READ に従う。
+# -Revert は、マニュアルとの違いを旧手順に戻す。どの違いが効いているかを 1 つずつ確かめるため。
+#   Mask      04h を 00h でなく 78h にする（T1・T2・EOS・BUF_RDY をマスク）。Handshake と併せないと、BUF_RDY の待ちは毎回打ち切りになる
+#   Order     07h のモードをアドレスの後に書き、その前に 07h=01h を書く
+#   Handshake 1 バイトごとの BUF_RDY の待ちと 04h=80h をしない。0Fh は最初に 1 回だけ選ぶ
+#   End       終わりを 07h=00h でなく 07h=01h にする
+# 状態は読むたびに記録する（D3 が BUF_RDY、D4 が EOS）。同じ値の連続は「値*回数」と縮める。ready は各バイトの前の待ち、
+# post は各バイトの直後で 04h=80h より前（04h=80h は EOS も消すので、EOS がいつ立つかは post でしか見えない）、after は 4 バイトの後。
+# 期待: 書いた 4 バイトが、ダミーの 2 回の後の 4 回に返る。全部 00 なら、RAM が値を保持していない。
+param(
+    [string]$Port,
+    [int]$R08 = 0,
+    [string]$Revert = ''
+)
 $ErrorActionPreference = 'Stop'
+# -File で渡すとカンマ区切りが配列にならないので、ここで分ける
+$revList = @($Revert -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+foreach ($x in $revList) { if (@('Mask', 'Order', 'Handshake', 'End') -notcontains $x) { throw "Unknown -Revert: $x" } }
 
 $dev = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match "\($Port\)" }
 if (-not $dev -or $dev.PNPDeviceID -notmatch 'VID_0B49&PID_26D2') { throw "$Port is not MGA" }
+
+$revMask = $revList -contains 'Mask'
+$revOrder = $revList -contains 'Order'
+$revHandshake = $revList -contains 'Handshake'
+$revEnd = $revList -contains 'End'
+$maskValue = if ($revMask) { 0x78 } else { 0x00 }
+$endValue = if ($revEnd) { 0x01 } else { 0x00 }
+# メモリの 1 バイトはマニュアルの例から 125µs 以内に済むはずで、MGA の 1 コマンドは約 1.4ms。30 回で打ち切る
+$PollMax = 30
 
 $sp = New-Object System.IO.Ports.SerialPort $Port, 115200, 'None', 8, 'One'
 $sp.DtrEnable = $true
@@ -52,17 +75,61 @@ function MemWr([int]$addr, [int]$val) {
     if ($r[-1] -ne 'OK') { throw "SMWR failed: $($r -join ' | ')" }
 }
 
-# 開始アドレスのレジスタ（09h・0Ah）は、ニブル単位の値の 3 ビット目から（9h は << 3、0Ah は << 11）。バイトのアドレスは、その半分
+function Compress([int[]]$xs) {
+    $out = @()
+    $i = 0
+    while ($i -lt $xs.Count) {
+        $j = $i
+        while ($j + 1 -lt $xs.Count -and $xs[$j + 1] -eq $xs[$i]) { $j++ }
+        $n = $j - $i + 1
+        if ($n -gt 1) { $out += ('{0:X2}*{1}' -f $xs[$i], $n) } else { $out += ('{0:X2}' -f $xs[$i]) }
+        $i = $j + 1
+    }
+    return ($out -join ' ')
+}
+# BUF_RDY が立つまで状態を読む。読んだ値を縮めた文字列で返し、打ち切りなら末尾に印を付ける
+function WaitReady {
+    $seen = @()
+    for ($k = 0; $k -lt $PollMax; $k++) {
+        $s = IoRd 0xC0
+        $seen += $s
+        if ($s -band 0x08) { return (Compress $seen) }
+    }
+    return ((Compress $seen) + ' TIMEOUT')
+}
+
+# 256Kbit の DRAM では、09h・0Ah はバイトのアドレスを 4 で割った値（マニュアル p.20）
 function SetAddr([int]$byteAddr, [int]$nBytes) {
-    $nib = $byteAddr * 2
-    $stop = $nib + 2 * $nBytes - 1
-    YWr 0x09 (($nib -shr 3) -band 0xFF)
-    YWr 0x0A (($nib -shr 11) -band 0xFF)
-    YWr 0x0B (($stop -shr 3) -band 0xFF)
-    YWr 0x0C (($stop -shr 11) -band 0xFF)
+    $start = $byteAddr -shr 2
+    $stop = ($byteAddr + $nBytes - 1) -shr 2
+    YWr 0x09 ($start -band 0xFF)
+    YWr 0x0A (($start -shr 8) -band 0xFF)
+    YWr 0x0B ($stop -band 0xFF)
+    YWr 0x0C (($stop -shr 8) -band 0xFF)
+}
+# 07h のモードとアドレスの順は、マニュアルでは 4 つのメモリの手順すべてでモードが先
+function Setup([int]$byteAddr, [int]$mode) {
+    if ($revOrder) {
+        YWr 0x07 0x01
+        YWr 0x08 $R08
+        YWr 0x04 $maskValue
+        SetAddr $byteAddr 4
+        YWr 0x07 $mode
+        YWr 0x04 0x80
+    } else {
+        YWr 0x04 $maskValue
+        YWr 0x04 0x80
+        YWr 0x07 $mode
+        YWr 0x08 $R08
+        SetAddr $byteAddr 4
+    }
 }
 
 $tests = @(0x00000, 0x07FFC, 0x08000, 0x10000, 0x20000, 0x3FFFC)
+if ($R08 -band 0x02) {
+    # 64Kbit の DRAM では 09h の D3 と 0Ah の D4 が 0 でなければならない（マニュアル p.20）
+    $tests = @($tests | Where-Object { (($_ -shr 2) -band 0x1008) -eq 0 })
+}
 $powered = $false
 try {
     Drain
@@ -78,37 +145,61 @@ try {
     if ($r[-1] -ne 'OK') { throw "SRST failed: $($r -join ' | ')" }
     Start-Sleep -Milliseconds 100
     MemWr 0x7FFF 0x01
-    Write-Host ('08h = {0:X2}' -f $R08)
+    Write-Host ('08h = {0:X2}, 04h = {1:X2}, end 07h = {2:X2}, revert: {3}' -f $R08, $maskValue, $endValue, ($(if ($revList.Count) { $revList -join ',' } else { 'none' })))
+    Write-Host ('status after SRST: {0:X2}' -f (IoRd 0xC0))
 
-    # 書く
     $t = 0
     foreach ($a in $tests) {
         $t++
-        YWr 0x07 0x01
-        YWr 0x08 $R08
-        YWr 0x04 0x78
-        SetAddr $a 4
-        YWr 0x07 0x60
-        YWr 0x04 0x80
-        IoWr 0xC0 0x0F
-        for ($i = 1; $i -le 4; $i++) { IoWr 0xC1 ((0x10 * $t) + $i) }
-        YWr 0x07 0x01
+        $vals = 1..4 | ForEach-Object { (0x10 * $t) + $_ }
+        Setup $a 0x60
+        $st = @()
+        $post = @()
+        if ($revHandshake) {
+            IoWr 0xC0 0x0F
+            foreach ($v in $vals) { IoWr 0xC1 $v; $post += IoRd 0xC0 }
+        } else {
+            foreach ($v in $vals) {
+                $st += (WaitReady)
+                IoWr 0xC0 0x0F
+                IoWr 0xC1 $v
+                $post += IoRd 0xC0
+                YWr 0x04 0x80
+            }
+        }
+        $after = IoRd 0xC0
+        YWr 0x07 $endValue
+        $w = ($vals | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
+        Write-Host ('W {0:X5}: {1} | ready {2} | post {3} | after {4:X2}' -f $a, $w, ($(if ($st.Count) { $st -join ' / ' } else { '-' })),
+            (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
     }
-    # 読む
     $t = 0
     foreach ($a in $tests) {
         $t++
-        YWr 0x07 0x01
-        YWr 0x08 $R08
-        YWr 0x04 0x78
-        SetAddr $a 4
-        YWr 0x07 0x20
-        IoWr 0xC0 0x0F
-        $got = @()
-        for ($i = 0; $i -lt 6; $i++) { $got += ('{0:X2}' -f (IoRd 0xC1)) }
         $want = (1..4 | ForEach-Object { '{0:X2}' -f ((0x10 * $t) + $_) }) -join ' '
-        Write-Host ('byte addr {0:X5}: wrote {1} | read {2}' -f $a, $want, ($got -join ' '))
-        YWr 0x07 0x01
+        Setup $a 0x20
+        IoWr 0xC0 0x0F
+        $dummy = @((IoRd 0xC1), (IoRd 0xC1))
+        $got = @()
+        $st = @()
+        $post = @()
+        for ($i = 0; $i -lt 4; $i++) {
+            if ($revHandshake) {
+                $got += IoRd 0xC1
+                $post += IoRd 0xC0
+            } else {
+                $st += (WaitReady)
+                IoWr 0xC0 0x0F
+                $got += IoRd 0xC1
+                $post += IoRd 0xC0
+                YWr 0x04 0x80
+            }
+        }
+        $after = IoRd 0xC0
+        YWr 0x07 $endValue
+        Write-Host ('R {0:X5}: want {1} | dummy {2} | read {3} | ready {4} | post {5} | after {6:X2}' -f $a, $want,
+            (($dummy | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), (($got | ForEach-Object { '{0:X2}' -f $_ }) -join ' '),
+            ($(if ($st.Count) { $st -join ' / ' } else { '-' })), (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
     }
 }
 catch {
