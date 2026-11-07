@@ -1,5 +1,5 @@
 ﻿# FS-CA1 の ADPCM の RAM に、数か所のアドレスへ 4 バイトずつ書き、読み戻して、RAM が働いているかを見る。
-#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2] [-Revert Mask,Order,Handshake,End] [-Init None|Reset|Bios]
+#   powershell -ExecutionPolicy Bypass -File probe-y8950-adpcm-ram.ps1 -Port COMn [-R08 0|2] [-Revert Mask,Order,Handshake,End] [-Init None|Reset|Bios] [-Addresses Spots|Lines|Banks]
 # 音は使わない。書くのは C0h・C1h・7FFFh だけ。C0h（状態）と C1h は読む。SRST を SPON の後に挟む。
 # -R08 は 08h に書く値（00h が 256Kbit の DRAM、02h が 64Kbit の DRAM）。
 # 手順は『Y8950 MSX-AUDIO アプリケーション・マニュアル』§III-7 (iii) の RAM-WRITE と RAM/ROM-READ に従う。
@@ -12,6 +12,13 @@
 #   None  何も書かない
 #   Reset 07h=01h、07h=00h
 #   Bios  openMSX で FS-CA1 の BIOS が起動時に書いた値を、RAM の検査の前まで同じ順に書く
+# -Addresses は試す番地。
+#   Spots 下の 6 か所。値を保持するかを見る。0x2000 だけ離れた組などが無いので、番地線が効いているかは見ない
+#   Lines 番地線を 1 本ずつ見る。バイト番地 2^k（k=2..17）に書いた後で 0 に書き、全部を読み戻す。番地の bit k が効いていなければ、
+#         2^k から 0 の値が返る。bit0・bit1 は各番地の 4 バイトの中で見る。書く値は 4 * 試験の番号 + 0..3
+#   Banks Lines の k=2..14 を、BANK（バイト番地の bit15..17）ごとにその先頭 b * 8000h を 0 として行う。
+#         BANK ごとに書いて読み戻してから次の BANK に移る。番地線の不良が BANK によって違うかを見るため
+# 書く値は、どの形でも bit7 が 0。データの bit7 の不良は見えない
 # 状態は読むたびに記録する（D3 が BUF_RDY、D4 が EOS）。同じ値の連続は「値*回数」と縮める。ready は各バイトの前の待ち、
 # post は各バイトの直後で 04h=80h より前（04h=80h は EOS も消すので、EOS がいつ立つかは post でしか見えない）、after は 4 バイトの後。
 # 期待: 書いた 4 バイトが、ダミーの 2 回の後の 4 回に返る。全部 00 なら、RAM が値を保持していない。
@@ -20,7 +27,9 @@ param(
     [int]$R08 = 0,
     [string]$Revert = '',
     [ValidateSet('None', 'Reset', 'Bios')]
-    [string]$Init = 'None'
+    [string]$Init = 'None',
+    [ValidateSet('Spots', 'Lines', 'Banks')]
+    [string]$Addresses = 'Spots'
 )
 $ErrorActionPreference = 'Stop'
 # -File で渡すとカンマ区切りが配列にならないので、ここで分ける
@@ -134,10 +143,22 @@ function Setup([int]$byteAddr, [int]$mode) {
     }
 }
 
-$tests = @(0x00000, 0x07FFC, 0x08000, 0x10000, 0x20000, 0x3FFFC)
+# 番地の組。組ごとに全部を書いてから全部を読み戻す。先頭の番地を最後に書くので、重なった番地には先頭の値が残る
+if ($Addresses -eq 'Lines') {
+    $groups = @(, @((2..17 | ForEach-Object { 1 -shl $_ }) + 0))
+} elseif ($Addresses -eq 'Banks') {
+    $groups = @(0..7 | ForEach-Object { $base = $_ -shl 15; , @((2..14 | ForEach-Object { $base + (1 -shl $_) }) + $base) })
+} else {
+    $groups = @(, @(0x00000, 0x07FFC, 0x08000, 0x10000, 0x20000, 0x3FFFC))
+}
+# 試験 t（組の中で 1 から）で書く 4 バイト。Lines と Banks は組の試験が 14 個以上あり、0x10 * t では 1 バイトに収まらない
+function Vals([int]$t) {
+    if ($Addresses -ne 'Spots') { return , @(0..3 | ForEach-Object { 4 * $t + $_ }) }
+    return , @(1..4 | ForEach-Object { 0x10 * $t + $_ })
+}
 if ($R08 -band 0x02) {
     # 64Kbit の DRAM では 09h の D3 と 0Ah の D4 が 0 でなければならない（マニュアル p.20）
-    $tests = @($tests | Where-Object { (($_ -shr 2) -band 0x1008) -eq 0 })
+    $groups = @($groups | ForEach-Object { , @($_ | Where-Object { (($_ -shr 2) -band 0x1008) -eq 0 }) })
 }
 $powered = $false
 try {
@@ -156,61 +177,63 @@ try {
     MemWr 0x7FFF 0x01
     if ($Init -eq 'Reset') { YWr 0x07 0x01; YWr 0x07 0x00 }
     elseif ($Init -eq 'Bios') { for ($i = 0; $i -lt $biosInit.Count; $i += 2) { YWr $biosInit[$i] $biosInit[$i + 1] } }
-    Write-Host ('08h = {0:X2}, 04h = {1:X2}, end 07h = {2:X2}, init: {4}, revert: {3}' -f $R08, $maskValue, $endValue, ($(if ($revList.Count) { $revList -join ',' } else { 'none' })), $Init)
+    Write-Host ('08h = {0:X2}, 04h = {1:X2}, end 07h = {2:X2}, init: {4}, addresses: {5}, revert: {3}' -f $R08, $maskValue, $endValue, ($(if ($revList.Count) { $revList -join ',' } else { 'none' })), $Init, $Addresses)
     Write-Host ('status after SRST: {0:X2}' -f (IoRd 0xC0))
 
-    $t = 0
-    foreach ($a in $tests) {
-        $t++
-        $vals = 1..4 | ForEach-Object { (0x10 * $t) + $_ }
-        Setup $a 0x60
-        $st = @()
-        $post = @()
-        if ($revHandshake) {
-            IoWr 0xC0 0x0F
-            foreach ($v in $vals) { IoWr 0xC1 $v; $post += IoRd 0xC0 }
-        } else {
-            foreach ($v in $vals) {
-                $st += (WaitReady)
-                IoWr 0xC0 0x0F
-                IoWr 0xC1 $v
-                $post += IoRd 0xC0
-                YWr 0x04 0x80
-            }
-        }
-        $after = IoRd 0xC0
-        YWr 0x07 $endValue
-        $w = ($vals | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
-        Write-Host ('W {0:X5}: {1} | ready {2} | post {3} | after {4:X2}' -f $a, $w, ($(if ($st.Count) { $st -join ' / ' } else { '-' })),
-            (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
-    }
-    $t = 0
-    foreach ($a in $tests) {
-        $t++
-        $want = (1..4 | ForEach-Object { '{0:X2}' -f ((0x10 * $t) + $_) }) -join ' '
-        Setup $a 0x20
-        IoWr 0xC0 0x0F
-        $dummy = @((IoRd 0xC1), (IoRd 0xC1))
-        $got = @()
-        $st = @()
-        $post = @()
-        for ($i = 0; $i -lt 4; $i++) {
+    foreach ($g in $groups) {
+        $t = 0
+        foreach ($a in $g) {
+            $t++
+            $vals = Vals $t
+            Setup $a 0x60
+            $st = @()
+            $post = @()
             if ($revHandshake) {
-                $got += IoRd 0xC1
-                $post += IoRd 0xC0
-            } else {
-                $st += (WaitReady)
                 IoWr 0xC0 0x0F
-                $got += IoRd 0xC1
-                $post += IoRd 0xC0
-                YWr 0x04 0x80
+                foreach ($v in $vals) { IoWr 0xC1 $v; $post += IoRd 0xC0 }
+            } else {
+                foreach ($v in $vals) {
+                    $st += (WaitReady)
+                    IoWr 0xC0 0x0F
+                    IoWr 0xC1 $v
+                    $post += IoRd 0xC0
+                    YWr 0x04 0x80
+                }
             }
+            $after = IoRd 0xC0
+            YWr 0x07 $endValue
+            $w = ($vals | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
+            Write-Host ('W {0:X5}: {1} | ready {2} | post {3} | after {4:X2}' -f $a, $w, ($(if ($st.Count) { $st -join ' / ' } else { '-' })),
+                (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
         }
-        $after = IoRd 0xC0
-        YWr 0x07 $endValue
-        Write-Host ('R {0:X5}: want {1} | dummy {2} | read {3} | ready {4} | post {5} | after {6:X2}' -f $a, $want,
-            (($dummy | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), (($got | ForEach-Object { '{0:X2}' -f $_ }) -join ' '),
-            ($(if ($st.Count) { $st -join ' / ' } else { '-' })), (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
+        $t = 0
+        foreach ($a in $g) {
+            $t++
+            $want = ((Vals $t) | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
+            Setup $a 0x20
+            IoWr 0xC0 0x0F
+            $dummy = @((IoRd 0xC1), (IoRd 0xC1))
+            $got = @()
+            $st = @()
+            $post = @()
+            for ($i = 0; $i -lt 4; $i++) {
+                if ($revHandshake) {
+                    $got += IoRd 0xC1
+                    $post += IoRd 0xC0
+                } else {
+                    $st += (WaitReady)
+                    IoWr 0xC0 0x0F
+                    $got += IoRd 0xC1
+                    $post += IoRd 0xC0
+                    YWr 0x04 0x80
+                }
+            }
+            $after = IoRd 0xC0
+            YWr 0x07 $endValue
+            Write-Host ('R {0:X5}: want {1} | dummy {2} | read {3} | ready {4} | post {5} | after {6:X2}' -f $a, $want,
+                (($dummy | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), (($got | ForEach-Object { '{0:X2}' -f $_ }) -join ' '),
+                ($(if ($st.Count) { $st -join ' / ' } else { '-' })), (($post | ForEach-Object { '{0:X2}' -f $_ }) -join ' '), $after)
+        }
     }
 }
 catch {
