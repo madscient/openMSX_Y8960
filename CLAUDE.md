@@ -99,6 +99,19 @@ set sound_driver null
 
 `-testconfig` は構成を検証して終了するだけなのでウィンドウを作らない。
 
+**`-testconfig` は、拡張を読めなくても理由を出さない。** Git Bash から起動すると、終了コード 1 を
+返すだけで、標準出力にも標準エラーにも何も出ない。理由を見るときは `-testconfig` を使わず、通常の起動で
+次のスクリプトを渡し、`ext` の失敗を `catch` してファイルに書き出させる。
+
+```tcl
+set renderer none
+set sound_driver null
+set out [open $::env(EXT_ERR_OUT) w]
+if {[catch {ext HRA_Y8960} msg]} { puts $out "ERROR: $msg" } else { puts $out "OK" }
+close $out
+exit
+```
+
 ## 6. ビルド
 
 このマシン固有の詰まりどころが `doc/fork/build/README.md` にある。

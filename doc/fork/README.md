@@ -21,7 +21,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `build/README.md` | ビルド環境。マシンごとの詰まりどころと手順 |
 | `release/README.md` | GitHub Releases に出すときの決まりと手順 |
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
-| `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト |
+| `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト。Y8960 の upstream PR（openMSX/openMSX#2288）のブランチを `main` から組み直すスクリプト（`y8960-pr-*`） |
 | `upstream-touched.txt` | 変更してよい upstream のファイルの一覧と理由。点検器が突き合わせる |
 
 ## upstream との関係
