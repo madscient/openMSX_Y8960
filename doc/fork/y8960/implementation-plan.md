@@ -1272,6 +1272,51 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-13 (4) — PR のコミットの分け方を決めた。組み方の案と、PR に入れるべき帰属表示
+
+ユーザーの判断。
+
+- **コミットはデバイスごとに分ける。MSX-Timer は buppu3 さんの元のコミット `ae8c15509` をそのまま、著者付きで載せる。**
+  こちらの直しは別のコミットにする。ほかのコミットはユーザーの名義で、buppu3 さんの行が残っているもの（ミキサー、OPLL、
+  ROM マッパー、拡張の定義）は本文に「buppu3 の実装をもとにした」と書く（Co-Authored-By は使わない、(3) の決定）。
+  **前提**: (3) の集計（MSX-Timer の 86% が buppu3 さんの行）が変わらない限り成立する
+- 計画文書の 2 件（`e517bf7fb`、`61d860259`）の push（ユーザーの承認。済み）
+
+組み方を決めるために調べたこと。
+
+- **`ae8c15509` は今の upstream/master に衝突なく載る**（**確認済み**: `git merge-tree --write-tree --merge-base ae8c15509^
+  upstream/master ae8c15509` の終了コードが 0 で、衝突したファイルの一覧が出ない）。今の upstream でコンパイルが通るかは
+  **未検証**
+- **音色表の帰属表示は、ルートの `README` のフォークの節にしか無い**（**確認済み**: `YM2413NukeYKTBanked.cc/.hh` に
+  plgDavid・Plogue・CC BY-SA の語が無い）。README のフォークの節は PR に入れないので、PR に入るソースのどこかに表示を
+  足さないと、PR が CC BY-SA の表を表示なしで配ることになる
+- **フォークが足したファイルどうしの include**（**確認済み**: 足したファイルの `#include "..."` を拾った）。`Y8960Pan.hh` を
+  SCC・SSG・OPLL・OPL2・ミキサーが使い、`RomY8960.hh` が SCC・MSX-Timer・ミキサー・OPL2・SSG・OPLL・OPM の各デバイスを使う。
+  ほかのデバイスどうしは互いを使わない。よって、パンとミキサーを先に、ROM マッパーを最後に置けば、間のデバイスは
+  どの順でも各コミットが組める（**未検証**: 組んで確かめてはいない）
+- 各デバイスは `DeviceFactory` に別々の型として登録され、拡張の定義（`HRA_Y8960.xml`）でつながる。`ae8c15509` が
+  `HRA_Y8960.xml` を MSX-Timer だけの形で作る
+- ユーザーの前回の PR（#2239、YM2608 のリズム ROM を外から読む）は、このフォークのリポジトリから出し、説明文の末尾に
+  生成ツールの行を置いていない（**確認済み**: `gh pr view 2239`）
+
+**コミットの案**（題は外に出る値。組む前にユーザーに確かめる）
+
+| # | 著者 | 中身 |
+|---|---|---|
+| 1 | buppu3 | `ae8c15509` Add MSX-Timer module（そのまま） |
+| 2 | ユーザー | MSX-Timer を今の形にする |
+| 3 | ユーザー | パン（`Y8960Pan.hh`）、ミキサー、`MSXMixer::setDeviceGain` |
+| 4 | ユーザー | SSG 2 個（`Y8960SsgCore`、`Y8960SSGS`、`Y8960SSGSDevice`） |
+| 5 | ユーザー | OPLL 2 個と音色バンク（`YM2413NukeYKTBanked`、`Y8960OPLL`、`Y8960OPLLDevice`）。帰属表示を足す |
+| 6 | ユーザー | OPL2 と ADPCM（`Y8960OPL2`、`Y8960Adpcm`、`Y8960AdpcmMemory`、`Y8960OPL2Device`） |
+| 7 | ユーザー | OPM（`Y8960OPMDevice`） |
+| 8 | ユーザー | SCC（`Y8960SCC`、`ImGuiSCCViewer`） |
+| 9 | ユーザー | System Controller（`Y8960SystemController`） |
+| 10 | ユーザー | ROM マッパー（`RomY8960`、`RomFactory`・`RomInfo`・`RomTypes`）と `HRA_Y8960.xml` の完成形 |
+
+各コミットは、自分のファイルを `meson.build`・`openmsx.vcxproj`・`.filters`・`DeviceFactory.cc` に登録する行だけを持つ。
+最後のコミットの `src`・`share`・`build` は、帰属表示の注釈を除いて `main` と同じにする（`git diff` で確かめる）
+
 ### 2026-11-13 (3) — PR の前提を 2 つ決めた。buppu3 さんのコードがどれだけ残っているかを数えた
 
 ユーザーの判断。
