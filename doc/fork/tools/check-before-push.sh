@@ -19,13 +19,25 @@ paths="CLAUDE.md README doc src share build"
 # フォークが自分で書いたもの。全文を見てよい。
 ownpaths="CLAUDE.md doc/fork"
 
-# push する差分の追加行を "ファイル: 内容" で出す。
+# upstream から来たコミットは点検の対象から外す。upstream に載せ替えた後は
+# origin/main が載せ替える前の main なので、$range に upstream のコミットが
+# 何百と入る。upstream の doc/manual には説明のためのホームディレクトリ例があり、
+# そのままでは 3-2 がこちらの書いていない行で止まる。
+if git rev-parse -q --verify upstream/master >/dev/null; then
+	notup="--not upstream/master"
+else
+	notup=""
+fi
+
+# push するフォークのコミットが足した行を "ファイル: 内容" で出す。
 #
 # 作業ツリー全体を見ると upstream のファイルまで対象に入る。そこには
 # 導出した語にたまたま部分一致する英文があり、こちらが書いていない行で
-# 止まる。範囲を出す差分に絞れば、当たった行は必ず自分が足した行になる。
+# 止まる。フォークのコミットに絞れば、当たった行は必ず自分が足した行になる。
+# 範囲の両端の差分ではなくコミットごとの差分を見るのは、途中のコミットで
+# 足して後で消した行も push するオブジェクトに入るため。
 added_lines() {
-	git diff -U0 $range -- $paths | awk '
+	git log -p -U0 --format= $range $notup -- $paths | awk '
 		/^\+\+\+ /{ f = substr($0, 7); next }
 		/^\+/{ print f ": " substr($0, 2) }
 	'
@@ -46,7 +58,7 @@ match_terms() {
 }
 
 echo "== 1. 著者とコミッタ =="
-ids=$(git log --format='%an <%ae>%n%cn <%ce>' $range | sort -u)
+ids=$(git log --format='%an <%ae>%n%cn <%ce>' $range $notup | sort -u)
 if [ -z "$ids" ]; then
 	echo "  push するコミットが無い"
 else
@@ -54,7 +66,7 @@ else
 fi
 
 echo "== 2. コミットメッセージの trailer =="
-if git log --format='%b' $range | grep -i "example.invalid"; then
+if git log --format='%b' $range $notup | grep -i "example.invalid"; then
 	echo "  NG: 不正な trailer"
 	fail=1
 else
