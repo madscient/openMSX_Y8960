@@ -10,20 +10,23 @@
     <type>sound expansion</type>
   </info>
   <devices>
-    <!-- 各音源の <volume> は、実機で測った音源どうしの比に合わせ、最大の OPM を 30000 にした。
-         上流の相当品（fmpac.xml、audio.xml、scc.xml など）の値とは違う -->
+    <!-- The <volume> of each block follows the level ratios measured on the
+         cartridge, with the loudest, the OPM, at 30000. They differ from the
+         values in comparable extensions (fmpac.xml, audio.xml, scc.xml, ...) -->
     <MSX-TIMER id="y8960-timer">
       <io base="0xB0" num="4"/>
     </MSX-TIMER>
-    <!-- I/O 40h-4Fh。40h に 80h を書くと有効になり、41h に 02h でこのカートリッジを選ぶ。
-         識別までで、Config ROM の読み書き（42h の機能 01h の先）は持たない -->
+    <!-- I/O 40h-4Fh. Writing 80h to 40h enables it, and 02h to 41h selects
+         this cartridge. Identification only: the Config ROM reader/writer
+         behind function 01h of 42h is not there -->
     <Y8960-SYSTEM-CONTROLLER id="Y8960 System Controller"/>
-    <!-- SSGS 1 個。内部に YM2149 相当の SSG が 2 系統あり、00h-0Fh が系統 0、
-         10h-1Fh が系統 1。20h 台にチャンネルごとの音量と定位。
-         A0h=レジスタ番号、A1h=書き込み。
-         本体 PSG と同じポートに重なるのは実機どおり。実機は系統 1 の読み出しに
-         A2h で応じるが、ここでは応じない（入力ポートを本体 PSG と重ねると、
-         挿すたびに openMSX が警告を出す） -->
+    <!-- One SSGS block holding two YM2149 units: 00h-0Fh is unit 0, 10h-1Fh
+         unit 1, and 20h-2Fh the volume and pan of each channel.
+         A0h = register number, A1h = write.
+         Sharing the ports of the MSX's PSG is what the cartridge does. The
+         cartridge answers A2h reads of unit 1, but this does not: an input
+         port overlapping the MSX's PSG makes openMSX warn every time the
+         extension is inserted -->
     <Y8960-SSGS id="Y8960 SSGS">
       <io base="0xA0" num="4" type="O"/>
       <sound>
@@ -36,8 +39,8 @@
         <volume>7009</volume>
       </sound>
     </Y8960-OPLL>
-    <!-- ADPCM のサンプルメモリ 256KB。SRAM の 40000h-7FFFFh にあたる。
-         OPL2 より先に置くこと（OPL2 が構築時に参照する） -->
+    <!-- The ADPCM sample memory, 256kB: 40000h-7FFFFh of the cartridge's
+         SRAM. Keep it before the OPL2, which looks it up when it is built -->
     <Y8960-ADPCM-RAM id="Y8960 ADPCM RAM"/>
     <Y8960-OPL2 id="Y8960 OPL2">
       <io base="0xC0" num="2"/>
@@ -46,7 +49,7 @@
         <volume>7433</volume>
       </sound>
     </Y8960-OPL2>
-    <!-- 7Eh=アドレス、7Fh=データ。7Fh を読むとステータス -->
+    <!-- 7Eh = address, 7Fh = data. Reading 7Fh returns the status -->
     <Y8960-OPM id="Y8960 OPM">
       <io base="0x7E" num="2"/>
       <sound>
@@ -62,8 +65,8 @@
           </sound>
           <mappertype>Y8960</mappertype>
           <rom/>
-          <!-- メモリマップド I/O の窓の番地と I/O Enabler のビットは
-               RomY8960.cc の先頭にまとめてある -->
+          <!-- The addresses of the memory mapped I/O and the I/O Enabler
+               bits are listed at the top of RomY8960.cc -->
           <opll>Y8960 OPLL</opll>
           <opl2>Y8960 OPL2</opl2>
           <ssgs>Y8960 SSGS</ssgs>
@@ -73,13 +76,14 @@
         </ROM>
       </secondary>
     </primary>
-    <!-- ミキサーに I/O ポートは無く、音量はメモリマップド I/O の
-         7FF7h + チャンネル番号で書く。4 と 5（7FFBh / 7FFCh）は OPM のポートで、
-         音量ではない。マスター音量は 7FFEh で、全チャンネルに掛かる。
-         ADPCM は OPL2 に混ざり、OPL2 の音量に従う。
-         SCC の音源を参照するので ROM より後に置くこと。
-         カートリッジは音声を本体に戻さないので、既定は Y8960 側の出力だけ。
-         y8960-mixer_output 設定で msx / mix に切り替えられる -->
+    <!-- The mixer has no I/O ports. Its volumes are written through the
+         memory mapped I/O at 7FF7h + channel; 4 and 5 (7FFBh / 7FFCh) are
+         the OPM's ports, not volumes. The master volume at 7FFEh scales all
+         channels. The ADPCM is mixed into the OPL2 and takes its volume.
+         Keep this after the ROM, as it refers to the SCC.
+         The cartridge does not feed its sound back into the MSX, so the
+         default is the cartridge's output alone. The setting
+         y8960-mixer_output switches to msx or mix -->
     <Y8960-MIXER id="y8960-mixer">
       <default_output>y8960</default_output>
       <channel num="0" idref="Y8960 SSGS"/>

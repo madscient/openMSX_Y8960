@@ -17,9 +17,9 @@ public:
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
 	void writePort(bool port, byte value, EmuTime time);
 
-	/** 7FF6h (I/O Enabler1) による直接 I/O ポートの開閉。
-	  * メモリマップド I/O からの writePort() はこれに影響されない。
-	  * 実機もそちらは常に通る（そうでないと I/O を開く手段が無くなる）。 */
+	/** Open or close the I/O ports: 7FF6h (I/O Enabler1). writePort(),
+	  * from the memory mapped I/O, is not affected. On the cartridge that
+	  * way is always open too; otherwise nothing could open the ports. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 
 	template<typename Archive>

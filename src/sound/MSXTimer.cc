@@ -228,10 +228,9 @@ MSXTimerCore::MSXTimerCore(Scheduler& scheduler_, MSXTimerIrqCallback& cb_, unsi
 
 void MSXTimerCore::executeUntil(EmuTime time)
 {
-    // 同期ポイントに達したのでポイントは削除済
+    // reaching the sync point removed it
     scheduled = false;
 
-    // カウンタを更新
     updateCounter(time);
     updateSchedule(time);
     updateIrq(time);
@@ -261,9 +260,9 @@ uint32_t MSXTimerCore::divCount(uint32_t value) const
 
 uint64_t MSXTimerCore::mulCount(uint32_t value) const
 {
-    // 64bit で返す。終端値 255 かつ分解能 7 のとき呼ばれる 256<<24 が
-    // 32bit に収まらない。0 になると getNextPoint() が張る同期ポイントが
-    // 消え、カウンタが進まなくなる。
+    // 64 bits: a terminal value of 255 at resolution 7 asks for 256<<24,
+    // which does not fit in 32. Wrapped to 0, the sync point that
+    // getNextPoint() leads to would vanish and the counter would stop.
     uint64_t v = value;
     switch (ff_reso) {
     case 0:
@@ -332,19 +331,18 @@ void MSXTimerCore::resetValue()
 
 void MSXTimerCore::updateSchedule(EmuTime time)
 {
-    // 次の同期ポイントまでのクロック数を計算
     uint64_t period = (!ff_repeat && get_w_end_count(ff_counter))
-                      ?  0                                                  // OneShot で ff_counter が ff_count に達している時
-                      : (getNextPoint(ff_counter) - (uint64_t)ff_counter);  // カウント中
+                      ?  0                                                  // one-shot, ff_count reached
+                      : (getNextPoint(ff_counter) - (uint64_t)ff_counter);  // counting
 
-    // カウント中にレジスタの書き換えがあったら同期ポイントを削除
+    // a register write while counting leaves the old sync point behind
     if (scheduled) {
         removeSyncPoint();
         scheduled = false;
     }
 
-    // 次の同期ポイントを設定。clock は動かさない。動かすと同期ポイントに
-    // 達した時点での経過クロック数が 0 になり、カウンタが進まなくなる。
+    // Leave clock alone here. Moving it would make the elapsed count 0
+    // when the sync point is reached, and the counter would not advance.
     if (ff_count_enable && period > 0) {
         setSyncPoint(clock + period);
         scheduled = true;
@@ -353,10 +351,7 @@ void MSXTimerCore::updateSchedule(EmuTime time)
 
 void MSXTimerCore::updateIrq(EmuTime time)
 {
-    // 新しい割り込みフラグ
     bool newIrq = ff_count_end && ff_intr_enable;
-
-    // 前回と割り込みフラグが変わったらコールバックを呼ぶ
     if (irqState != newIrq) {
         cb.callback(chNum, newIrq, time);
     }
@@ -369,19 +364,16 @@ void MSXTimerCore::checkCounter(uint32_t& counter, uint8_t& count_end, uint8_t& 
     count_end = ff_count_end;
     count_enable = ff_count_enable;
 
-    // 経過クロック数カウントアップする
     if (ff_count_enable) {
         uint64_t period = clock.getTicksTill(time);
         while (period > 0 && ff_count_enable) {
-            // 次の桁上がり(下位ビットが 1.. -> 0.. に遷移する)ポイントまでのクロック数を計算
+            // clocks up to the next carry out of the low bits (1..1 -> 0..0)
             uint64_t step = getNextPoint(counter) - (uint64_t)counter;
             if (step > period) step = period;
             assert(step > 0);
 
-            // カウントアップ
             uint64_t counter64 = (uint64_t)counter + step;
 
-            // ff_count まで達した?
             if (get_w_end_count((uint32_t)(counter64 - 1))) {
                 if (ff_repeat) {
                     counter64 = 0;
@@ -393,8 +385,6 @@ void MSXTimerCore::checkCounter(uint32_t& counter, uint8_t& count_end, uint8_t& 
             }
 
             counter = (uint32_t)(counter64 & 0xFFFFFFFF);
-
-            // クロック数がなくなるまで繰り返し
             period -= step;
         }
     }
@@ -411,8 +401,9 @@ void MSXTimerCore::updateCounter(EmuTime time)
     ff_count_end = count_end;
     ff_count_enable = count_enable;
 
-    // clock は「どこまでカウンタに反映したか」を持つ。ここを進めないと
-    // checkCounter が同じ時間を二度数える。端数は次回に持ち越す。
+    // clock holds how far the counter has been brought up to date. Left
+    // behind, checkCounter would count the same time twice. The fraction
+    // of a tick carries over to the next update.
     clock.advance(time);
 }
 

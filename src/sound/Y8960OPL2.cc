@@ -1,6 +1,6 @@
 /*
   * Based on:
-  *    emu8950.c -- Y8960OPL2 emulator written by Mitsutaka Okazaki 2001
+  *    emu8950.c -- Y8950 emulator written by Mitsutaka Okazaki 2001
   * heavily rewritten to fit openMSX structure
   */
 

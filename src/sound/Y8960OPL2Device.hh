@@ -20,8 +20,8 @@ public:
 
 	void writePort(bool port, byte value, EmuTime time);
 
-	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
-	  * メモリマップド I/O からの writePort() はこれに影響されない。 */
+	/** Open or close the I/O ports: 7FFFh (I/O Enabler2). writePort(),
+	  * from the memory mapped I/O, is not affected. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 

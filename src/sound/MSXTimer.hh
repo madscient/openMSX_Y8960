@@ -85,9 +85,10 @@ public:
 	[[nodiscard]] byte peekIO(uint16_t port, EmuTime time) const override;
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
 
-	/** 7FFFh (I/O Enabler2) bit 7 による I/O ポートの開閉。
-	  * カウンタと割り込みは閉じている間も動き続ける。実機の enabler は
-	  * アドレスデコードだけを止めるため。 */
+	/** Open or close the I/O ports: 7FFFh (I/O Enabler2) bit 7.
+	  * The counters and the interrupt keep running while the ports are
+	  * closed, because the cartridge's enabler only stops the address
+	  * decoding. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 

@@ -7,8 +7,8 @@
 
 namespace openmsx {
 
-/** Y8960 の OPM (YM2151)。直接 I/O は 7Eh = アドレス、7Fh = データ。
-  * 7Fh を読むとステータスが返る。7Eh の読み出しには応じない。 */
+/** The Y8960's OPM (YM2151). Its I/O ports are 7Eh (address) and 7Fh
+  * (data). Reading 7Fh returns the status; 7Eh answers no reads. */
 class Y8960OPMDevice final : public MSXDevice
 {
 public:
@@ -21,8 +21,8 @@ public:
 
 	void writePort(bool port, byte value, EmuTime time);
 
-	/** 7FFFh (I/O Enabler2) による直接 I/O ポートの開閉。
-	  * メモリマップド I/O からの writePort() はこれに影響されない。 */
+	/** Open or close the I/O ports: 7FFFh (I/O Enabler2). writePort(),
+	  * from the memory mapped I/O, is not affected. */
 	void setIoEnabled(bool enabled) { ioEnabled = enabled; }
 	[[nodiscard]] bool isIoEnabled() const { return ioEnabled; }
 
