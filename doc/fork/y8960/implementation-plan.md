@@ -1272,6 +1272,43 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-13 — upstream（22.0、SDL3 への移行）に追従した
+
+ユーザーの指示。upstream の更新を調べて報告し、「go」で載せ替えた。
+
+- **追従**: `main` を upstream/master の `b689d5141` に載せ替えた（基点は `c596782ad` から、342 コミット）。
+  フォークのコミットは 193。止まったのは 1 回で、`d184bfa9d`（Fork: prepare the first release）の `.gitattributes`。
+  両側が末尾に行を足しただけなので、upstream の 1 行（`doc/internal/vdp-status-race/*.bas`）の後にフォークの 3 行を置いた
+  - **確認済み**: `git range-diff` で 192 コミットが `=`、手で解いた 1 つだけが `!`。結果のツリーは
+    `git merge-tree` の単純マージと `.gitattributes` 以外で一致し、`.gitattributes` の差は衝突の印と行の順だけ。
+    両側が触った 5 ファイル（`.gitattributes`、`openmsx.vcxproj`、`openmsx.vcxproj.filters`、`DeviceFactory.cc`、
+    `meson.build`）で、フォーク分の差分（`+`/`-` の行）は載せ替えの前後で同一。`doc/fork/` 以外でフォークが変えている
+    ファイルの集合も前後で同じ 47 件（フォークの新規ファイルを含む）
+- **ビルド（確認済み）**: 3rdparty を取り直して組み、本体は `-t:Rebuild`。0 エラー、`LNK4286` は 0 件。
+  数字と取得の様子は `doc/fork/build/README.md` §6 の 2026-11-13
+- **版表示**: `22.0-unknown` になった（**確認済み**: 生成された `version.ii`）。版表示に触れる文書 3 か所
+  （`doc/fork/README.md`、`doc/fork/release/README.md` §1、`check-before-push.sh` の 7 のコメント）は、版によらない
+  書き方に直した
+- **回帰テスト（確認済み）**: `README.md` の「テストの回し方」の 1〜13（24 本）と `-testconfig`。`HRA_Y8960` / `audio` /
+  `audio2` / `Panasonic_FS-CA1` / `2nd_PSG` が 0、`Makoto` と存在しない拡張が 1（Makoto はこの機のユーザーデータに
+  リズム ROM が無いため。2026-10-13 の項と同じ）
+  - 突き合わせの相手は追従する前の exe（2026-11-05 のビルド。`src/` と `build/` に exe より新しいファイルが無いことを見た）。
+    同じ手順を同じ順で、同じユーザーデータの写しから回した。判定のあるものは前後とも全部通る
+  - 出力 69 本のうち 49 本が同一。違った 20 本は `record start -audioonly` で録った最終ミックスの WAV 15 本と、
+    それを読む判定ログ 5 本。リサンプル前のチャンネル録音は全部同一。ピークの差は最大で 3.2%
+    （`vol_ff` 3890 → 3766、`vol_half` 1947 → 1885）。`adpcm-play` の周波数の推定は 385.9Hz → 389.3Hz（期待値 388.4Hz）
+  - 原因は切り分けていない。未確認の候補は ResampleHQ の書き直し（`b8aca68e1` から `0c31d4e2b` までの 5 コミット）。
+    同じ経路の `frequency` の既定値の変更（`07592eec1`）は、試験の `sound_driver null` では効かない（**確認済み(読解)**:
+    `NullSoundDriver::getFrequency()` は 44100 を返したまま）。決めるには、ResampleHQ だけを戻したビルドで比べる
+  - C-BIOS が 0.31a に替わった（`afd3ff8ab`）。ユーザーデータの `machines` を新しい `Contrib/cbios/` に入れ替えた写しでも
+    回し、出力 69 本は旧い C-BIOS の回とすべて同一。`derived/openmsx-user/machines` 自体は旧いまま
+- **写しの元の変更**: 上流の `AY8910` が、peek とデバッガブルの読みを副作用の無い形にした（`41b16d659`、`1682d556a`。
+  `AY8910Periphery` に `peekA` / `peekB` が足された）。`Y8960SsgCore` には移していない。SSGS はコアに周辺を渡さず
+  （`Y8960SSGS.cc` のコンストラクタ）、`isAY8910` も false なので、移しても挙動は変わらない（**確認済み(読解)**）。
+  `SCC`、`YM2413` 系、`YM2151` には上流の変更が無い（`git diff --stat` の一覧）
+- 残り: `origin/main` への push（force-with-lease）は確認を取ってから。次のリリースのタグ名で、`<n>` を 22.0 で
+  数え直すか続けるかは決まっていない（§1 の決まりは `<upstream の版>-y8960.<n>` だけ）
+
 ### 2026-11-07 (11) — ADPCM の RAM はチップそのものの故障（ユーザーの判断）。RAM から鳴らす測定は、チップを替えるまでできない
 
 ユーザーの情報: モジュールの中の配線も調べた結果、RAM のチップそのものの故障と判断した。

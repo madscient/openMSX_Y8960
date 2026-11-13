@@ -151,6 +151,10 @@ Win11 機では実際に `rmtree` が `PermissionError [WinError 32]`
 **Windows ビルドはこれらを参照しない**（**確認済み**: Win10 機で警告が出た状態から
 3rdparty と本体のビルドがどちらもエラー 0 で通った）。
 
+upstream が SDL3 に移った後（2026-11-13）、Win11 機で SDL3 と SDL3_ttf を展開したときは
+この警告が出なかった（**確認済み**: 取得のログに `WARNING` が 0 行）。Win11 機で SDL2 の頃に
+出ていたかは記録が無いので、SDL3 で消えたのか、マシンの違いなのかは分からない。
+
 ## 3. 手順
 
 初回、およびブランチを切り替えたとき:
@@ -368,3 +372,19 @@ C-BIOS はリポジトリ内の `Contrib/cbios/` にあるので追加の入手�
   `-script` 実行中に `MainWindowHandle` を 0.5 秒間隔で 8 回とり、すべて 0
 - ジャンクションの削除で `Remove-Item -Recurse` がリンク先を消すかを実測。
   PowerShell 5.1.19041.6456 では**消さない**。§4.1 に記録
+
+### 2026-11-13（Win11 機、upstream の SDL3 への移行に追従）
+
+upstream が SDL2 から SDL3 に移り、3rdparty の版も上がった（FreeType 2.15.0、GLEW 2.3.1、
+libpng 1.6.59、libogg 1.3.6、libtheora 1.2.0、Tcl 8.6.18、zlib 1.3.2、SDL3 3.4.18、SDL3_ttf 3.2.2）。
+要求ライブラリの版が変わったので `thirdparty_download.py` を走らせた（§2.5）。
+
+- **取得（確認済み）**: 全部の取得が通った。xiph からの libogg と libtheora も SSL エラー
+  無しで落ちた。§2.3 のルート証明書がストアに在ったかは見ていない。
+  §2.6 の symlink の警告は出なかった。旧い版の tarball とソースは `derived/3rdparty/` に残したまま
+- **3rdparty（確認済み）**: 0 エラー / 220 警告 / 32 秒。`LNK4286` は 0 件
+- **openMSX 本体（確認済み）**: `-t:Rebuild` で 0 エラー / 91 警告 / 8 分 53 秒。`LNK4286` は 0 件
+- `vswhere -latest` が返した MSBuild は VS18 の Professional のもの。§1.1 の 2026-09-08 時点の
+  表（Community）とは違う。v145 はそのまま通った
+- 版表示は `22.0-unknown` になった（**確認済み**: 生成された `derived/x64-VC-Release/config/version.ii` が
+  `VERSION = "22.0"`、`REVISION = "unknown"`）

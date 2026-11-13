@@ -182,7 +182,7 @@ fi
 echo "== 7. annotated タグ =="
 # push とは関係が無いが、リリースの手順はビルドの前にこの点検を通るのでここで見る。
 # exe の版表示は git describe から作られ、ビルドした後では直せない。
-# annotated タグが見えると 21.0-unknown でなくなり、フォークのタグなら
+# annotated タグが見えると <版>-unknown の形でなくなり、フォークのタグなら
 # build/version.py が例外で止まる。
 if desc=$(git describe 2>/dev/null); then
 	echo "  NG: git describe が $desc を返す（annotated タグがローカルに在る）"

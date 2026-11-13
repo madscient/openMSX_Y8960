@@ -91,7 +91,8 @@ push の前に `doc/fork/tools/check-before-push.sh` を通すこと。
 ### upstream のタグは取り込まない
 
 upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `git describe` が
-成功し、exe の版表示が `21.0-unknown` でなくなる（`doc/fork/release/README.md` §1）。
+成功し、exe の版表示が `<版>-unknown`（`<版>` は `build/version.py` の `packageVersionNumber`）の
+形でなくなる（`doc/fork/release/README.md` §1）。
 
 | fetch の形 | upstream のタグ |
 |---|---|
