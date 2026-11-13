@@ -1272,6 +1272,27 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-13 (5) — PR のブランチを組み始めた。題の誤りと、出す前に直すべき注釈
+
+ユーザーの返事は「4つともok」（ブランチ名 `y8960`、(4) のコミットの題、帰属表示の注釈の文面、PR の説明文に生成ツールの行を
+付けない）。**これを組み始めの go と解した。** 計画文書の `69f12bdb7` の push には返事が無いので、push していない。
+
+- **5 番の題を直す。** 承認をもらった題 "Y8960: add the two OPLLs with switchable tone banks" は中身と合わない。OPLL は 1 個
+  （(3) の訂正）。"Y8960: add the OPLL with a tone bank per channel" で組み、ユーザーに伝える
+- **日本語の注釈が 6 ファイル 54 行ある**（**確認済み**: フォークが足した行のうち、ASCII 以外の文字を含む行を数えた）。
+  `HRA_Y8960.xml` 22、`MSXTimer.cc` 20、`Y8960OPMDevice.hh` 4、`Y8960OPLLDevice.hh` 3、`MSXTimer.hh` 3、`Y8960OPL2Device.hh` 2。
+  upstream の `src` には日本語の注釈が無い（**確認済み**: `git grep` でかなと漢字を探すと、テキストで当たったのは単体試験の
+  2 行と機種定義の 2 行だけ）。英訳を、フォークの `main` で直してから PR に流すか、PR のブランチだけで直すかを聞く
+- **`Y8960OPL2.cc` の冒頭の原作者表示が化けている。** 上流の `Y8950.cc` の "emu8950.c -- Y8950 emulator written by Mitsutaka
+  Okazaki 2001" が、名前の一括置換で "Y8960OPL2 emulator" になった（`a27e48fc5` で入った）。元に戻す
+- 組み方: `derived/pr` に worktree を作り、upstream/master（`b689d5141`、`main` と同じ基点）からブランチ `y8960` を切った。
+  1 番は `ae8c15509` の cherry-pick（著者 buppu3 のまま）。2〜10 番は、各段のファイルを `main` から取り、登録用の 4 ファイル
+  （`meson.build`、`openmsx.vcxproj`、`.filters`、`DeviceFactory.cc`）は「`main` から後の段の行を除いたもの」として作る。
+  振り分けは、登録の行に現れるクラス名と型名で決めた（**確認済み**: 書き込まずに走らせ、各段に入る行を目で見た。
+  振り分けられない行は無かった）
+- `main` の `.filters` には、SSG・OPL2・ADPCM などのファイルが一部載っていない（Visual Studio の表示の分類だけに効く）。
+  PR は `main` と同じにする
+
 ### 2026-11-13 (4) — PR のコミットの分け方を決めた。組み方の案と、PR に入れるべき帰属表示
 
 ユーザーの判断。
@@ -1307,7 +1328,7 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 | 2 | ユーザー | MSX-Timer を今の形にする |
 | 3 | ユーザー | パン（`Y8960Pan.hh`）、ミキサー、`MSXMixer::setDeviceGain` |
 | 4 | ユーザー | SSG 2 個（`Y8960SsgCore`、`Y8960SSGS`、`Y8960SSGSDevice`） |
-| 5 | ユーザー | OPLL 2 個と音色バンク（`YM2413NukeYKTBanked`、`Y8960OPLL`、`Y8960OPLLDevice`）。帰属表示を足す |
+| 5 | ユーザー | OPLL と、チャンネルごとの音色バンク（`YM2413NukeYKTBanked`、`Y8960OPLL`、`Y8960OPLLDevice`）。帰属表示を足す（**訂正**: 初めは「OPLL 2 個」と書いた。(3) の訂正と同じ） |
 | 6 | ユーザー | OPL2 と ADPCM（`Y8960OPL2`、`Y8960Adpcm`、`Y8960AdpcmMemory`、`Y8960OPL2Device`） |
 | 7 | ユーザー | OPM（`Y8960OPMDevice`） |
 | 8 | ユーザー | SCC（`Y8960SCC`、`ImGuiSCCViewer`） |
@@ -1345,7 +1366,9 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
   - ミキサー（`Y8960Mixer.cc/.hh`）: 236 行のうち 82
   - OPLL のバンク切り替え（`YM2413NukeYKTBanked.cc/.hh`）: 1488 行のうち 107。OPLL-X / OPLL-P / VRC7 の 45 音色はこの中にあり、
     `d96eb75af` で入った（音色表の 70〜150 行は buppu3 さんが 56 行、上流の写しが 25 行）
-  - 2 個の OPLL（`Y8960OPLL`、`Y8960OPLLDevice`）: 45
+  - OPLL（`Y8960OPLL`、`Y8960OPLLDevice`）: 45（**訂正**: 初めは「2 個の OPLL」と書いた。OPLL は 1 個で、チャンネルごとに
+    音色バンクを選ぶ（**確認済み**: `HRA_Y8960.xml` の `Y8960-OPLL` は 1 個）。buppu3 さんの初期のコミットの題 "dual OPLL" に
+    引きずられた。(5) を見ること）
   - 拡張の定義（`HRA_Y8960.xml`）: 92 行のうち 32
   - 登録（ビルド定義、`DeviceFactory`、`RomFactory`、`MSXMixer` など）: 55
 - コミット別では `ae8c15509`（MSX-Timer）が 587 行で最も多い。`f582f227e`（SN76489 のデバイス ID）は 0 行。2026-09-12 の
