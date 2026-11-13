@@ -329,7 +329,7 @@ void MSXTimerCore::resetValue()
     ff_count_end = 0;
 }
 
-void MSXTimerCore::updateSchedule(EmuTime time)
+void MSXTimerCore::updateSchedule(EmuTime /*time*/)
 {
     uint64_t period = (!ff_repeat && get_w_end_count(ff_counter))
                       ?  0                                                  // one-shot, ff_count reached
