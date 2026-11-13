@@ -1272,6 +1272,22 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-14 (2) — upstream に PR を出した（openMSX/openMSX#2288）
+
+ユーザーの返事は「3つともok / go」（`main` の 2 件の push、ブランチ `y8960` の push、PR の作成）。番号を振らずに聞いた題
+"Add the Y8960 sound cartridge by HRA!" も、この「go」で承認されたと解した。
+
+- `main` の 2 件を push した（origin/main = `eda428656`）。ブランチ `y8960` を fork に push した（`3a7b1a02c`）
+- **PR**: https://github.com/openMSX/openMSX/pull/2288 。base は `master`、head は `madscient:y8960`。説明文は (6) の下書きのまま、
+  生成ツールの行は無し。**確認済み**（`gh pr view`）: OPEN、10 コミット、1 番の著者は buppu3、GitHub の判定は MERGEABLE
+- 説明文に載せた 3 つのリポジトリ（`hra1129/Y8960_Cartridge`、`buppu3/openMSX`、`plgDavid/misc`）は公開されている
+  （**確認済み**: `gh repo view --json visibility`）
+- buppu3 さんへの連絡はユーザーが行う（(2) の決定）
+- 作業用の worktree `derived/pr` と、そのビルド物は残してある。メンテナーの意見で直すときに使う
+- **このあと**: メンテナーの返事を待つ。直すときは、`main` を直してから該当の段から作り直す（組み方は (5)）。作り直しに使った
+  スクリプト（段ごとのファイルの書き出し、帰属表示の挿入、段ごとの commit・ビルド・`-testconfig`）はセッションの一時領域にあり、
+  **リポジトリには無い**。残すかはユーザーに聞く。`main` の追従でブランチの基点が古くなったら、PR の側も載せ替える
+
 ### 2026-11-14 — 警告を直して PR のブランチを作り直した。出す前の状態
 
 ユーザーの返事は「3つともok」（`MSXTimer.cc` の警告を直す、`main` の 2 件の push、PR の説明文の下書き）。
