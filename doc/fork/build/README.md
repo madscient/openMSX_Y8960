@@ -94,6 +94,11 @@ Python の `ssl` は OpenSSL でストアの中身だけを見るので、取得
 先に Schannel を使う経路で一度アクセスしてルートを取得させると、
 以後 Python も通る（**確認済み**: 下記を実行した直後に Python から成功）。
 
+**一度取得させても、後でまた落ちることがある**（**確認済み**: Win10 機で 2026-09-09 に取得させた後、
+2026-11-14 の取得で同じ失敗。下記で再び通った）。ストアから消えた理由は見ていない。
+取得を走らせる前に下記を一度実行しておけば、この失敗は避けられる見込み（**推測**: 記録の 2 回とも、
+下記の後は通った）。
+
 ```powershell
 # ルート証明書の取得を起こさせるだけ。取得先の URL は build/packages.py にある
 Invoke-WebRequest -Uri <失敗した tarball の最終 URL> -Method Head -UseBasicParsing
@@ -152,8 +157,9 @@ Win11 機では実際に `rmtree` が `PermissionError [WinError 32]`
 3rdparty と本体のビルドがどちらもエラー 0 で通った）。
 
 upstream が SDL3 に移った後（2026-11-13）、Win11 機で SDL3 と SDL3_ttf を展開したときは
-この警告が出なかった（**確認済み**: 取得のログに `WARNING` が 0 行）。Win11 機で SDL2 の頃に
-出ていたかは記録が無いので、SDL3 で消えたのか、マシンの違いなのかは分からない。
+この警告が出なかった（**確認済み**: 取得のログに `WARNING` が 0 行）。Win10 機では SDL3 でも出た
+（2026-11-14。**確認済み**: 取得のログに `WinError 1314` が 4 行、すべて SDL3_ttf の macOS の framework 配下）。
+SDL3 で消えたのではなく、マシンの違いである。Win11 機で出ない理由（開発者モードなど）は見ていない。
 
 ## 3. 手順
 
@@ -388,3 +394,19 @@ libpng 1.6.59、libogg 1.3.6、libtheora 1.2.0、Tcl 8.6.18、zlib 1.3.2、SDL3 
   表（Community）とは違う。v145 はそのまま通った
 - 版表示は `22.0-unknown` になった（**確認済み**: 生成された `derived/x64-VC-Release/config/version.ii` が
   `VERSION = "22.0"`、`REVISION = "unknown"`）
+
+### 2026-11-14（Win10 機、SDL3 への移行に追従）
+
+Win11 機で載せ替えた `main`（`5d77c249a`）を Win10 機で組んだ。3rdparty が SDL2 の頃のままだったので、§3 の手順を
+最初から走らせた。
+
+- **取得（確認済み）**: 1 回目は libogg 1.3.6 で §2.3 の `CERTIFICATE_VERIFY_FAILED` が出て、開始から 53 秒で止まった。
+  §2.3 の `Invoke-WebRequest` を一度実行すると、Python から同じ URL が 200 を返し、2 回目は全部通った（143 秒）。
+  §2.6 の symlink の警告が 4 行出た
+- **3rdparty（確認済み）**: 0 エラー / 220 警告 / 49 秒。`LNK4286` は 0 件。警告数は Win11 機と一致
+- **openMSX 本体（確認済み）**: 0 エラー / 88 警告 / 26 分 21 秒。`LNK4286` は 0 件。3rdparty が替わったので
+  全部組み直しになった。2026-09-09 の 28 分 33 秒と同じ程度
+- 版表示は `22.0-unknown`（**確認済み**: `version.ii`）
+- **スモークテスト（確認済み）**: `-testconfig -machine C-BIOS_MSX2+ -ext HRA_Y8960` が終了コード 0。ユーザーデータの
+  `machines` の C-BIOS は旧いまま
+- 旧い版の tarball とソースは `derived/3rdparty/` に残したまま
