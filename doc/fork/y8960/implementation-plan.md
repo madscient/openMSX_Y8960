@@ -1272,6 +1272,26 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 
 ## 8. 実行経緯
 
+### 2026-11-14 (4) — 載せ替え前の main で pull して作ったマージを取り消し、もう一方のマシンを origin/main に合わせた
+
+2026-11-13 の載せ替えと force-with-lease の push の後、載せ替え前の `main`（`9e8cc027d`）が残っていたマシンで `git pull` した。
+`pull.rebase=false` なので、旧い履歴と載せ替えた履歴のマージになり、14 ファイル 32 箇所が衝突した。
+
+- 最初に「衝突を解いてマージコミットを作る」を勧め、ユーザーが選んだ。全部のブロックで origin/main 側を採って `1d6a0b5e5` を作った。
+  **誤り**: 衝突の原因（origin/main が書き換わったこと）を確かめずに勧めていた。正しくは、マージを中止して origin/main に合わせる
+- **確認済み**: reflog の origin/main に `pull: forced-update`。旧い `main` にしか無いコミットは 193 件で、題は 193 件すべてが
+  origin/main に在り、`git cherry` で 192 件が patch として同一。違う 1 件は 2026-11-13 の項で手で解いた `d184bfa9d`。
+  このマシンにしか無い変更は無かった。マージのツリーは origin/main と同一（`git diff` が空）で、余計なのは履歴だけ
+- **確認済み**: push 前点検の 5 の NG（一覧に無い変更が 191 件）はマージとは無関係。このマシンの `upstream/master` が
+  2026-11-01 の `eccc0ff72` のままで、基点が古かった。origin/main が載っている `b689d5141` を基点に計算し直すと、
+  `upstream-touched.txt` と 12 件で一致した
+- **決定（ユーザー判断）**: `git reset --keep 47bd53b90` で `main` を origin/main に戻した（push 前なので GitHub 側の作業は無い）。
+  `git fetch upstream master` で `upstream/master` は `79cf4e4a8`。`RELEASE_*` のタグは入っていない。
+  **確認済み**: `check-before-push.sh` は終了コード 0、5 は「OK (12 件)」
+- 見たこと: このマシンでは、点検の 6（`check-docs.py`）の出力の日本語が文字化けする。判定は OK。直していない
+- 提案中（未決定）: このリポジトリで `git config pull.ff only` を設定すると、履歴が分かれているときに pull がマージを作らず止まる。
+  設定はマシンごとに 1 行。分かれた履歴を取り込むときは `--rebase` か `--no-ff` を明示する手間が増える
+
 ### 2026-11-14 (3) — PR のブランチを組み直すスクリプトを残し、`-testconfig` の罠を CLAUDE.md に書いた
 
 ユーザーの判断: スクリプトをリポジトリに残す。CLAUDE.md への追記は「このリポジトリの CLAUDE.md であれば」可。
