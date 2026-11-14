@@ -1288,9 +1288,9 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
 - **決定（ユーザー判断）**: `git reset --keep 47bd53b90` で `main` を origin/main に戻した（push 前なので GitHub 側の作業は無い）。
   `git fetch upstream master` で `upstream/master` は `79cf4e4a8`。`RELEASE_*` のタグは入っていない。
   **確認済み**: `check-before-push.sh` は終了コード 0、5 は「OK (12 件)」
-- 見たこと: このマシンでは、点検の 6（`check-docs.py`）の出力の日本語が文字化けする。判定は OK。直していない
-- 提案中（未決定）: このリポジトリで `git config pull.ff only` を設定すると、履歴が分かれているときに pull がマージを作らず止まる。
-  設定はマシンごとに 1 行。分かれた履歴を取り込むときは `--rebase` か `--no-ff` を明示する手間が増える
+- 見たこと: このマシンでは、点検の 6（`check-docs.py`）の出力の日本語が文字化けする。判定は OK。直さない（ユーザー判断。
+  判定は終了コードと「OK」で読めるので困っていない）
+- **`git config pull.ff only` を設定する** — 見送り（ユーザー判断）。履歴が分かれているときに pull がマージを作らず止まる案だった
 
 ### 2026-11-14 (3) — PR のブランチを組み直すスクリプトを残し、`-testconfig` の罠を CLAUDE.md に書いた
 
