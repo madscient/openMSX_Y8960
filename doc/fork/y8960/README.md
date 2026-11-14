@@ -378,6 +378,30 @@ py doc/fork/y8960/level/rhythm-ws/anafb.py <OUT>/take1/tones-mga.wav <OUT>/take2
 - HH は打ごとの揺らぎが大きく、FB が掛かる Y8960 でも `undecided` になる。HH の差は RMS でも見る（直る前の Y8960 では FB7 の打が約 2dB 大きい）
 - 試験が流れる時間は約 25 秒（`--settle` で約 26 秒）
 
+### FB の深さと、FB の和の溢れを実物で測る
+
+実物の YM3812 は、変調器の 2 つ前までの出力の和を溢れなく取り、`9 - FB` だけシフトして位相に足す。v0.9.14 の Y8960 の RTL（JTOPL）は
+シフトは同じだが、和を 13 ビットで取るので、変調器の出力が -6dB より大きいと和が折り返し、FB 1〜5 の倍音の形が変わる。
+jotego/jtopl の現行版は、和は 13 ビットのままでシフトを `10 - FB` にしていて、FB が実物の半分になる。RTL が直ったら、この試験で
+確かめる。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (20)。
+
+旋律の ch0 の変調器だけを 440Hz で、FB 0〜7 を TL 0 と TL 12 で鳴らし、H2〜H8 を、和の幅（14 / 13 ビット）とシフト
+（`9 - FB` / `10 - FB`）の 4 つの組み合わせのモデル（`fbmodel.py`）と比べる。経路の周波数特性は MULT 1〜8 の正弦波で測って引く。
+作業用のディレクトリの作り方と `take.ps1` の使い方は上の節と同じ（SPFM Light の台は `-ResetSuite` を付ける）。
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkfbd.py <RUN>/patches/opl2ex.json     # YM3812 は opl2.json
+# 3 回録ってから（take.ps1 は -Seconds 44）
+py doc/fork/y8960/level/rhythm-ws/anafbd.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+```
+
+- 実物の YM3812 は `real`（和 14 ビット、`9 - FB`）だけが `fits`。直る前の Y8960 は `y8960`（和 13 ビット、`9 - FB`）だけが
+  `fits`。jotego/jtopl の現行版を写した RTL なら `pr16`（和 13 ビット、`10 - FB`）になるはず（鳴らしたことはない）
+- 判定は FB 1〜6 の 12 打で、FB 7 は表示だけ。H1 に対して -60dB より下の倍音は比べない。理由は `anafbd.py` の冒頭
+- 判定器を変えたら `synthfbd.py` の合成の録音（仮説ごとに 1 本）で、作った仮説だけが `fits` になることを見直す。
+  `py synthfbd.py <出力先> [乱数の種] [クロックのずれ ppm]`
+- 試験が流れる時間は約 31 秒（無音の区間と 24 打）
+
 ## 取り込み元
 
 Y8960 の実装本体は buppu3/openMSX の `y8960` ブランチ由来で、
