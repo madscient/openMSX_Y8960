@@ -1393,6 +1393,17 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-14 (18) — jotego/jtopl に issue #17 を出し、FB の道具を残した
+
+- ユーザーの承認で、ユーザーのアカウントから `gh` で出した（https://github.com/jotego/jtopl/issues/17 、「Rhythm mode: HH and TOM
+  should not take channel feedback」）。中身は、JTOPL の該当行、YM3812-LLE と Nuked-OPL3 の読み（(15)）、(17) の測定の表、直し方の案
+  （リズム時は演算子 13・14 の FB を 0 にする）。**決定（ユーザー判断）**: Y8960 の名前は出さない（「FPGA で動かした jtopl」と書いた）。
+  PR #16 の FB の量と減衰の変更には触れていない（(16) の案 1）
+- **決定（ユーザー判断）**: (17) の道具（`mkfb.py`、`anafb.py`、`synthfb.py`）を `level/rhythm-ws/` に残す。使い方は `README.md` の
+  「リズム時の TT・HH に FB が掛かるかを実物で測る」
+  - **確認済み**: 写した版で、合成の録音 3 本とパッチ 2 種（YM3812 で録ったフラグなしのもの、Y8960 で録った `--settle` のもの）が
+    scratchpad の版とバイト単位で同じ。実機の 6 回（YM3812 と、録り直した Y8960）と合成の録音の判定も同じ
+
 ### 2026-11-14 (17) — 実物の YM3812 では、リズム時の TOM に FB が効かない。HH も差が見えない
 
 - **決定（ユーザー判断）**: jotego/jtopl に、リズム時の HH・TOM の FB の issue を出す（(16) の 4 案の 1）。出す前に、実チップでリズム音に
