@@ -1393,6 +1393,22 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-14 (23) — jotego/jtopl に FB と EG の issue を別々に出し、EG の道具を残した
+
+- **決定（ユーザー判断）**: (22) の道具（`mkeg.py`、`anaeg.py`、`egmodel.py`、`syntheg.py`）を `level/rhythm-ws/` に残す。使い方は
+  `README.md` の「減衰とリリースの速さを実物で測る」
+  - **確認済み**: 写した版で、合成の録音 3 本が scratchpad の版とバイト単位で同じ。実機の 6 回（YM3812 と Y8960 を 3 回ずつ）の判定の
+    出力も同じ
+- **決定（ユーザー判断）**: FB と EG を別々の issue にする。ユーザーのアカウントから `gh` で出した
+  - https://github.com/jotego/jtopl/issues/18 「Feedback: the sum of the two previous outputs wraps in 13 bits, and PR #16 halved the
+    depth」。中身は (20) の読解・測定の表・直し方の案
+  - https://github.com/jotego/jtopl/issues/19 「Envelope: decay steps twice as often, release rate is 4*RR+2, key scaling is halved」。
+    中身は (22) の読解・測定の表（7 打を抜粋）・直し方の案。速さ 48 以上は読解だけと書いた
+  - #17 と同じく Y8960 の名前は出さず、「FPGA で動かした jtopl」と書いた
+- **決定（ユーザー判断）**: hra1129 さんには issue の URL をそのまま知らせる（ユーザーが Discord で）。どう直すか、上流を待つかは
+  hra1129 さんに任せる。こちらで作った Discord の文面は使わない
+- 録音のケーブルは Y8960 の出力に挿してある（2026-11-14 の夜の時点）
+
 ### 2026-11-14 (22) — EG: 実物の YM3812 は Nuked-OPL3 の規則どおり。Y8960（JTOPL）は減衰の歩が 2 倍の頻度、リリースの速さに +2、KSR の足し分が半分。PR #16 は 1 つ目を速さ 48 未満でだけ打ち消す
 
 - **読解**（**確認済み(読解)**。Y8960 の写しと jotego/jtopl の現行の EG のファイルは、`jtopl_eg_pure.v` の歩の 1 行のほかは同じ）

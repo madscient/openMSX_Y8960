@@ -382,8 +382,8 @@ py doc/fork/y8960/level/rhythm-ws/anafb.py <OUT>/take1/tones-mga.wav <OUT>/take2
 
 実物の YM3812 は、変調器の 2 つ前までの出力の和を溢れなく取り、`9 - FB` だけシフトして位相に足す。v0.9.14 の Y8960 の RTL（JTOPL）は
 シフトは同じだが、和を 13 ビットで取るので、変調器の出力が -6dB より大きいと和が折り返し、FB 1〜5 の倍音の形が変わる。
-jotego/jtopl の現行版は、和は 13 ビットのままでシフトを `10 - FB` にしていて、FB が実物の半分になる。RTL が直ったら、この試験で
-確かめる。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (20)。
+jotego/jtopl の現行版は、和は 13 ビットのままでシフトを `10 - FB` にしていて、FB が実物の半分になる。jotego/jtopl に issue を出した
+（https://github.com/jotego/jtopl/issues/18 ）。RTL が直ったら、この試験で確かめる。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (20)。
 
 旋律の ch0 の変調器だけを 440Hz で、FB 0〜7 を TL 0 と TL 12 で鳴らし、H2〜H8 を、和の幅（14 / 13 ビット）とシフト
 （`9 - FB` / `10 - FB`）の 4 つの組み合わせのモデル（`fbmodel.py`）と比べる。経路の周波数特性は MULT 1〜8 の正弦波で測って引く。
@@ -406,7 +406,7 @@ py doc/fork/y8960/level/rhythm-ws/anafbd.py <OUT>/take1/tones-mga.wav <OUT>/take
 
 実物の YM3812 の減衰とリリースは Nuked-OPL3 の規則どおりに進む。v0.9.14 の Y8960 の RTL（JTOPL）は、減衰の歩が 2 倍の頻度で来て、
 リリースの速さに +2 が足され、KSR の足し分が実物の半分になる。jotego/jtopl の現行版は、速さ 48 未満の歩の頻度だけを打ち消している。
-RTL が直ったら、この試験で確かめる。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (22)。
+jotego/jtopl に issue を出した（https://github.com/jotego/jtopl/issues/19 ）。RTL が直ったら、この試験で確かめる。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (22)。
 
 旋律の ch0 の変調器だけで、減衰（DR）とリリース（RR）を 13 打鳴らし、包絡の傾き（dB/s）を 3 つのモデル（`egmodel.py`。Nuked-OPL3 の
 規則、Y8960 の写しの JTOPL、jotego/jtopl の現行）と比べる。作業用のディレクトリの作り方と `take.ps1` の使い方は上の節と同じ。
