@@ -1419,7 +1419,10 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   (13) の 6 回の録音で目印 9 個がすべて鳴り、CY は (9) の 5 音の試験で鳴った。2 倍も、古い `|slot[7:2]` は TT・BD のキャリア・SD・CY
   （演算子 14-17）に掛かる
   - 別の違い: JTOPL は変調器のスロットにチャンネルの FB を掛けるので、TT には C8h の FB、HH には C7h の FB が掛かる（upstream の現行の
-    `jtopl_op.v` も同じ）。upstream の openMSX の `YMF262.cc:861・865` は、HH と TT を FB 無しで作る。試験のパッチは FB = 0 で、測っていない
+    `jtopl_op.v` も同じ）。upstream の openMSX の `YMF262.cc:861・865` は、HH と TT を FB 無しで作る。Nuked-OPL3（1.8。NukedEngine の
+    `cores/opl3/opl3.c:857-866`）も、リズム時の ch7・ch8 の 4 つの演算子（HH・SD・TOM・CY）の変調の入力を常に 0 にし、FB を掛けない
+    （BD の変調器は C6h の FB を使う）（**確認済み(読解)**）。SD と CY は JTOPL でも CON が 1 に固定されて変調が入らないので、違うのは
+    HH と TOM。CON の件を直しても残る。試験のパッチは FB = 0 で、測っていない
 
 ### 2026-11-14 (13) — Y8960 の HH は、C7h の CON が 0 だと鳴らない。「2 打目から鳴らない」は試験が C7h を書いていなかったため
 
