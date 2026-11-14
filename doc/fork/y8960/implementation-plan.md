@@ -1393,6 +1393,24 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-14 (16) — jotego/jtopl の修正（PR #16）は、HH のほかに全スロットの FB と減衰も変えている
+
+ユーザーの問い（JTOPL に issue を挙げるべきか）の材料として調べた（**確認済み(読解)**: GitHub の jotego/jtopl）。
+
+- `f96ff3ef` は PR #16（niknakniknak、「OPL Rhythm Section and Instrument Rebalance」、2026-07 にマージ）。説明は「基板とよく合うように
+  した」。変えたファイルは `jtopl_acc.v`・`jtopl_eg_pure.v`・`jtopl_op.v`・`jtopl_pg.v`・`jtopl_reg.v`
+- リズムの修正（(14) の `disable_con` と `rhy2x`、`jtopl_pg.v` の HH・CY の位相を取るスロットを 1 つ後ろへ）のほかに、全スロットに効く
+  変更が 2 つある
+  - `jtopl_op.v`: FB の量を `>>> (9 - FB)` から `>>> (10 - FB)` にした（注記「BD buzz: -1 bit feedback」）。YM3812-LLE は
+    `fb_sum >> (9 - fb)`（1315 行）、Nuked-OPL3 は `>> (0x09 - fb)`。**推測**: 演算子の出力の幅は 3 つとも 13 ビットで同じなので、
+    PR #16 の後の JTOPL の FB は実物の半分になる。幅が同じことは式の形から見ただけで、確かめていない
+  - `jtopl_eg_pure.v`: 減衰の速さが 12 より下のときの 1 歩を 2 から 1 にした（注記「OPL ref increments by 1 (was 2)」）。JTOPL の歩の
+    頻度と YM3812-LLE の包絡を突き合わせていないので、どちらが合うかは**未確認**。Y8960 は変更前の 2 なので、実物の YM3812 と
+    Y8960 の減衰の時間を比べれば決まる
+- Y8960 が JTOPL を最新に入れ替えると、この 2 つも入る。HH の件だけを直すなら、`jtopl_reg.v` の `disable_con` と、Y8960 が差し替えて
+  いる `jtopl_acc.v` の `rhy2x` の 2 行で足りる（**推測**: (14) の 2 行の差分から）
+- jotego/jtopl の issue は受け付けている。リズム時の HH・TOM の FB を扱った issue は見当たらない（閉じたものを含む 9 件の題名を見た）
+
 ### 2026-11-14 (15) — YM3812-LLE も、リズム時の HH と TOM に FB を掛けず、HH を CON によらず足す
 
 ユーザーの問いで、nukeykt/YM3812-LLE（`a61c464`。2026-11-05 (13) と同じ版）の `fmopl2.c` を読んだ（**確認済み(読解)**。シミュレーション
