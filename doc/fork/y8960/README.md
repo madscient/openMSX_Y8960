@@ -60,8 +60,9 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/rhythm-ws/mkws.py` | FitomHwIF の試験パッチを、リズム音の 6 スロットの波形を変えながら 5 つのリズム音を鳴らすものに書き換える |
 | `level/rhythm-ws/mkhh.py` | 同じく、HH だけを波形を変えながら 20 打鳴らすものに書き換える |
 | `level/rhythm-ws/mkwse.py` | 同じく、HH だけを 01h を切り替えながら 16 打鳴らすものに書き換える |
-| `level/rhythm-ws/anaws.py`・`anahh.py`・`anawse.py` | 上記 3 つの録音を測り、録る前に決めた基準で判定する |
-| `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py` | 上記の判定器の判別力を見るための合成の録音を作る |
+| `level/rhythm-ws/mkcon.py` | 同じく、HH の打ごとに C7h（HH・SD のチャンネルの CON）を切り替え、間に TT を挟むものに書き換える |
+| `level/rhythm-ws/anaws.py`・`anahh.py`・`anawse.py`・`anacon.py` | 上記 4 つの録音を測り、録る前に決めた基準で判定する |
+| `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py`・`synthcon.py` | 上記の判定器の判別力を見るための合成の録音を作る |
 | `level/rhythm-ws/take.ps1` | FitomHwIF の試験を 1 回流し、その前後を録る |
 | `level/rhythm-ws/listen.py` | 録音の抜き出しを 1 本の WAV につなぐ（人が聞き比べるため） |
 
@@ -332,6 +333,29 @@ py doc/fork/y8960/level/rhythm-ws/anaws.py <OUT>/take1/tones-mga.wav <OUT>/take2
   `mkhh.py` で約 25 秒、`mkwse.py` で約 22 秒
 - 判定器を変えたら、`synth*.py` の合成の録音で、効くものと効かないものの両方の判定を見直す。位置合わせを崩しやすいのは、
   録音の頭のクリック、MGA の電源投入の音と床の上昇、ときどき 1.4 秒ほどに延びる歩、静かな打の連続。合成の録音はこれらを含む
+- リズム音は持続を持たず、鍵を押している間も RR で減る。`anaws.py`・`anahh.py` の帯域の値は 400ms の窓全体に 1 枚のハン窓を
+  掛けて測るので、重みが窓の中央に寄り、減衰の速い音では立ち上がりの部分がほとんど効かない（RMS は窓を掛けずに測る）。
+  `anacon.py` は 10ms の枠ごとに測って平均する
+
+### Y8960 の HH が C7h の CON に縛られるかを実物で測る
+
+v0.9.14 の Y8960 の RTL は、リズム時の HH を、HH・SD のチャンネルの C7h の CON（b0）が 1 のときだけ出力に出す。実物の OPL2 は
+CON によらず出す。Y8960 が取り込んだ JTOPL（2026-01-22 版）の `jtopl_reg.v` の `disable_con` の行が原因で、jotego/jtopl では
+`f96ff3ef`（2026-07-17）で直っている。Y8960 の RTL が直ったら、この試験で確かめる。結果と経緯は `implementation-plan.md` の §8 の
+2026-11-14 (13)・(14)。
+
+作業用のディレクトリの作り方と `take.ps1` の使い方は上の節と同じ（Y8960 は MGA、`opl2ex.json`）。
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkcon.py <RUN>/patches/opl2ex.json
+# 3 回録ってから
+py doc/fork/y8960/level/rhythm-ws/anacon.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+```
+
+- 直る前は `verdict: CON silences HH`（C7h=00h の HH が床のまま）。直れば `verdict: CON does not matter`
+- 打 0 は、BDh の最初の書き込みでリズムの有効化と HH の鍵を同時に立てる打。v0.9.12 の実物では、CON = 0 でも C7h=01h の打より
+  9〜10dB 小さく鳴る。`--rhy-first` を付けると、打 0 の前にリズムだけを有効にする区間を置き、打 0 は鳴らない
+- 試験が流れる時間は約 24 秒。BD の挙動は見ない
 
 ## 取り込み元
 
