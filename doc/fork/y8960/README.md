@@ -57,6 +57,13 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/adpcm-tones.py` | ADPCM の正弦波と矩形波を、SSG2・OPL2・OPM の 1ch と比べる音列を書き出す |
 | `level/pan9.txt` | OPL2 の F6h-FEh がどの ch に掛かるかを見る音列 |
 | `level/pan9-levels.py` | 上記の録音から、区間ごとに左に寄った ch が仕様どおりかを判定する |
+| `level/rhythm-ws/mkws.py` | FitomHwIF の試験パッチを、リズム音の 6 スロットの波形を変えながら 5 つのリズム音を鳴らすものに書き換える |
+| `level/rhythm-ws/mkhh.py` | 同じく、HH だけを波形を変えながら 20 打鳴らすものに書き換える |
+| `level/rhythm-ws/mkwse.py` | 同じく、HH だけを 01h を切り替えながら 16 打鳴らすものに書き換える |
+| `level/rhythm-ws/anaws.py`・`anahh.py`・`anawse.py` | 上記 3 つの録音を測り、録る前に決めた基準で判定する |
+| `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py` | 上記の判定器の判別力を見るための合成の録音を作る |
+| `level/rhythm-ws/take.ps1` | FitomHwIF の試験を 1 回流し、その前後を録る |
+| `level/rhythm-ws/listen.py` | 録音の抜き出しを 1 本の WAV につなぐ（人が聞き比べるため） |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -291,6 +298,40 @@ py doc/fork/y8960/level/adpcm-tones.py --target MSXAUDIO "$OUT/adpcm-y8950.txt"
 ```
 - 音列の環境変数 `Y8960_TONES` と `-Sequence` で別の音列を流せる。測りたいものに合わせて音列を足すときは、
   `tones-mga.ps1` が通す番地とポートの範囲に収める
+
+### リズム音に波形選択が掛かるかを実物で測る
+
+OPL2 の波形選択（E0h-F5h、01h の b5）がリズム音に掛かるかを、実物の YM3812 と Y8960 で測る道具が `level/rhythm-ws/` にある。
+回帰テストではない。結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (8)・(9)。
+
+実機に流すのは FitomHwIF の `dev/hwtest` の仕組み（`mkhw.py` と FMEngineTest）。`mkhw.py` で作業用のディレクトリを作り、
+そのパッチをここの道具で書き換えてから流す。
+
+```sh
+# 作業用のディレクトリを作る（FitomHwIF の dev/hwtest で）。YM3812 は SPFM Light の台、Y8960 は MGA
+py mkhw.py <RUN> --port COMn --interface SPFM_LIGHT --module RE1-YM3812_3526 --lead-ms 3000
+py mkhw.py <RUN> --port COMn --cartridge Y8960 --chip OPL2EX --lead-ms 3000
+# パッチを書き換える（Y8960 は opl2ex.json）。mkhh.py・mkwse.py も同じ形
+py doc/fork/y8960/level/rhythm-ws/mkws.py <RUN>/patches/opl2.json
+```
+
+```powershell
+# 1 回録る。SPFM Light の台は最後の状態を保つので -ResetSuite を付ける（MGA は毎回電源を切るので要らない）。
+# 録音の道具はいつも tones-mga.wav に書くので、回ごとに -OutDir を分ける。-Device の番号は tones-mga.ps1 -ListDevices で見る
+powershell -ExecutionPolicy Bypass -File doc/fork/y8960/level/rhythm-ws/take.ps1 -RunDir <RUN> `
+    -Suite suite_hw_SPFM_LIGHT_OPL2.json -ResetSuite suite_reset_SPFM_LIGHT_OPL2.json `
+    -OutDir <OUT>/take1 -Recorder (Resolve-Path doc/fork/y8960/level/tones-mga.ps1).Path -Device <番号>
+```
+
+```sh
+# 3 回録って、まとめて判定する
+py doc/fork/y8960/level/rhythm-ws/anaws.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+```
+
+- 録音の長さは `take.ps1 -Seconds` で決める（既定 38 秒）。試験が流れる時間は、`mkws.py` で約 29 秒（MGA は約 31 秒）、
+  `mkhh.py` で約 25 秒、`mkwse.py` で約 22 秒
+- 判定器を変えたら、`synth*.py` の合成の録音で、効くものと効かないものの両方の判定を見直す。位置合わせを崩しやすいのは、
+  録音の頭のクリック、MGA の電源投入の音と床の上昇、ときどき 1.4 秒ほどに延びる歩、静かな打の連続。合成の録音はこれらを含む
 
 ## 取り込み元
 
