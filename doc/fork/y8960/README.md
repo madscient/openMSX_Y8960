@@ -66,6 +66,10 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py`・`synthcon.py`・`synthfb.py` | 上記の判定器の判別力を見るための合成の録音を作る |
 | `level/rhythm-ws/take.ps1` | FitomHwIF の試験を 1 回流し、その前後を録る |
 | `level/rhythm-ws/listen.py` | 録音の抜き出しを 1 本の WAV につなぐ（人が聞き比べるため） |
+| `level/rhythm-ws/mkcyws.py` | FitomHwIF の試験パッチを、CY の位相の定数（080h か 100h か）を見分ける打（波形 0・3・2 の CY と、波形 3 の SD）に書き換える。`--tones` で同じ打を openMSX の音列に |
+| `level/rhythm-ws/anacyws.py` | 上記の録音を測り、録る前に決めた基準で判定する |
+| `level/rhythm-ws/synthcyws.py` | 上記の判定器の判別力を見るための合成の録音を作る |
+| `tests/y8950-pr/` | upstream に出す `Y8950` の拡張（`Type::Y8960`、リズム音、波形選択、PCM_BSY）を、段ごとに組んで確かめる道具。使い方は「`Y8950` の PR を確かめる」 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
@@ -461,6 +465,68 @@ py doc/fork/y8960/level/rhythm-ws/anaform.py "$OUT/tones-openmsx.wav"
 - 判定器を変えたら、`synthform.py` の合成の録音（模型ごとに 1 本）で、作った模型の側だけが勝つことを見直す。
   `py synthform.py <出力先> [乱数の種] [クロックのずれ ppm]`
 - 試験が流れる時間は約 17 秒
+
+### CY の位相の定数を実物で見分ける
+
+リズム音の CY の位相は、`rmXor` で 2 つの値を取る。Nuked-OPL3 は 080h / 280h、MAME と ymfm は 100h / 300h。波形 3 では、
+080h / 280h はどちらも同じ正の値（一定の直流）、100h / 300h はどちらも無音になる。録音の経路は交流で結ばれているので、直流は鍵の
+入りと切りの一瞬の音として現れる。実物の YM3812 では CY の波形 3 が無音で、100h / 300h の側だった。結果と経緯は
+`implementation-plan.md` の §8 の 2026-11-15 (2)。
+
+作業用のディレクトリの作り方と `take.ps1` の使い方は「リズム音に波形選択が掛かるかを実物で測る」と同じ。YM3812 は SPFM Light の台で
+`--module RE1-YM3812_3526`。台に 2 枚挿しているときは、録る前にもう一方のスロットの `suite_reset_*.json` も流してチップを黙らせる。
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkcyws.py <RUN>/patches/opl2.json
+# 3 回録ってから（take.ps1 は -Seconds 54）
+py doc/fork/y8960/level/rhythm-ws/anacyws.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+# openMSX の Type::Y8960 で同じ打を鳴らす（tests/y8950-pr の harness.sh の差し込みを入れた exe で）
+py doc/fork/y8960/level/rhythm-ws/mkcyws.py --tones "$OUT/cyws.txt"
+Y8960_TEST_OUT="$OUT" Y8960_TONES="$OUT/cyws.txt" $EXE -machine C-BIOS_MSX2+ -ext audio-y8960test \
+    -script "$(pwd)/doc/fork/y8960/level/tones.tcl"
+```
+
+- 1 巡は CY 波形 0（目印）、CY 波形 3（対象）、SD 波形 3（どちらの定数でも無音の対照）、CY 波形 2（どちらの定数でも直流になる、
+  一瞬の音の大きさの基準）。5 巡と最後の目印。試験が流れる時間は約 45 秒
+- 一瞬の音は 2ms ほどで消える（SPFM Light と録音の機器の組）。5ms の枠の RMS では薄まって決まらなかったので、判定器は 1ms ごとの
+  最大の絶対値で測る。TL 10h では一瞬の音が床から十分に出なかったので、`mkcyws.py` は TL 0 にしてある
+- 判定器を変えたら、`synthcyws.py` の合成の録音（時定数 1・30・300ms、鍵の操作だけで出る小さな音）で見直す。
+  `py synthcyws.py <出力先> [乱数の種]`
+
+## `Y8950` の PR を確かめる
+
+upstream に出す `Y8950` の拡張は、upstream/master から切った worktree で、段（コミット）ごとに組んで確かめる。段ごとのファイルの写しを
+作業用のディレクトリの `snap-<段>/` に置き、コミットの本文の下書きを `messages.txt`（`=== <段>` の見出しで区切る）に書く。経緯と、
+確かめた結果は `implementation-plan.md` の §8 の 2026-11-15 (1)・(2)。
+
+道具は `tests/y8950-pr/` にある。環境変数 `PR` に worktree の根、`WORK` に作業用のディレクトリ（`exe/`・`out/`・`seq/`・`user/` を置く）
+を渡す。`WORK` は worktree の `derived/` の下など、短いパスに置く。
+
+```sh
+T=doc/fork/y8960/tests/y8950-pr
+export PR=<worktree> WORK=<作業用>
+mkdir -p "$WORK/user/machines" "$WORK/exe" && cp "$PR"/Contrib/cbios/* "$WORK/user/machines/"
+py $T/gen_seq.py "$WORK/seq"; py $T/gen_ws.py "$WORK/seq/ws.txt"
+# ベース（変える前の upstream）を組み、exe/base.exe に控えて基準を録る
+sh $T/build.sh "$WORK/build-base.log" && cp "$PR/derived/x64-VC-Release/install/openmsx.exe" "$WORK/exe/base.exe"
+sh $T/run.sh "$WORK/exe/base.exe" "$WORK/out/base-mel" "$WORK/seq/mel.txt" audio   # rhy も同じ
+#   PCM_BSY（pcmbsy.tcl）と、古い版のセーブステート（state.tcl を T_MODE=save T_NAME=y8950v1）もベースで取っておく
+# 段ごとに: 写しを置いて組み、ベースと比べる
+sh $T/build.sh "$WORK/build-<段>.log" && sh $T/stage.sh <段>
+# Type::Y8960 は、差し込みを入れて組んだ exe で試す（差し込みはコミットしない）
+sh $T/harness.sh on; sh $T/build.sh "$WORK/build-h.log"; cp "$PR/derived/x64-VC-Release/install/openmsx.exe" "$WORK/exe/h.exe"; sh $T/harness.sh off
+# 段をコミットにする（コミットごとに組む）
+sh $T/commits.sh a b c d e
+```
+
+- `stage.sh`: 回帰の音列 2 本（楽音・BD・TOM・ADPCM と、SD・CY・HH）をチャンネルごとに録ってベースとバイト単位で比べ、PCM_BSY と古い版の
+  セーブステートの読み込みも比べる
+- `Type::Y8960` の確かめ: `cmpdir.py <差し込みの録音> <フォークの main の Y8960 OPL2 の録音> --scale 0.70710678`（フォークは中央の定位で
+  √2/2 倍。音列は `seq/y8960.txt` を両方に流す）、`wscheck.py`（リズム音の波形選択を符号で見る。`seq/ws.txt`）、`pcmbsy.tcl`、
+  `state.tcl` の書いた後と読んだ後を `cmpshift.py` で比べる（録り始めがずれるので、ずらしを合わせる）、`firmware.tcl`（音源・端子・
+  デバッグ対象の名前の一覧）
+- `perf.sh`: 速度制限なしで 300 秒ぶんを 5 巡流し、実時間を比べる
+- openMSX のセーブステートは `OPENMSX_USER_DATA/../savestates`、つまり `WORK` の下に書かれる
 
 ## 取り込み元
 
