@@ -426,6 +426,42 @@ py doc/fork/y8960/level/rhythm-ws/anaeg.py <OUT>/take1/tones-mga.wav <OUT>/take2
   `py syntheg.py <出力先> [乱数の種] [クロックのずれ ppm]`
 - 試験が流れる時間は約 18 秒（MGA は約 20 秒）
 
+### リズム音の SD・CY・HH の作り方を実物で見分ける
+
+リズム音の SD・CY・HH の作り方は、今の openMSX の `Y8950` と YM3812（Nuked-OPL3、openMSX の `YMF262`）で違う。HH・SD・TC のスロットの
+MULT を打ごとに替え、作り方によって線スペクトルの位置が分かれる 12 打を鳴らし、`rhymodel.py` の模型 3 つ（`nuked`、`ymf262`、`y8950`）の
+どれに近いかを判定する。実物の Y8950 と YM3812 は、SD・HH が `YM3812 form`、CY が `undecided`（理由は下）で、線の並びは `nuked` に近い。
+結果と経緯は `implementation-plan.md` の §8 の 2026-11-14 (25)・(26)。
+
+作業用のディレクトリの作り方と `take.ps1` の使い方は上の節と同じ。SPFM Light の台の Y8950 は `mkhw.py` に `--module RE1-Y8950 --test Y8950` を
+渡す。台に 2 枚挿すときは、`--light-slot` でスロットを選び、録る前にもう一方のスロットの `suite_reset_*.json` も流してチップを黙らせる。
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkform.py <RUN>/patches/y8950.json     # YM3812 は opl2.json
+# 3 回録ってから（take.ps1 は -Seconds 26）
+py doc/fork/y8960/level/rhythm-ws/anaform.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+# 実物どうし、または実物とエミュレータを、線の突き出しの並びで比べる（判定には使わない見方）
+py doc/fork/y8960/level/rhythm-ws/cmpreal.py --a <Y8950 の録音> ... --b <YM3812 の録音> ...
+```
+
+```sh
+# openMSX の側。同じ打を MSX-AUDIO の拡張で鳴らす（$EXE と環境変数は「テストの回し方」と同じ）
+py doc/fork/y8960/level/rhythm-ws/mkform.py --tones "$OUT/form.txt"
+Y8960_TEST_OUT="$OUT" Y8960_TONES="$OUT/form.txt" Y8960_TARGET=MSXAUDIO $EXE -machine C-BIOS_MSX2+ -ext audio \
+    -script "$(pwd)/doc/fork/y8960/level/tones.tcl"
+py doc/fork/y8960/level/rhythm-ws/anaform.py "$OUT/tones-openmsx.wav"
+```
+
+- 今の openMSX の `Y8950` は 3 音とも `current Y8950 form`。リズム音を Nuked-OPL3 の形に直せば、SD・HH が `YM3812 form` になり、`cmpreal.py` で
+  実物と相関が 0.9 を超えるはず（直した版を鳴らしたことはない）
+- CY は、実物の YM3812 でも `undecided` になる。模型 `nuked` で「無い」とみなす境目（5dB）の近くの線が、録音には在るため。線ごとの値は
+  `cydetail.py <録音> CY-a CY-b` で見る
+- 線の位置は TL によらない。TL 0 では SPFM Light の録音がクリップしたので、`mkform.py` は TL 16 にしてある。打の前の床の中身（電源のうなりか
+  どうか）は `floorpeek.py` で見る
+- 判定器を変えたら、`synthform.py` の合成の録音（模型ごとに 1 本）で、作った模型の側だけが勝つことを見直す。
+  `py synthform.py <出力先> [乱数の種] [クロックのずれ ppm]`
+- 試験が流れる時間は約 17 秒
+
 ## 取り込み元
 
 Y8960 の実装本体は buppu3/openMSX の `y8960` ブランチ由来で、
