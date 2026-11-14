@@ -61,8 +61,9 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/rhythm-ws/mkhh.py` | 同じく、HH だけを波形を変えながら 20 打鳴らすものに書き換える |
 | `level/rhythm-ws/mkwse.py` | 同じく、HH だけを 01h を切り替えながら 16 打鳴らすものに書き換える |
 | `level/rhythm-ws/mkcon.py` | 同じく、HH の打ごとに C7h（HH・SD のチャンネルの CON）を切り替え、間に TT を挟むものに書き換える |
-| `level/rhythm-ws/anaws.py`・`anahh.py`・`anawse.py`・`anacon.py` | 上記 4 つの録音を測り、録る前に決めた基準で判定する |
-| `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py`・`synthcon.py` | 上記の判定器の判別力を見るための合成の録音を作る |
+| `level/rhythm-ws/mkfb.py` | 同じく、FB を 0 と 7 で切り替えて、旋律の ch0（対照）・TT・HH を鳴らすものに書き換える |
+| `level/rhythm-ws/anaws.py`・`anahh.py`・`anawse.py`・`anacon.py`・`anafb.py` | 上記 5 つの録音を測り、録る前に決めた基準で判定する |
+| `level/rhythm-ws/synthws.py`・`synthhh.py`・`synthwse.py`・`synthcon.py`・`synthfb.py` | 上記の判定器の判別力を見るための合成の録音を作る |
 | `level/rhythm-ws/take.ps1` | FitomHwIF の試験を 1 回流し、その前後を録る |
 | `level/rhythm-ws/listen.py` | 録音の抜き出しを 1 本の WAV につなぐ（人が聞き比べるため） |
 
@@ -356,6 +357,26 @@ py doc/fork/y8960/level/rhythm-ws/anacon.py <OUT>/take1/tones-mga.wav <OUT>/take
 - 打 0 は、BDh の最初の書き込みでリズムの有効化と HH の鍵を同時に立てる打。v0.9.12 の実物では、CON = 0 でも C7h=01h の打より
   9〜10dB 小さく鳴る。`--rhy-first` を付けると、打 0 の前にリズムだけを有効にする区間を置き、打 0 は鳴らない
 - 試験が流れる時間は約 24 秒。BD の挙動は見ない
+
+### リズム時の TT・HH に FB が掛かるかを実物で測る
+
+実物の YM3812 はリズム時の TT（TOM）と HH にチャンネルの FB を掛けないが、v0.9.14 の Y8960 の RTL（JTOPL）は掛ける。jotego/jtopl に
+issue を出した（https://github.com/jotego/jtopl/issues/17 ）。直ったら、この試験で確かめる。結果と経緯は `implementation-plan.md` の
+§8 の 2026-11-14 (17)・(18)。
+
+作業用のディレクトリの作り方と `take.ps1` の使い方は上の節と同じ。
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkfb.py <RUN>/patches/opl2ex.json --settle     # YM3812 は opl2.json
+# 3 回録ってから
+py doc/fork/y8960/level/rhythm-ws/anafb.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+```
+
+- 回が有効なのは、対照（旋律の ch0）が「掛かる」ときだけ。v0.9.12 の Y8960 は、初期化の直後の打に小さな広い帯域の音が乗り、正弦波の
+  対照のばらつきを大きくするので、`--settle`（初期化だけの無音の区間を先に置く）を付ける
+- 直る前の Y8960 は `TT: ... -> applies`。実物の YM3812 は TT・HH とも `does not apply`
+- HH は打ごとの揺らぎが大きく、FB が掛かる Y8960 でも `undecided` になる。HH の差は RMS でも見る（直る前の Y8960 では FB7 の打が約 2dB 大きい）
+- 試験が流れる時間は約 25 秒（`--settle` で約 26 秒）
 
 ## 取り込み元
 
