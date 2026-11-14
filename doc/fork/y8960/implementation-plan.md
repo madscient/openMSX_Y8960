@@ -378,7 +378,7 @@ periphery の受け口も残してあるが、Y8960 は何も渡さない（§3.
 移すかどうかを決めていない修正が 1 件ある（§8 の 2026-10-05）。
 
 **定位と音量**: 定位の分配則は等パワー（`y8960::panGain()`。L = cos θ、R = sin θ、
-θ = (値 − 1) / 254 × π/2、0 と 128 は中央）。音量は `y8960::volumeGain()`
+θ = (値 − 1) / 254 × π/2、128 は中央、0 は 1 と同じ左端）。音量は `y8960::volumeGain()`
 （0 = ミュート、1-127 = 値 / 128、bit7 = 1.0）。どちらも `src/sound/Y8960Pan.hh` にあり、
 OPLL / OPL2 / ミキサーと共用。コアの出力が片極性なので、**定位を掛ける前に
 無音時レベルを差し引いている**。省くと直流が定位に漏れる。
@@ -1161,6 +1161,68 @@ DCSG の 7FF0h/7FF1h）。§3.3.1 と §3.3.2。
   MMIO 窓）は 2026-09-10 に片付いた（§3.8.1）。残る #2/#3/#4/#5 は
   ROM/RAM の持ち方ひとつの設計差で、**保留**（2026-09-09、ユーザー判断）
 - Debuggable、ユーザー文書、buppu3 への還元をどうするか
+
+### Phase 5 — upstream のレビューを受けた作り直し【2026-11-14 決定】
+
+経緯と決定は §8 の 2026-11-14 (5)。PR とフォークの `main` を同じ形にする。以下は 2026-11-14 に調べたこと。比べた相手は
+upstream/master の `79cf4e4a8`。特記の無いものは **確認済み(読解)** で、ビルドも録音もしていない。規模は **推測**
+（フォークの差分の行数から）。
+
+**形**: 単一の `MSXY8960`（MSXDevice）が、ROM マッパー、メモリマップド I/O、直接 I/O、System Controller、MSX-Timer を
+受け持ち、音源のインスタンスを内部に持つ（合成。upstream の音源クラスは `final`）。手本は upstream の `Carnivore2`（SCC・
+AY8910・YM2413 を 1 つに持ち、音量レジスタから実行時に `setSoftwareVolume`）、`ReproCartridgeV2`（AY8910 を 2 個）、
+`Yamanooto`（SCC に `setBalance`）、`YMF278B`（`YMF262(name, config, true)` の変種フラグ）。`Y8960Mixer`、`Y8960Pan`、
+`MSXMixer` の `gainLeft`/`gainRight` と `setDeviceGain` は無くなる。System Controller（今は `MSXSwitchedDevice`）と
+MSX-Timer を同じデバイスに入れる形は **未検証**。
+
+**コピーごとの置き換え**
+
+| フォーク | 置き換え | upstream のクラスに足すもの | 規模 |
+|---|---|---|---|
+| `Y8960SCC` | `SCC(..., SCC::Mode::Real)` を持ち、9900h-9904h で `setBalance` | 無し | `MSXY8960` 側で数十行 |
+| `Y8960SsgCore`、`Y8960SSGS` | `AY8910`（`Type::YM2149`、`DummyAY8910Periphery`）を 2 個 | チャンネルごとの音量（20h-26h）を表す口。例: `SoundDevice` にチャンネルの左右のゲインを直に与える関数 | 10〜20 行 |
+| `Y8960OPL2`、`Y8960Adpcm`、`Y8960AdpcmMemory` | `Y8950` を持つ。サンプル RAM は 256KB を渡す | private 継承なので `setBalance` などを外から呼べない（`using` を足す）。`MSXAudio&` でなく周辺装置を取る口。キーボード端子と DAC を無しにできる口（端子名 `audiokeyboardport` が固定で、MSX-AUDIO と同時に挿すと名前が重なる）。OPL2 の波形選択（E0h-F5h、01h の b5）を変種フラグで。PCM_BSY | 100〜130 行 |
+| `YM2413NukeYKTBanked` | `YM2413` の NukeYKT コアに変種フラグ | 60 音色、40h-48h のバンク、レジスタの写しの拡張、コアを強制する口、セーブステートの版 | 60〜80 行と音色 45 行 |
+
+コピーした後で upstream がコピー元を変えたのは `79cf4e4a8`（narrowing のキャスト）だけ（**確認済み**: `git log b689d5141..upstream/master`）。
+`Y8960SsgCore` は `50d15b6c5` の `AY8910` の写しで、その後の upstream のエンベロープ修正を持っていない。
+
+**パン**（**確認済み**: python で 255 段を比べた）: upstream の `setBalance(ch, b)` は L = √(1−b)、R = √(1+b)。
+`b = −cos((p − 1)π/254)` を渡すと、フォークの `panGain()` と全段で形が一致し、違いは全体に掛かる √2 だけ
+（最大誤差 9.0e-4 dB、両端の隣の段）。b は float のまま渡す（設定と同じ 0.01 刻みに丸めると 185 値に減る）。
+√2 は `setSoftwareVolume` か `<volume>` で吸う。実機の定位表の中間の値は測っていない（中央と左端だけ。`hardware-notes.md` §6.5）。
+
+**パンを実行時に変えるときの upstream 側の問題**
+
+- (a) `ResampledSoundDevice::postSetBalance()` は呼ぶたびにリサンプラを作り直す。レジスタの書き込みごとに呼ぶ使い方を想定していない
+- (b) `setBalance` は時刻を取らない。持ち主が先に `MSXMixer::updateStream(time)` を呼ぶ
+- (c) `balanceCenter` は一度 false になると戻らない。全チャンネルが中央の間はモノラル扱いで左右に 0.707、ステレオ扱いでは 1.0。
+  最初に中央以外を書いた瞬間に、そのチップの中央のチャンネルが 3dB 上がる（聞いて確かめていない）
+- upstream で実行時に `setBalance` を呼ぶ例は無い（`Yamanooto` は構築時に 1 回）
+
+**音量**: チップごと（7FF7h-7FFAh、7FFDh）とマスター（7FFEh）は、自分のチップの `setSoftwareVolume` の積で表せる。
+以前これを見送った理由（§3.7。同じ枠を他のデバイスが自分の音量に使っている）は他人のデバイスに掛けていたことによるもので、
+自分が持つチップには当たらない。
+
+**無くなるもの、決まっていないもの**
+
+- 出力の切り替え（`y8960-mixer_output` の msx / mix）は本体側の音を操作する機能で、単一デバイスでは作れない。指摘 3 そのもの。
+  フォークでも落とすかは未決
+- SSG の直流分: フォークは無音時のレベルを引いてから定位を掛けている。upstream の `AY8910` に `setBalance` を掛けると直流も左右に
+  分かれる。定常の直流はミキサーの直流除去で消えるが、定位や音量を変えた瞬間の段差は未検証
+- SSG は upstream のエンベロープ修正が入るので、今のフォークと音が変わる
+- PCM_BSY の 2 点（81h を書くと 0、一回再生の終わりで 0。RTL 由来）が実物の Y8950 と同じかは未確認。同じなら upstream の
+  `Y8950` の修正、違えば Y8960 の変種
+- `YM2413NukeYKT` の保留中の書き込みの扱いが、フォーク（次のデータで置き換える。原典 `opll.cc` に沿う）と upstream（捨てる）で
+  違う。無条件に入れると MSX-MUSIC も変わる
+- `SoundDevice` は serialize を持たない。balance と software volume は、ステートを読んだ後に持ち主が掛け直す
+
+**コミット**: 後のコミットが前を直さない。buppu3 さんの MSX-Timer は直しを含めた 1 コミットにし、帰属の形はメンテナに確かめる
+（upstream には人間の `Co-authored-by` の例が 2 件ある。**確認済み**: 2024 年以降の trailer を数えた）。upstream のクラスの拡張は
+Y8960 本体より前の独立したコミットにする。別の PR に分けるかはメンテナに聞く。
+
+**メンテナに聞くこと**（返事の投稿はユーザーの確認の後）: 実行時のパンの (a)(c) を upstream 側で直してよいか。チャンネルごとの
+音量の口。`Y8950` の拡張の形。CC BY-SA の音色表（前の PR の本文で聞き、答えが無い）。PR を分けるか。buppu3 さんの帰属の形。
 
 ## 6. 検証方法
 
