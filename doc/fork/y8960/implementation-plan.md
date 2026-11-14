@@ -1448,6 +1448,27 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-15 (5) — upstream に PR を出した（openMSX/openMSX#2294）。#2288 にリンクを書いた
+
+ユーザーの返事: 「1-3 ok」（`y8950-type` の push と PR の作成、#2288 へのリンクのコメント、`main` の未 push の 2 本の push）。
+
+- 出す前に upstream/master を取り直した（`git fetch --no-tags upstream master`）。`b609bfe6b` から `ac4fa06b8` へ 6 本進んでいたが、
+  変わったのは `build/` と `src/imgui/` だけで、PR の枝が変えた 5 ファイルとは重ならない（**確認済み**: 両方の `git diff --name-only` の
+  共通部分が空）。載せ替えはしていない
+- 出す前の点検: `main` は全項目 OK。PR の枝は 1〜4・7 が OK、5・6 は NG（フォークの文書と点検の道具が枝に無いため。前回と同じ）
+- `main` を push した（origin/main = `0dabd7010`）。ブランチ `y8950-type` を fork に push した（`7d388e6cb`）
+- **PR**: https://github.com/openMSX/openMSX/pull/2294 。base は `master`、head は `madscient:y8950-type`。題は
+  "Y8950: prepare for the Y8960 cartridge, and build the rhythm SD, CYM and HH like a real chip"。説明文は下書き
+  （`derived/pr/derived/work/pr-body.md`）のまま、生成ツールの行は無し（#2239・#2288 と同じ）。**確認済み**（`gh pr view`）: OPEN、
+  5 コミット、head は `7d388e6cb`、GitHub の判定は MERGEABLE。投稿された説明文は下書きとバイト単位で一致（取り出しで付く末尾の
+  改行 1 個を除く）
+- #2288 にコメントを書いた（https://github.com/openMSX/openMSX/pull/2288#issuecomment-6886064276 ）。文面:
+  "I've opened #2294 with the first part: the `Y8950` extension (`Type::Y8960`, the waveform select, PCM_BSY), plus the rhythm sounds
+  built like a real Y8950, which changes MSX-AUDIO's SD, CYM and HH (details and measurements there). The `MSXY8960` device itself
+  will follow on top of it."
+- **このあと**: メンテナーの返事を待つ。`MSXY8960` は #2294 の上に載せた別の PR にする（説明文に書いたとおり）。組み始める時期は
+  未決。#2294 を直すときは worktree `derived/pr` で該当の段から作り直す（道具は `tests/y8950-pr/`）
+
 ### 2026-11-15 (4) — `Type::Y8960` の雑音を RTL の形にし、1 ビットずつ照合した。PR を出す手前で止めた
 
 - **決定（ユーザー判断）**: `Type::Y8960` の雑音の発生器を RTL（JTOPL）の形にする。ユーザーの言葉では「ホワイトノイズの位相なんて
