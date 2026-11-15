@@ -526,8 +526,8 @@ sh $T/commits.sh a b c d e
   `state.tcl` の書いた後と読んだ後を `cmpshift.py` で比べる（録り始めがずれるので、ずらしを合わせる）、`firmware.tcl`（音源・端子・
   デバッグ対象の名前の一覧）
 - 雑音の発生器: `gen_noise.py` の音列（ch7・ch8 の F-Num 0 で HH と CY の位相を止め、HH と SD の出力から雑音のビットを読む）を
-  チャンネルごとに録り、`noisecheck.py <録音> rtl|nuked` で模型と 1 ビットずつ照合する。`Type::Y8950` は `nuked`、`Type::Y8960` は
-  `rtl` に合い、もう一方の模型では状態が解けない
+  チャンネルごとに録り、`noisecheck.py <録音> rtl|nuked` で模型と 1 ビットずつ照合する。両方の型とも `nuked` に合い、`rtl`
+  （Y8960 の RTL の発生器）の模型では状態が解けない
 - `perf.sh`: 速度制限なしで 300 秒ぶんを 5 巡流し、実時間を比べる
 - openMSX のセーブステートは `OPENMSX_USER_DATA/../savestates`、つまり `WORK` の下に書かれる
 
