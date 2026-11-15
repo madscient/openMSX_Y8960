@@ -23,6 +23,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
 | `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト。Y8960 の upstream PR（openMSX/openMSX#2288）のブランチを `main` から組み直すスクリプト（`y8960-pr-*`） |
 | `upstream-touched.txt` | 変更してよい upstream のファイルの一覧と理由。点検器が突き合わせる |
+| `LICENSE` | 道具（スクリプトと、それが読む音列）のライセンス。MIT。例外の 2 本と対象外の文書は冒頭に書いてある |
 
 ## upstream との関係
 
