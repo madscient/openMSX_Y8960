@@ -906,9 +906,13 @@ void Y8960OPL2::generateChannels(std::span<float*> bufs, unsigned num)
 			// The rhythm sounds are twice the melody, as in the Y8950 this was
 			// forked from, the other OPL emulators and the JTOPL core of the
 			// Y8960 hardware.
+			// BD: with 'connect' = 1 only the carrier is heard, without
+			// FM, as measured on a real Y8950, YM3812 and Y8960. The
+			// modulator still runs.
 			if (ch[6].slot[CAR].isActive()) {
+				int mod = ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am);
 				out(9, 6, 2 * ch[6].slot[CAR].calc_slot_car(lfo_pm, lfo_am,
-				              ch[6].slot[MOD].calc_slot_mod(lfo_pm, lfo_am)));
+				              ch[6].alg ? 0 : mod));
 			}
 			if (ch[7].slot[CAR].isActive()) {
 				out(10, 7, 2 * ch[7].slot[CAR].calc_slot_snare(lfo_pm, lfo_am, whiteNoise));
