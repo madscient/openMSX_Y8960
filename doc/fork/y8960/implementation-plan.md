@@ -1486,6 +1486,16 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 - **決定（ユーザー判断）**: 音色表は回答の選択肢 2（Nuked-OPLL の表）で進める。個人的な意見を添えた返事を #2288 に投稿する
 - **決定（ユーザー判断）**: David さんへの連絡（2 名分の許諾の依頼）はしない。9 月の DM への返事が来たときの扱いは決めていない。
   **前提**: plgDavid の表を使うには 3 表とも Hubert さんの許諾が要り、その経路は David さんしかない
+- #2288 に返事を投稿した（ユーザーの「ok、gh で投稿してよい」。2026-11-15 08:44Z、
+  https://github.com/openMSX/openMSX/pull/2288#issuecomment-6891869422 ）。**確認済み**: 投稿された本文を `gh api` で取り出し、
+  下書きとバイト単位で一致（取り出しで付く末尾の改行 1 個を除く）。文面:
+  "Thanks for looking into this. I'll go with option 2 for now. / A personal remark, not a request: the plgDavid tables were made
+  inexact on purpose, "to be copyright safe" as the wiki puts it, and they can't go in. Meanwhile the VRC7 table in Nuked-OPLL is a
+  dump of the chip's internal ROM, also published on its own with a copyright notice and the GPL ([VRC7dump](https://github.com/nukeykt/VRC7dump)),
+  and that one can. Given what the license check is meant to protect, I find that rather ironic."
+- **このあと**: `MSXY8960` の PR では、OPLL-X・OPLL-P・VRC7 の表を Nuked-OPLL の `patch_ym2423`・`patch_ymf281`・`patch_ds1001` にする。
+  PR の段の道具（`y8960-pr-stage.py` の CC BY-SA の表示を足す処理）は、表を替えるときに合わせて直す。フォークの `main` の表を
+  どうするかは決めていない（今は plgDavid の表で、実機と同じ音）
 
 ### 2026-11-15 (5) — upstream に PR を出した（openMSX/openMSX#2294）。#2288 にリンクを書いた
 
