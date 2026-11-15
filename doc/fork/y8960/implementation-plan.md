@@ -1448,6 +1448,15 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-16 (17) — `mse_fm_filter.py` も MIT に含めた。main の追従と `MSXY8960` の PR は別のセッション
+
+ユーザーの返事: 「1 ok / 2 含めてよい / 3 別セッションでやろうか。今日はもう寝る」。1 は (16) のコミットの push、2 は `mse_fm_filter.py` を
+MIT に含めること、3 は `main` の upstream への追従と `MSXY8960` の PR（#2288 の作り直し）。
+
+- **決定（ユーザー判断）**: `mse_fm_filter.py` を MIT に含める。`doc/fork/LICENSE` の例外は `rhymodel.py` の 1 本になった（§9.3 を直した）
+- この変更は (16) のコミットと一緒に push する（ユーザーの「1 ok」）
+- **次のセッション**: `main` を upstream に追従させるか。`MSXY8960` の PR を #2294 の上に作る
+
 ### 2026-11-16 (16) — #2294 が upstream に取り込まれた。このフォークの道具を MIT にした（2 本を除く）
 
 - ユーザーの情報: #2294 はマージされた。**確認済み**（`gh pr view`）: 2026-11-15 18:26 UTC（11-16 03:26 JST）に m9710797 がマージした。
@@ -6181,11 +6190,11 @@ emu8950 は v1.2.4 `bf9f011`、OPL2EX は DSAemuEngine `3129a2c`）。「比べ�
 
 - 実物を鳴らして録る音列、判定器、判定器の判別力を見る合成の録音が `level/` にある。一覧と使い方は `README.md`
 - **このフォークで作った道具は MIT ライセンスにした**（2026-11-16、ユーザー判断。表示は `doc/fork/LICENSE`）。対象はスクリプトと `level/*.txt` の音列。
-  例外の 2 本はリポジトリのライセンス（GPL-2.0-only）のまま:
+  例外の 1 本はリポジトリのライセンス（GPL-2.0-only）のまま:
   - `level/rhythm-ws/rhymodel.py`: openMSX の YMF262（MAME 由来）と古い `Y8950` の実装、Nuked-OPL3 の位相の式を Python に書き直した部分を持つ。
     これを読み込む 8 本（`anaform.py`・`cmpreal.py`・`cydetail.py`・`floorpeek.py`・`mkcyws.py`・`mkform.py`・`synthcyws.py`・`synthform.py`）は
     MIT だが、走らせるにはこれが要る
-  - `level/mse_fm_filter.py`: SOUND ENHANCER rev.2 の回路図の値を持つ。MIT に含めるかはユーザーの確認待ち
+- `level/mse_fm_filter.py`（SOUND ENHANCER rev.2 の回路図の値を持つ）は、ユーザーの判断で含めた（2026-11-16）
 - 点検の方法: 119 本を、外部の実装（Nuked・JTOPL・ymfm・MAME・emu8950・openMSX のソース・RTL）や著作権・ライセンスへの言及と、C++ の断片を
   含む文字列で検索し（19 本が当たった）、当たったものと式を持つモデルを読んだ。コミットの作者はすべてユーザーのアカウント（`git log`）
 - 線引き（**推測**: ハードウェアの振る舞いの規則は著作物にならない、という一般的な理解に拠る。出典は引いていない）
