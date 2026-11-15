@@ -72,6 +72,11 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/rhythm-ws/mkbd.py` | FitomHwIF の試験パッチを、リズム時の BD を C6h の CON 0・1 で鳴らし、旋律の ch0 を対照に置く打に書き換える。`--tones` で同じ打を openMSX の音列に |
 | `level/rhythm-ws/anabd.py` | 上記の録音を測り、録る前に決めた基準で判定する |
 | `level/rhythm-ws/synthbd.py` | 上記の判定器の判別力を見るための合成の録音を作る |
+| `level/rhythm-ws/mkleak.py` | FitomHwIF の試験パッチを、電源投入の直後にリズムを有効にし、HH・SD・TT・CY を 1 スロットずつ黙らせる並びに書き換える |
+| `level/rhythm-ws/analeak.py` | 上記の録音を測り、雑音がどのスロットから出るかを、録る前に決めた基準で判定する |
+| `level/rhythm-ws/mkslots.py` | 同じく、ch0〜8 に鍵を押さずに F-Num を入れる並びに書き換える |
+| `level/rhythm-ws/anaslots.py` | 上記の録音を測り、鍵を押さずに鳴る位置にあるスロットを、録る前に決めた基準で判定する |
+| `level/rhythm-ws/synthleak.py`・`synthslots.py` | 上記の 2 つの判定器の判別力を見るための合成の録音を作る |
 | `tests/y8950-pr/` | upstream に出す `Y8950` の拡張（`Type::Y8960`、リズム音、波形選択、PCM_BSY）を、段ごとに組んで確かめる道具。使い方は「`Y8950` の PR を確かめる」 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -528,6 +533,41 @@ py doc/fork/y8960/level/rhythm-ws/anabd.py "$OUT/tones-openmsx.wav"
 - 判定器を変えたら、`synthbd.py` の合成の録音（BD CON1 の作り方ごとに 1 本と、対照を壊したもの）で見直す。
   `py synthbd.py <出力先> [乱数の種] [クロックのずれ ppm] [FM の深さ rad]`
 - 試験が流れる時間は約 21 秒（MGA は約 22 秒）
+
+### 電源投入の直後に、鍵を押していないスロットが鳴る位置にあるかを実物で測る
+
+v0.9.16 の Y8960 は、電源投入の直後、鍵を押したことのないスロットの EG が、減衰 0・RR 0 のリリースの状態に残っている。18 スロット中
+17 が最大の音量の位置にあり（ch8 の変調器だけが静か。リズムの合図の後に測ったので、電源投入の直後からかは分けていない）、リズムを
+有効にすると HH・SD が雑音として鳴り、F-Num を入れると鍵を押さなくても鳴る。実物の YM3812・Y8950 は、IC のリセットの後、どの
+スロットも鳴る位置にない。結果と経緯は `implementation-plan.md` の §8 の 2026-11-16 (5)〜(9)。
+
+道具は 2 組。作業用のディレクトリの作り方と `take.ps1` の使い方は「リズム音に波形選択が掛かるかを実物で測る」と同じ（Y8960 は MGA が
+毎回電源から入れ直す。SPFM Light の台は `-ResetSuite` でリセットしてから録る）。
+
+- `mkleak.py`・`analeak.py`: リズムを有効にして鳴る雑音が、HH・SD・TT・CY のどのスロットから出るか。1 スロットずつ TL 63 か RR 15 で
+  黙らせ、消えた電力の取り分で判定する
+- `mkslots.py`・`anaslots.py`: ch0〜8 を 1 つずつ、鍵を押さずに F-Num 244h（440Hz）を入れ、変調器（440Hz）とキャリア（880Hz）の線で
+  判定する。最後に ch0 を鍵で鳴らす合図から、窓を逆算する
+
+```sh
+py doc/fork/y8960/level/rhythm-ws/mkleak.py <RUN>/patches/opl2ex.json tl     # rr で RR 15 の版
+# 2 回以上録ってから（take.ps1 は -Seconds 30）
+py doc/fork/y8960/level/rhythm-ws/analeak.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav
+py doc/fork/y8960/level/rhythm-ws/mkslots.py <RUN>/patches/opl2ex.json       # YM3812 は opl2.json、Y8950 は y8950.json
+# 3 回録ってから（take.ps1 は -Seconds 44）
+py doc/fork/y8960/level/rhythm-ws/anaslots.py <OUT>/take1/tones-mga.wav <OUT>/take2/tones-mga.wav <OUT>/take3/tones-mga.wav
+```
+
+- v0.9.16 の Y8960: `analeak.py` は HH・SD が `sounded`、TT・CY が `silent`。RR 15 の版でも床まで下がる。TT と CY は F-Num 0 では
+  直流になって聞こえないので、`silent` は EG が静かという意味ではない。`anaslots.py` では 17 スロットが `audible`
+- 実物の YM3812・Y8950: `anaslots.py` は 18 スロットとも `quiet`（YM3812 の ch6 の変調器が 1 回だけ `undecided` になった。合図より
+  61dB 以上小さい）。実チップはリズムを有効にしても雑音が出ないので、`mkleak.py` は使えない
+- `mkleak.py` は Y8960 の今の不具合に頼っている（雑音の始まりを時刻の基準にする）。Y8960 が直ると、`analeak.py` は雑音が見つからず止まる。
+  `anaslots.py` は終わりの合図で窓を置くので、直った後もそのまま使える
+- Y8960 の 17 スロットを数えた録音（2026-11-16 (8)）は、終わりの合図を足す前の版で、窓を BDh=20h の雑音から置いた
+- 判定器を変えたら、合成の録音で見直す。`py synthleak.py <出力先> [乱数の種]`（HH と SD、SD だけ、4 つとも）、
+  `py synthslots.py <出力先> [乱数の種]`（実チップの形、Y8960 の形、2 スロットだけ）
+- 試験が流れる時間は `mkleak.py` が約 17 秒、`mkslots.py` が約 31 秒（どちらも lead の 3 秒を含む）
 
 ## `Y8950` の PR を確かめる
 
