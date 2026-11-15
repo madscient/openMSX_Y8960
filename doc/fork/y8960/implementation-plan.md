@@ -1448,6 +1448,21 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-16 (11) — スロットを調べた道具を残した。#2294 の Wouter さんの返事は次のセッションで扱う
+
+ユーザーの返事: 「1 ok / 2 残す」。1 は (10) の記録の push（`84c696c57`。出す前の点検は OK）、2 は (7)〜(9) の道具を残すこと。
+あわせて「Wouter からは返事が来てるので、次のセッションでやる」（#2294 の BD の報告への返事。こちらはまだ読んでいない）。
+
+- **決定（ユーザー判断）**: 道具を `level/rhythm-ws/` に残す。名前を既存の道具に揃えた（scratchpad の名前 → 残した名前）:
+  `mkleak.py` → `mkleak.py`、`anleak.py` → `analeak.py`、`synthleak.py` → `synthleak.py`、`mkslots.py` → `mkslots.py`（終わりの合図つき）、
+  `anslots2.py` と `anslots.py` の部品 → `anaslots.py`、`synthslots2.py` → `synthslots.py`（合図を 388Hz・777Hz に直し、乱数の種を引数に）。
+  `anslots.py`（BDh=20h の雑音から窓を置く、Y8960 だけで使える版）は残していない。(8) の Y8960 の判定はこの版で出した
+  - scratchpad の版にあった、このマシンの絶対パスの `sys.path` を外した
+  - **確認済み**: `anaslots.py` は実チップの録音 6 本で scratchpad の `anslots2.py` と出力が 1 行も違わない。`analeak.py` は実物の 4 本で
+    (7) と同じ判定。合成の録音（`synthslots.py` を乱数の種 3 つで 9 本、`synthleak.py` の 3 本）は作ったとおりに判定された
+- README に「電源投入の直後に、鍵を押していないスロットが鳴る位置にあるかを実物で測る」の節と、道具の一覧の 5 行を足した
+- **次のセッション**: #2294 の Wouter さんの返事を読み、BD の直し（`derived/pr/derived/work/bd-con.diff`）をどこに入れるかを進める
+
 ### 2026-11-16 (10) — hra1129 さんに、楽音のチャンネルも漏れることと、3 段の読みの取り下げを追記した
 
 - ユーザーが Discord に追記した（ユーザーの画面で見た）。本文は「さらに測ったら、リズム音だけでなく楽音チャンネルも漏れてますね。キーオンしないで
