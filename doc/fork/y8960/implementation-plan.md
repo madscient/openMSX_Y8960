@@ -1448,6 +1448,34 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-15 (6) — 音色表のライセンスに MBilderbeek さんの回答が来ていた（11-14）。#2294 に最初のレビュー。対応は未決
+
+- #2288 に MBilderbeek さんの回答（2026-11-14 13:46Z）。2026-11-14 (7) の時点では未着で、以後の節に入っていなかったので、ここで補う。
+  本人は「ライセンスは詳しくない」とし、Claude に聞いた結果として次を書いた
+  - wiki の表示は版の無い "CC BY-SA"。表示が足されたのは 2020 年 1 月で、そのときの版から 4.0 とみている
+  - CC BY-SA 4.0 から移せるのは GPLv3 だけで、一方向。openMSX は GPLv2 なので、表を入れると openMSX を自分のライセンスで
+    配れなくなる。ymfm（BSD-3-Clause）がリンクだけで載せていることは、openMSX には理由にならない
+  - 選択肢: 1. 作者 2 名から "GPL version 2 or later" か寛容なライセンス（CC0、BSD など）での許諾を得る。公開の場での表明
+    （wiki か plgDavid/misc の issue）が望ましい。大半の音色は Hubert Lamontagne さんの名義なので、David さんだけでなく
+    Hubert さんにも頼む価値がある。2. Nuked-OPLL の YM2423・YMF281・DS1001 の表（GPL-2.0-or-later）を使う。実物の Y8960 とは
+    音が少し違う
+  - 提案: 2 で始めて先へ進め、並行して 2 名に頼む。許諾が取れたら、別のコミットで表を替え、許諾へのリンクをコミットメッセージに書く
+  - 回答が引いている CC と FSF の互換表は、このセッションでも開いていない。§8 の 2026-11-13 (2) の推測（CC BY-SA 4.0 から
+    移せるのは GPLv3 だけ）は推測のまま
+- **確認済み**（wiki の git を取得し、本文を読んだ）: 表ごとの名義は次のとおり。Y8960 が使う 3 表は、どれも Hubert さんが作者に
+  入っていて、David さんだけの許諾で済む表は無い。2026-09-22 の DM は David さん宛だけ（2026-11-14 (7)）なので、David さんから
+  許諾が来ても、3 表とも Hubert さんの許諾が要る
+  - OPLL（YM2413）: "April 2015 David Viens, tweaked May 19-21th 2015 Hubert Lamontagne"（Y8960 はこの表を使わない）
+  - OPLL-X（YM2423）: Hubert Lamontagne のみ（2016 年 5 月）
+  - OPLL-P（YMF281）: Hubert Lamontagne のみ（2015-05-14）
+  - VRC7: Hubert Lamontagne と David Viens（2015-05-15）
+  - plgDavid/misc は issue が有効（`gh api` の `has_issues` が true）。回答の言う「issue での表明」の場は在る
+- **確認済み**（`gh api` で Nuked-OPLL の `opll.c` を取得、v1.0.2）: GPL の表示はファイル冒頭の定型の見出しで、表についての個別の
+  記述は無い。謝辞は "VRC VII decap and die shot" だけ。YM2413・YM2423・YMF281 の表の出所は書いていない（§8 の 2026-11-13 (2) の表と同じ）
+- #2294 に m9710797 のレビュー（2026-11-15 08:24Z、COMMENTED）。1 本目のコミット（`Y8950Periphery` を受け取る、
+  `ResampledSoundDevice` を public で継承）に "OK. Also a nice cleanup of the code. Thanks."。行コメントは無く、2 本目以降には触れていない
+- 未決（ユーザー判断待ち）: 音色表を回答の提案どおり Nuked-OPLL の表で始めるか。Hubert Lamontagne さんに頼むか、その経路
+
 ### 2026-11-15 (5) — upstream に PR を出した（openMSX/openMSX#2294）。#2288 にリンクを書いた
 
 ユーザーの返事: 「1-3 ok」（`y8950-type` の push と PR の作成、#2288 へのリンクのコメント、`main` の未 push の 2 本の push）。
