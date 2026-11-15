@@ -1472,9 +1472,19 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   - plgDavid/misc は issue が有効（`gh api` の `has_issues` が true）。回答の言う「issue での表明」の場は在る
 - **確認済み**（`gh api` で Nuked-OPLL の `opll.c` を取得、v1.0.2）: GPL の表示はファイル冒頭の定型の見出しで、表についての個別の
   記述は無い。謝辞は "VRC VII decap and die shot" だけ。YM2413・YM2423・YMF281 の表の出所は書いていない（§8 の 2026-11-13 (2) の表と同じ）
+- **確認済み**（ユーザーの示した https://github.com/nukeykt/VRC7dump を `gh api` で読んだ）: 同じ作者が、VRC7 の内蔵音色 ROM のダンプを
+  単独で GPL で配っている。リポジトリのライセンスは GPL-2.0、説明は "Konami/Yamaha VRC7 internal patch ROM dump"。中身の
+  `vrc7preset.cpp` は型の定義と 2 つの表だけで、処理のコードは無い。冒頭に "Copyright (C) 2018-2019 Nuke.YKT" と GPL-2.0-or-later の
+  表示がある。表の注記は、VRC7 が "dumped using debug mode"、YM2413 が "tuned using hardware tests and then crosschecked with ym2413b
+  die shot"。著作権とライセンスの表示は、ダンプしたデータそのものに付いている。上の項の「表についての個別の記述は無い」は
+  `opll.c` だけを見たもので、これを根拠に「GPL を付けたのは読む側」とユーザーに言ったのは誤りだった
+- ユーザーの情報: wiki は plgDavid のアカウントのもので、Hubert さんへの連絡は David さんを経由するしかない
+- ユーザーの見解: 「to be copyright safe」のために作られた表が使えず、ダンプに勝手に GPL を付けたものなら使える、というのは、
+  ライセンスを確かめる本来の目的からすると滑稽。個人的な意見として PR に書くことを検討中（投稿は未決）
 - #2294 に m9710797 のレビュー（2026-11-15 08:24Z、COMMENTED）。1 本目のコミット（`Y8950Periphery` を受け取る、
   `ResampledSoundDevice` を public で継承）に "OK. Also a nice cleanup of the code. Thanks."。行コメントは無く、2 本目以降には触れていない
-- 未決（ユーザー判断待ち）: 音色表を回答の提案どおり Nuked-OPLL の表で始めるか。Hubert Lamontagne さんに頼むか、その経路
+- 未決（ユーザー判断待ち）: 音色表を回答の提案どおり Nuked-OPLL の表で始めるか。David さんにもう一度、今度は 2 名分を頼むか、
+  その経路（DM か plgDavid/misc の issue か）。個人的な意見を返事に添えるか
 
 ### 2026-11-15 (5) — upstream に PR を出した（openMSX/openMSX#2294）。#2288 にリンクを書いた
 
