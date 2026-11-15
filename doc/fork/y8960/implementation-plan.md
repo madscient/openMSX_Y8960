@@ -1448,6 +1448,23 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-15 (11) — #2294 の枝を force-push し、説明文を差し替え、返事を 4 本投稿した。5 本目は残す
+
+ユーザーの返事: 「a / 1 ok / 2 ok / 3 ok / 4 ok」。a は (10) の「5 本目を残す」、1〜4 は (9) の「このあと」の 4 つ。
+
+- **決定（ユーザー判断）**: 5 本目（PCM_BSY）は残して出す。hra1129 さんが Y8960 を Y8950 に合わせると決めたら外す（(10)）
+- `y8950-type` を force-push した（`--force-with-lease` で、origin の先頭が `7d388e6cb` のときだけ上書き）。**確認済み**（`gh pr view`）:
+  PR の先頭は `913003062`、5 コミット、GitHub の判定は MERGEABLE
+- 説明文を `pr-body-v2.md` に差し替えた。**確認済み**: 取り出した本文が下書きと一致（取り出しで付く末尾の改行 1 個を除く）
+- 返事を投稿した。**確認済み**: 4 本とも、取り出した本文が下書きと一致（末尾の改行を除く）
+  - CY の行コメントへ: https://github.com/openMSX/openMSX/pull/2294#discussion_r4578841571
+  - 雑音の行コメントへ: https://github.com/openMSX/openMSX/pull/2294#discussion_r4578841735
+  - E0h の行コメントへ: https://github.com/openMSX/openMSX/pull/2294#discussion_r4578841841
+  - 全体へ（作り直しの要約だけ。PCM_BSY には触れない）: https://github.com/openMSX/openMSX/pull/2294#issuecomment-6896260263
+  - 文面は作業用ディレクトリの `reply-c1.md`〜`reply-c3.md`・`comment-update.md`（(9) の下書き。`comment-update.md` は (10) で
+    PCM_BSY の段落を外したもの）
+- **このあと**: メンテナーの返事と、hra1129 さんの返事を待つ
+
 ### 2026-11-15 (10) — #2294 に PCM_BSY のコメントは付けない。`Type::Y8960` の PCM_BSY を Y8950 に合わせるかは検討中
 
 - **決定（ユーザー判断）**: 5 本目のレビュー（Y8960 の作者に不具合として知らせてはどうか）には返事をしない。全体へのコメントの下書き
