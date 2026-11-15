@@ -6172,5 +6172,11 @@ DSAemuEngine の `doc/plan.md` は、Y8960 の RTL との突き合わせを open
 ユーザーの案（2026-11-16）: アーカイブした後は、upstream のクローンにブランチを作って PR を出す。blueMSX-plus でもそうする予定。
 
 - ユーザーのアカウントは openMSX/openMSX にも Hesoten/blueMSX-plus にも push できない（**確認済み**: `gh api repos/<repo>` の
-  `permissions.push` が false、2026-11-16）。PR の枝は GitHub のリポジトリに push しておく必要があり、アーカイブしたリポジトリは push を
-  受けない。どこに枝を置くかは**未決**（ユーザーに示した）
+  `permissions.push` が false、2026-11-16）
+- PR の枝は GitHub 上のリポジトリ（upstream か fork）に置く。手元のクローンで `gh pr create` を走らせると、push の権限が無ければ、gh が
+  fork を作る選択肢を出し、そこへ push する（**確認済み(文書)**: GitHub Docs の「Creating a pull request from a fork」と、gh の manual の
+  `gh pr create`、2026-11-16）
+- アーカイブしたリポジトリは枝も読み取り専用で、変えるにはアーカイブを解除する。解除はできる（**確認済み(文書)**: GitHub Docs の
+  「Archiving repositories」）。1 つのアカウントが同じ upstream の fork を 2 つ持てるかは、読んだ文書には書いていない
+- 枝の置き場は**未決**（ユーザーに示した）。案: PR を出している間だけ fork のアーカイブを解除する。後追いの PR が見込まれる間は
+  アーカイブしない
