@@ -37,6 +37,7 @@
 //   0xA0/0xA1 SSG address/data (write-only), shared with the MSX's own PSG
 //   0xB0-0xB3 MSX-TIMER. Its counters and interrupt run on while the ports
 //             are closed: the enable bit only gates the address decoding.
+//   0x40-0x4F System Controller (switched I/O id 0x80), always there
 //   0xC0/0xC1 OPL2 address and status/data
 
 #include "Y8960Cartridge.hh"
@@ -53,11 +54,16 @@ static constexpr unsigned ROM_BANKS = 16;
 static constexpr unsigned RAM_BANKS = 16;
 static constexpr uint8_t SCC_BANK = 0x3F;
 
+static constexpr uint8_t SYSTEM_CONTROLLER_ID = 0x80; // 40h
+static constexpr uint8_t BOARD_ID = 0x02;             // 41h: this cartridge
+static constexpr uint8_t FUNCTION_CONFIG_ROM = 0x01;  // 42h
+
 Y8960Cartridge::Y8960Cartridge(const DeviceConfig& config, Rom&& rom_)
 	: Rom8kBBlocks(config, std::move(rom_))
 	, y8960(getName(), config, getCurrentTime())
 	, ram(config, getName() + " RAM", "Y8960 RAM", RAM_BANKS * 0x2000)
 {
+	systemController.emplace(getMotherBoard());
 	powerUp(getCurrentTime());
 }
 
@@ -82,6 +88,7 @@ void Y8960Cartridge::reset(EmuTime time)
 		setBank(region, uint8_t(region - 2));
 	}
 	y8960.reset(time);
+	if (systemController) systemController->reset();
 }
 
 bool Y8960Cartridge::isRamRegion(unsigned region) const
@@ -313,6 +320,54 @@ void Y8960Cartridge::writeIO(uint16_t port, byte value, EmuTime time)
 	}
 }
 
+Y8960Cartridge::SystemController::SystemController(MSXMotherBoard& motherBoard)
+	: MSXSwitchedDevice(motherBoard, SYSTEM_CONTROLLER_ID)
+{
+}
+
+void Y8960Cartridge::SystemController::reset()
+{
+	boardSelected = false;
+	romFunction = false;
+}
+
+uint8_t Y8960Cartridge::SystemController::readSwitchedIO(uint16_t port, EmuTime time)
+{
+	return peekSwitchedIO(port, time);
+}
+
+uint8_t Y8960Cartridge::SystemController::peekSwitchedIO(uint16_t port, EmuTime /*time*/) const
+{
+	switch (port & 0x0F) {
+	case 0x00: return uint8_t(~SYSTEM_CONTROLLER_ID);
+	case 0x01: return boardSelected ? uint8_t(~BOARD_ID) : 0xFF;
+	case 0x02: return romFunction ? uint8_t(~FUNCTION_CONFIG_ROM) : 0xFF;
+	default:   return 0xFF;
+	}
+}
+
+void Y8960Cartridge::SystemController::writeSwitchedIO(uint16_t port, uint8_t value, EmuTime /*time*/)
+{
+	switch (port & 0x0F) {
+	case 0x01:
+		boardSelected = value == BOARD_ID;
+		if (!boardSelected) romFunction = false;
+		break;
+	case 0x02:
+		if (boardSelected) romFunction = value == FUNCTION_CONFIG_ROM;
+		break;
+	default:
+		break;
+	}
+}
+
+template<typename Archive>
+void Y8960Cartridge::SystemController::serialize(Archive& ar, unsigned /*version*/)
+{
+	ar.serialize("boardSelected", boardSelected,
+	             "romFunction",   romFunction);
+}
+
 byte* Y8960Cartridge::getWriteCacheLine(uint16_t address)
 {
 	if ((address < 0x4800) || (address >= 0xC000)) {
@@ -340,6 +395,7 @@ void Y8960Cartridge::serialize(Archive& ar, unsigned /*version*/)
 	             "ram",        ram,
 	             "bankReg",    bankReg,
 	             "ramEnabled", ramEnabled);
+	if (systemController) ar.serialize("systemController", *systemController);
 	// through the setters, which register the ports that are open
 	auto enabler1 = ioEnabler1;
 	auto enabler2 = ioEnabler2;

@@ -3,11 +3,13 @@
 
 #include "RomBlocks.hh"
 
+#include "MSXSwitchedDevice.hh"
 #include "Ram.hh"
 #include "Y8960.hh"
 
 #include <array>
 #include <cstdint>
+#include <optional>
 
 namespace openmsx {
 
@@ -48,7 +50,32 @@ private:
 	void writeIoEnabler2(uint8_t value);
 
 private:
+	/** The System Controller, on I/O 40h-4Fh as switched I/O id 80h. 41h
+	  * selects a board by its id (02h is this cartridge) and 42h a function
+	  * (01h is the Config ROM reader/writer); each reads back the complement
+	  * of what selected it. Only this identification is emulated: the Config
+	  * ROM reader/writer behind 43h-47h reads FFh and takes no writes.
+	  * The hardware forgets the selection when 40h is written with anything
+	  * but 80h. The device switch doesn't tell a switched device that it was
+	  * deselected, so here the selection lasts until 41h is written again or
+	  * a reset.
+	  */
+	struct SystemController final : MSXSwitchedDevice {
+		explicit SystemController(MSXMotherBoard& motherBoard);
+		void reset();
+		[[nodiscard]] uint8_t readSwitchedIO(uint16_t port, EmuTime time) override;
+		[[nodiscard]] uint8_t peekSwitchedIO(uint16_t port, EmuTime time) const override;
+		void writeSwitchedIO(uint16_t port, uint8_t value, EmuTime time) override;
+		template<typename Archive>
+		void serialize(Archive& ar, unsigned version);
+
+		bool boardSelected = false;
+		bool romFunction = false;
+	};
+
 	Y8960 y8960;
+	// a part of its own, so that a cartridge can go without one
+	std::optional<SystemController> systemController;
 	Ram ram;
 	std::array<uint8_t, 4> bankReg = {0, 1, 2, 3};
 	bool ramEnabled = false;
