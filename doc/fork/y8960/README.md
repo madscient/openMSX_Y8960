@@ -627,6 +627,9 @@ py $T/cmpbank.py "$WORK/out/bank-c" "$WORK/out/bank-d0" "$WORK/out/bank-d1" "$WO
 # Y8960 本体: SCC と音量（メモリと最終ミックスだけを使うので、フォークの main の exe でも流せる）とデバッガブル
 Y8960_TEST_OUT="$WORK/out/scc" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/scc.tcl"; py $T/check_scc.py "$WORK/out/scc"
 Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/mixer.tcl"   # 最終行の RESULT
+# ブロックごと（OPLL・OPL2・SSG）も同じ形: <exe> ... -script $T/opll.tcl のあと py $T/check_opll.py <出力先>
+# 新旧の最終ミックスの差: py $T/cmpmix.py <新の出力先> <旧の出力先>
+# 開いた I/O ポートがセーブステートをまたぐか: cart_state.tcl を T_MODE=save / load、T_WHICH=opll / opl2 で
 ```
 
 - `gen_opll.py` の音列: `mus` は MSX-MUSIC の非回帰、`bank-c` と `bank-d<b>` はバンクの経路（C のバンク b のチャンネルが D_b とだけ一致する）、
@@ -634,6 +637,8 @@ Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -scr
 - `opll_state.tcl` で書いたセーブステートは `$OPENMSX_USER_DATA/../savestates` に置かれる。書き出した側と読み込んだ側の録音は
   録り始めがずれるので `cmpshift.py` で比べる
 - `check_scc.py` は各録音の後半だけで判定する。最終ミックスは、前の録音の音を直流除去とリサンプラが引きずる
+- 最終ミックスで見る試験は、ほかの音源の音が混ざらないように組む。OPLL と SSG はトンネル（7FF4h/7FF5h、7FF0h/7FF1h）で書く
+  （C-BIOS_MSX2+ は 7Ch/7Dh に MSX-MUSIC を持ち、A0h/A1h は本体の PSG と共有）。離鍵は RR を上げてから行い、リズムの前は余韻が消えるまで待つ
 
 ## 取り込み元
 
