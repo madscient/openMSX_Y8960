@@ -77,6 +77,7 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/rhythm-ws/mkslots.py` | 同じく、ch0〜8 に鍵を押さずに F-Num を入れる並びに書き換える |
 | `level/rhythm-ws/anaslots.py` | 上記の録音を測り、鍵を押さずに鳴る位置にあるスロットを、録る前に決めた基準で判定する |
 | `level/rhythm-ws/synthleak.py`・`synthslots.py` | 上記の 2 つの判定器の判別力を見るための合成の録音を作る |
+| `tests/y8960-pr/` | upstream に出す Y8960 本体（#2288 の作り直し）を、コミットごとに確かめる道具。使い方は「Y8960 の PR を確かめる」 |
 | `tests/y8950-pr/` | upstream に出す `Y8950` の拡張（`Type::Y8960`、リズム音、波形選択、PCM_BSY）を、段ごとに組んで確かめる道具。使い方は「`Y8950` の PR を確かめる」 |
 
 `implementation-plan.md` が作業計画と経緯を記録する文書である。
@@ -606,6 +607,33 @@ sh $T/commits.sh a b c d e
   （Y8960 の RTL の発生器）の模型では状態が解けない
 - `perf.sh`: 速度制限なしで 300 秒ぶんを 5 巡流し、実時間を比べる
 - openMSX のセーブステートは `OPENMSX_USER_DATA/../savestates`、つまり `WORK` の下に書かれる
+
+## Y8960 の PR を確かめる
+
+#2288 の作り直し（`YM2413` の `Type::Y8960`、部品の `Y8960`、`Y8960Cartridge`）は、upstream/master から切った worktree の枝
+`y8960-v2` で、コミットごとに組んで確かめる。経緯と結果は `implementation-plan.md` の §8 の 2026-11-16 (20) 以降。道具は
+`tests/y8960-pr/` にあり、`tests/y8950-pr/` の `build.sh`・`run.sh`・`chrec.tcl`・`cmpdir.py`・`cmpshift.py` も使う。環境変数は
+「`Y8950` の PR を確かめる」と同じ。
+
+```sh
+T=doc/fork/y8960/tests/y8960-pr; U=doc/fork/y8960/tests/y8950-pr
+export PR=<worktree> WORK=<作業用>
+py $T/gen_patches.py "$PR/src/sound"            # opll.cc の 3 表を NukeYKT の形で出す（YM2413 の表で照合してから）
+py $T/gen_opll.py "$PR/src/sound" "$WORK/seq"   # OPLL の音列
+# YM2413 の Type::Y8960 は、差し込み（MSX-MUSIC の構築子。コミットしない）を入れて組んだ exe で試す
+sh $T/harness.sh on; sh $U/build.sh "$WORK/build-h.log"; cp "$PR/derived/x64-VC-Release/install/openmsx.exe" "$WORK/exe/h.exe"; sh $T/harness.sh off
+sh $U/run.sh "$WORK/exe/h.exe" "$WORK/out/bank-c" "$WORK/seq/bank-c.txt" fmpac-y8960test "Y8960 test" 14   # bank-d0〜d3 も
+py $T/cmpbank.py "$WORK/out/bank-c" "$WORK/out/bank-d0" "$WORK/out/bank-d1" "$WORK/out/bank-d2" "$WORK/out/bank-d3"
+# Y8960 本体: SCC と音量（メモリと最終ミックスだけを使うので、フォークの main の exe でも流せる）とデバッガブル
+Y8960_TEST_OUT="$WORK/out/scc" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/scc.tcl"; py $T/check_scc.py "$WORK/out/scc"
+Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$T/mixer.tcl"   # 最終行の RESULT
+```
+
+- `gen_opll.py` の音列: `mus` は MSX-MUSIC の非回帰、`bank-c` と `bank-d<b>` はバンクの経路（C のバンク b のチャンネルが D_b とだけ一致する）、
+  `rhy-b0` と `rhy-b3` はリズム中のバンク、`state` は `opll_state.tcl` のセーブステートの往復
+- `opll_state.tcl` で書いたセーブステートは `$OPENMSX_USER_DATA/../savestates` に置かれる。書き出した側と読み込んだ側の録音は
+  録り始めがずれるので `cmpshift.py` で比べる
+- `check_scc.py` は各録音の後半だけで判定する。最終ミックスは、前の録音の音を直流除去とリサンプラが引きずる
 
 ## 取り込み元
 
