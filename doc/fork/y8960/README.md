@@ -630,6 +630,7 @@ Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -scr
 # ブロックごと（OPLL・OPL2・SSG）も同じ形: <exe> ... -script $T/opll.tcl のあと py $T/check_opll.py <出力先>
 # 新旧の最終ミックスの差: py $T/cmpmix.py <新の出力先> <旧の出力先>
 # 開いた I/O ポートがセーブステートをまたぐか: cart_state.tcl を T_MODE=save / load、T_WHICH=opll / opl2 で
+# 動いている MSX-TIMER のカウンタがセーブステートをまたぐか: timer_state.tcl を T_MODE=save / load で（両方の state.txt が一致すること）
 ```
 
 - `gen_opll.py` の音列: `mus` は MSX-MUSIC の非回帰、`bank-c` と `bank-d<b>` はバンクの経路（C のバンク b のチャンネルが D_b とだけ一致する）、
