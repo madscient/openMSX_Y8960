@@ -57,6 +57,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `level/adpcm-tones.py` | ADPCM の正弦波と矩形波を、SSG2・OPL2・OPM の 1ch と比べる音列を書き出す |
 | `level/pan9.txt` | OPL2 の F6h-FEh がどの ch に掛かるかを見る音列 |
 | `level/pan9-levels.py` | 上記の録音から、区間ごとに左に寄った ch が仕様どおりかを判定する |
+| `level/ssg-polarity.txt` | SSG の極性（SCC・OPLL・OPL2 との向きの関係）と、ミキサーの音量・定位を書き換えた瞬間の段差を測る音列。実機と openMSX で同じものを流す |
+| `level/ssg-polarity.py` | 上記の録音どうしを比べ、極性の判定と段差の表を出す |
 | `level/rhythm-ws/mkws.py` | FitomHwIF の試験パッチを、リズム音の 6 スロットの波形を変えながら 5 つのリズム音を鳴らすものに書き換える |
 | `level/rhythm-ws/mkhh.py` | 同じく、HH だけを波形を変えながら 20 打鳴らすものに書き換える |
 | `level/rhythm-ws/mkwse.py` | 同じく、HH だけを 01h を切り替えながら 16 打鳴らすものに書き換える |
@@ -631,6 +633,10 @@ Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -scr
 # 新旧の最終ミックスの差: py $T/cmpmix.py <新の出力先> <旧の出力先>
 # 開いた I/O ポートがセーブステートをまたぐか: cart_state.tcl を T_MODE=save / load、T_WHICH=opll / opl2 で
 # 動いている MSX-TIMER のカウンタがセーブステートをまたぐか: timer_state.tcl を T_MODE=save / load で（両方の state.txt が一致すること）
+# SSG の極性とミキサーの段差を実機と比べる。実機は tones-mga.ps1 に -Sequence で同じ音列を渡し、回ごとに -OutDir を分けて 3 回録る
+L=doc/fork/y8960/level
+Y8960_TEST_OUT=<新の出力先> Y8960_TONES="$(pwd)/$L/ssg-polarity.txt" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$L/tones.tcl"
+py $L/ssg-polarity.py <新の出力先>/tones-openmsx.wav <旧の出力先>/tones-openmsx.wav <実機の出力先>/tones-mga.wav ...
 ```
 
 - `gen_opll.py` の音列: `mus` は MSX-MUSIC の非回帰、`bank-c` と `bank-d<b>` はバンクの経路（C のバンク b のチャンネルが D_b とだけ一致する）、

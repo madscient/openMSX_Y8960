@@ -1,0 +1,217 @@
+# Y8960 の SSG の極性と、ミキサーの音量・定位を書き換えた瞬間の段差を測る音列。実機（tones-mga.ps1 -Sequence）と
+# openMSX（tones.tcl、環境変数 Y8960_TONES）が同じものを流し、ssg-polarity.py が比べる。書式は tones.txt と同じ。
+#
+# 前半（極性）: 4 つの音源を 1 つずつ、上下の向きが読める非対称な波形で鳴らす。録音の経路の反転は 4 つに同じだけ
+# 掛かるので、音源どうしの向きの関係は経路に左右されない。周波数はハム（50Hz・60Hz の整数倍）を避けた。
+#   SSG2 ch A: トーンもノイズも切り、エンベロープの形 0Ch（上りの鋸歯の繰り返し）。1789772.5 / (256 * 52) = 134.4Hz
+#   SCC ch1  : 上りの鋸歯（-128 から 8 ずつ 120 まで）。3579545 / (32 * 832) = 134.4Hz
+#   OPLL ch1 : キャリアを半波整流の正弦波（03h の DC）。F-Num 354、BLOCK 2 で 354 * 49716 / 2^17 = 134.3Hz
+#   OPL2 ch1 : キャリアを半波の正弦波（01h の bit5 で波形選択を開き、E3h = 1）。F-Num 709、BLOCK 2 で
+#              709 * 49716 / 2^18 = 134.5Hz
+#
+# 後半（段差）: SSG2 ch A を矩形波（998.8Hz、音量 15）と直流（トーンもノイズも切って音量 15）の 2 通りで出し、
+# ミキサーの音量（24h）と定位（2Ch）を書き換える。矩形波の区間は、段差の大きさを振れ幅で割るための基準にもなる。
+
+mem 7FFF 01                 # I/O Enabler2: b0 OPL2
+
+# --- 準備（まだ鳴らさない） ---
+
+# SSG2 ch A: トーンとノイズを切る。エンベロープの周期 52
+mem 7FF0 17
+mem 7FF1 3F
+mem 7FF0 1B
+mem 7FF1 34
+mem 7FF0 1C
+mem 7FF1 00
+
+# SCC ch1: 上りの鋸歯、周期 831（33Fh）、音量 15
+mem 9000 3F
+mem 9800 80
+mem 9801 88
+mem 9802 90
+mem 9803 98
+mem 9804 A0
+mem 9805 A8
+mem 9806 B0
+mem 9807 B8
+mem 9808 C0
+mem 9809 C8
+mem 980A D0
+mem 980B D8
+mem 980C E0
+mem 980D E8
+mem 980E F0
+mem 980F F8
+mem 9810 00
+mem 9811 08
+mem 9812 10
+mem 9813 18
+mem 9814 20
+mem 9815 28
+mem 9816 30
+mem 9817 38
+mem 9818 40
+mem 9819 48
+mem 981A 50
+mem 981B 58
+mem 981C 60
+mem 981D 68
+mem 981E 70
+mem 981F 78
+mem 9880 3F
+mem 9881 03
+mem 988A 0F
+
+# OPLL ch1: ユーザー音色。キャリアは MUL 1、持続、AR 15、SL 0、RR 15、半波整流。変調器は TL 3F・AR 0。
+# 音色 0、音量 0（最大）
+mem 7FF4 00
+mem 7FF5 21
+mem 7FF4 01
+mem 7FF5 21
+mem 7FF4 02
+mem 7FF5 3F
+mem 7FF4 03
+mem 7FF5 10
+mem 7FF4 04
+mem 7FF5 00
+mem 7FF4 05
+mem 7FF5 F0
+mem 7FF4 06
+mem 7FF5 00
+mem 7FF4 07
+mem 7FF5 0F
+mem 7FF4 10
+mem 7FF5 62
+mem 7FF4 30
+mem 7FF5 00
+
+# OPL2 ch1: 変調器（スロット 0）は TL 3F・AR 0、キャリア（スロット 3）は MUL 1、持続、TL 0、AR 15、SL 0、RR 15、
+# 半波の正弦波
+io C0 01
+io C1 20
+io C0 20
+io C1 21
+io C0 23
+io C1 21
+io C0 40
+io C1 3F
+io C0 43
+io C1 00
+io C0 60
+io C1 00
+io C0 63
+io C1 F0
+io C0 80
+io C1 0F
+io C0 83
+io C1 0F
+io C0 E0
+io C1 00
+io C0 E3
+io C1 01
+io C0 C0
+io C1 00
+io C0 A0
+io C1 C5
+
+wait 1000
+
+# --- 極性 ---
+
+mark ssg-saw
+mem 7FF0 18
+mem 7FF1 10
+mem 7FF0 1D
+mem 7FF1 0C
+wait 2000
+mem 7FF0 18
+mem 7FF1 00
+wait 700
+
+mark scc-saw
+mem 988F 01
+wait 2000
+mem 988F 00
+wait 700
+
+mark opll-half
+mem 7FF4 20
+mem 7FF5 15
+wait 2000
+mem 7FF4 20
+mem 7FF5 05
+wait 700
+
+mark opl2-half
+io C0 B0
+io C1 2A
+wait 2000
+io C0 B0
+io C1 0A
+wait 700
+
+# --- 段差（矩形波） ---
+
+mem 7FF0 10
+mem 7FF1 70
+mem 7FF0 11
+mem 7FF1 00
+
+mark sq-ref
+mem 7FF0 17
+mem 7FF1 3E
+mem 7FF0 18
+mem 7FF1 0F
+wait 1500
+
+mark sq-vol-half
+mem 7FF0 24
+mem 7FF1 40
+wait 1000
+
+mark sq-vol-full
+mem 7FF0 24
+mem 7FF1 80
+wait 1000
+
+mark sq-pan-left
+mem 7FF0 2C
+mem 7FF1 01
+wait 1000
+
+mark sq-pan-center
+mem 7FF0 2C
+mem 7FF1 80
+wait 1000
+
+# --- 段差（直流） ---
+
+mark dc-on
+mem 7FF0 17
+mem 7FF1 3F
+wait 1000
+
+mark dc-vol-half
+mem 7FF0 24
+mem 7FF1 40
+wait 1000
+
+mark dc-vol-full
+mem 7FF0 24
+mem 7FF1 80
+wait 1000
+
+mark dc-pan-left
+mem 7FF0 2C
+mem 7FF1 01
+wait 1000
+
+mark dc-pan-center
+mem 7FF0 2C
+mem 7FF1 80
+wait 1000
+
+mark dc-off
+mem 7FF0 18
+mem 7FF1 00
+wait 1000
