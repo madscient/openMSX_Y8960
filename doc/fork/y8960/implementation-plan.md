@@ -1448,6 +1448,40 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-16 (27) — 6〜8 本目（OPM、MSX-Timer、System Controller）をコミットした。8 本がそろった
+
+`y8960-v2` の 8 本（ローカルのみ）: `67b5bd730` YM2413 の Type::Y8960、`f23328996` カートリッジと SCC と音量、`624b25355` OPLL、
+`566303c5c` OPL2 と ADPCM、`9ef198af1` SSG、`af6ce144d` OPM、`5a91d001e` MSX-Timer、`b49bfa034` System Controller。
+どのコミットも、その時点のツリーで 0 エラー・新しい警告なしで組めることを、作るたびに確かめた。
+
+- **6 本目（OPM）**: 上流の `YM2151` をそのまま持つ（もとからステレオなので音量だけ）。ステータスはデータポートだけで読め、busy は 0
+  （フォークと同じ）。7Eh/7Fh を I/O Enabler2 の b2 で開閉、トンネル 7FFBh/7FFCh。**確認済み**: フォークの `opm.tcl` がそのまま全項目通り、
+  録音 8 本はフォークの main とバイト単位で同一
+- **7 本目（MSX-Timer）**: `src/sound/MSXTimer.{cc,hh}`。`Y8960` が持つ部品（デバイスではない）。アルゴリズムはフォークのものと同じ意味で、
+  メンテナの指摘どおり、分解能のシフトを `10 + 2 * reso` の式にし、4 本のカウンタの switch を配列にした。割り込みのプローブ名は
+  `<名前> MSX-TIMER.IRQ`（カートリッジでは `Y8960 MSX-TIMER.IRQ`。上流の `Y8950`・`YM2151` の付け方に揃えた。聞かずに決めた。変えるなら文字列 1 つ）。
+  B0h-B3h を I/O Enabler2 の b7 で開閉。著者はユーザー、`Co-authored-by: buppu3`（2026-11-14 のメンテナとの合意）
+  - フォークとの違い 2 点: 読み出しのとき 4 本とも進める（予定は絶対時刻なので立て直さない）。1 回きりのカウンタが終わった状態で計数を入れ直すと、
+    1 クロック後の予定でフラグを立てる（フォークは次のアクセスまで立てなかった）
+  - **フォークのタイマーはセーブステートで計数がずれる**（**確認済み**: `y8960-pr/timer_state.tcl` で、動いているカウンタを書き出して読み込むと、
+    フォークの main は 53h のはずが 34h になる）。`MSXTimerCore` が `clock` を保存していないため（読解）。新しい形は `clock` を保存し、53h で一致
+  - **確認済み**: `timer-resolution.tcl`（13 項目）・`timer-regs.tcl` が通る。`enabler2-read.tcl` は b7 が入ってここで全項目が通る。
+    `timer-irq.tcl` と `enabler2.tcl` は、名前（プローブ `y8960-timer.IRQ` とデバッガブル `Y8960 SSGS regs`）を新しい名前に置き換えた写しで、
+    出力がフォークの main と同一
+- **8 本目（System Controller）**: カートリッジの入れ子のクラス `SystemController`（`MSXSwitchedDevice`、id 80h）を `std::optional` で持ち、
+  今は常に作る（2026-11-16 (19) の 3b: 作らないこともできる形）。挙動とコメントはフォークの `Y8960SystemController` と同じ。**確認済み**: `sysctrl.tcl`
+  が全項目通る。コミットの文に「リセットで消える」と書いてから、試験がリセットを見ていないことに気づき、見た範囲の文に直した
+- **8 本目の時点で確認済み**: フォークの試験（名前を置き換えた写しを含む）と `y8960-pr/` の試験がすべて通り、OPLL・OPL2・SCC・SSG・OPM の
+  最終ミックスは、そのブロックを足したコミットとバイト単位で同一。`-testconfig` で `HRA_Y8960`・`audio`・`audio2`・`Panasonic_FS-CA1`・
+  `2nd_PSG`・`fmpac`・`scc` が 0
+- フォークの試験で、名前が変わってそのままでは流せないもの（main を作り直すときに直す）: `adpcm-rommode.tcl`（`Y8960 ADPCM RAM` → `Y8960 OPL2 RAM`）、
+  `timer-irq.tcl`（`y8960-timer.IRQ` → `Y8960 MSX-TIMER.IRQ`）、`enabler2.tcl`（`Y8960 SSGS regs` → `Y8960 SSG 0 regs`）、`scc-panpot.tcl`
+  （`Y8960 SCC pan` → `Y8960 mixer` の 19h-1Dh）、`ssgs-write-only.tcl`・`ssgs-gpio.tcl`（`Y8960 SSGS regs`）。チャンネル録音のステレオを
+  前提にした判定（`opll-panpot`・`opl2-panpot`・`ssgs-panpot`）は最終ミックスの版（`y8960-pr/`）に替える
+- 未コミットの道具: `timer_state.tcl`（ユーザーの確認待ち）
+- **このあと（ユーザーの確認待ち）**: PR を出す前に実チップで SSG を測る（(26)）。PR の説明文の下書き、`y8960` への force-push と説明文の
+  差し替え、#2288 への返事。フォークの `main` の作り直し
+
 ### 2026-11-16 (26) — SSG の極性と直流分は上流の `AY8910` のまま（暫定）。PR の前に実チップを測る。道具をコミットし、記録を push する
 
 ユーザーの返事（言葉どおり）: 「1 A、2 ok / ただし、１は暫定。PRを出す前に実チップを測定し、必要ならメンテナ―に相談する。 / 2 ok」。
