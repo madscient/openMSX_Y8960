@@ -1457,8 +1457,10 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   `"Y8960 digital mixer"` のまま
 - `timer_state.tcl` をコミットし、`README.md` の「Y8960 の PR を確かめる」に足した
 - **次のセッション**: ユーザーが帰宅後に実チップで SSG を測る（極性と、定位や音量を変えた瞬間の段差。(26)）。その結果で `y8960-v2` の 5 本目を
-  直すか決め、PR の説明文の下書き、`y8960` への force-push、#2288 への返事へ進む。`y8960-v2` はこのマシン（Win11 機）の worktree `derived/pr`
-  にしか無い
+  直すか決め、PR の説明文の下書き、`y8960` への force-push、#2288 への返事へ進む
+- `y8960-v2` を origin に push した（ユーザーの「ok / pushして終わる」）。**確認済み**: `git ls-remote` で origin の `y8960-v2` が `b49bfa034`、
+  #2288 の `y8960` は `3a7b1a02c` のまま。別のマシンでは `git fetch origin y8960-v2` で取れる（`main` はそちらで `git reset --keep origin/main` に
+  合わせてから）
 
 ### 2026-11-16 (27) — 6〜8 本目（OPM、MSX-Timer、System Controller）をコミットした。8 本がそろった
 
