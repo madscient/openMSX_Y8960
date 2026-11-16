@@ -39,6 +39,10 @@ static constexpr unsigned SSG_REGS = 0x1E;
 // HH and SD 8, TOM and TC 9.
 static constexpr std::array<uint8_t, 5> OPLL_RHYTHM_CHANNEL = {7, 8, 6, 7, 8};
 
+// Y8950 puts the rhythm out as BD, SD, CYM, HH, TOM, then the ADPCM. The
+// rhythm takes the pans of channels 7-9 like the OPLL's, the ADPCM its own.
+static constexpr std::array<uint8_t, 6> OPL2_RHYTHM_CHANNEL = {6, 7, 8, 7, 8, 9};
+
 // The levels of the blocks relative to each other, measured on the cartridge
 // with all volume registers at their maximum. The config's <volume> is the
 // level of the OPM, the loudest.
@@ -78,15 +82,27 @@ Y8960::Y8960(const std::string& name, const DeviceConfig& config, EmuTime time)
 	: motherBoard(config.getMotherBoard())
 	, scc(name + " SCC", config, time, SCC::Mode::Real)
 	, opll(name + " OPLL", config, YM2413::Type::Y8960)
+	, opl2(name + " OPL2", config, 256 * 1024, time, noPeriphery, Y8950::Type::Y8960)
 	, debuggable(motherBoard, name)
 {
 	scc.enableSetChannelFactors();
 	opll.enableSetChannelFactors();
+	opl2.enableSetChannelFactors();
+}
+
+void Y8960::NoPeriphery::write(uint4_t /*outputs*/, uint4_t /*values*/, EmuTime /*time*/)
+{
+}
+
+uint4_t Y8960::NoPeriphery::read(EmuTime /*time*/)
+{
+	return 15;
 }
 
 void Y8960::powerUp(EmuTime time)
 {
 	scc.powerUp(time);
+	opl2.clearRam();
 }
 
 void Y8960::reset(EmuTime time)
@@ -94,6 +110,8 @@ void Y8960::reset(EmuTime time)
 	scc.reset(time);
 	opll.reset(time);
 	opllLatch = 0;
+	opl2.reset(time);
+	opl2Latch = 0;
 	for (auto reg : xrange(VOLUME, MASTER + 1)) mixer[reg] = 0x80;
 	for (auto reg : xrange(OPLL_PAN, SSG_REGS)) mixer[reg] = 128;
 	for (auto r : xrange(0x10u)) {
@@ -133,6 +151,32 @@ void Y8960::writeOpll(bool port, uint8_t value, EmuTime time)
 	opll.writePort(port, value, time);
 }
 
+// Unlike a Y8950, the data port reads back only the ADPCM data (0Fh).
+uint8_t Y8960::readOpl2(bool port, EmuTime time)
+{
+	if (!port) return opl2.readStatus(time);
+	return (opl2Latch == 0x0F) ? opl2.readReg(opl2Latch, time) : 0xFF;
+}
+
+uint8_t Y8960::peekOpl2(bool port, EmuTime time) const
+{
+	if (!port) return opl2.peekStatus(time);
+	return (opl2Latch == 0x0F) ? opl2.peekReg(opl2Latch, time) : 0xFF;
+}
+
+void Y8960::writeOpl2(bool port, uint8_t value, EmuTime time)
+{
+	if (!port) {
+		opl2Latch = value;
+		return;
+	}
+	if (opl2Latch >= 0xF6) {
+		writeMixer(OPL2_PAN + opl2Latch - 0xF6, value, time);
+	}
+	// the Y8950 sees the pan writes as well, and ignores them
+	opl2.writeReg(opl2Latch, value, time);
+}
+
 void Y8960::writeVolume(Block block, uint8_t value, EmuTime time)
 {
 	writeMixer(VOLUME + unsigned(block), value, time);
@@ -162,6 +206,7 @@ void Y8960::applyVolume(Block block, EmuTime time)
 	           * volumeGain(mixer[VOLUME + unsigned(block)]) * volumeGain(mixer[MASTER]);
 	switch (block) {
 	case Block::OPLL: opll.setSoftwareVolume(gain, time); break;
+	case Block::OPL2: opl2.setSoftwareVolume(gain, time); break;
 	case Block::SCC:  scc .setSoftwareVolume(gain, time); break;
 	default: break;
 	}
@@ -176,6 +221,14 @@ void Y8960::applyPan(unsigned reg, EmuTime time)
 		for (auto i : xrange(unsigned(OPLL_RHYTHM_CHANNEL.size()))) {
 			if (OPLL_RHYTHM_CHANNEL[i] == ch) {
 				opll.setChannelFactors(9 + i, left, right, time);
+			}
+		}
+	} else if ((OPL2_PAN <= reg) && (reg < OPL2_PAN + 10)) {
+		auto ch = reg - OPL2_PAN;
+		if (ch < 9) opl2.setChannelFactors(ch, left, right, time);
+		for (auto i : xrange(unsigned(OPL2_RHYTHM_CHANNEL.size()))) {
+			if (OPL2_RHYTHM_CHANNEL[i] == ch) {
+				opl2.setChannelFactors(9 + i, left, right, time);
 			}
 		}
 	} else if ((SCC_PAN <= reg) && (reg < SCC_PAN + 5)) {
@@ -214,6 +267,8 @@ void Y8960::serialize(Archive& ar, unsigned /*version*/)
 	ar.serialize("scc",       scc,
 	             "opll",      opll,
 	             "opllLatch", opllLatch,
+	             "opl2",      opl2,
+	             "opl2Latch", opl2Latch,
 	             "mixer",     mixer);
 	if constexpr (Archive::IS_LOADER) {
 		// the sound devices don't keep their software volume and channel

@@ -19,15 +19,18 @@
 // SCC pan: 0x9900-0x9904, channel A-E, while 0x9800-0x9FFF shows the SCC.
 //   Writes there don't reach the SCC; reads and the rest of 0x99xx do.
 //
-// Memory mapped registers, write-only, at 0x7FE0-0x7FFF while 0x6000-0x7FFF
-// shows neither RAM nor the SCC:
+// Memory mapped registers, write-only but for 0x7FFF, at 0x7FE0-0x7FFF while
+// 0x6000-0x7FFF shows neither RAM nor the SCC:
+//   0x7FF2/0x7FF3 OPL2 address/data
 //   0x7FF4/0x7FF5 OPLL address/data
 //   0x7FF6 I/O Enabler1: bit 0 opens the OPLL ports
 //   0x7FF7 SSG volume   0x7FF8 OPLL volume   0x7FF9 OPL2 volume
 //   0x7FFA SCC volume   0x7FFD OPM volume    0x7FFE master volume
+//   0x7FFF I/O Enabler2, readable: bit 0 opens the OPL2 ports
 //
 // I/O ports, all closed after reset like the FM-PAC's:
 //   0x7C/0x7D OPLL address/data (write-only)
+//   0xC0/0xC1 OPL2 address and status/data
 
 #include "Y8960Cartridge.hh"
 
@@ -54,6 +57,7 @@ Y8960Cartridge::Y8960Cartridge(const DeviceConfig& config, Rom&& rom_)
 Y8960Cartridge::~Y8960Cartridge()
 {
 	writeIoEnabler1(0);
+	writeIoEnabler2(0);
 }
 
 void Y8960Cartridge::powerUp(EmuTime time)
@@ -65,6 +69,7 @@ void Y8960Cartridge::powerUp(EmuTime time)
 void Y8960Cartridge::reset(EmuTime time)
 {
 	writeIoEnabler1(0);
+	writeIoEnabler2(0);
 	ramEnabled = false;
 	for (auto region : xrange(2u, 6u)) {
 		setBank(region, uint8_t(region - 2));
@@ -97,6 +102,11 @@ bool Y8960Cartridge::isMmioVisible() const
 	return !isSccRegion(3);
 }
 
+bool Y8960Cartridge::isIoEnabler2(uint16_t address) const
+{
+	return (address == 0x7FFF) && isMmioVisible();
+}
+
 unsigned Y8960Cartridge::getRamAddress(uint16_t address) const
 {
 	return (getBank(address >> 13) & 0x0F) * 0x2000 + (address & 0x1FFF);
@@ -119,7 +129,9 @@ void Y8960Cartridge::setBank(unsigned region, uint8_t value)
 
 byte Y8960Cartridge::peekMem(uint16_t address, EmuTime time) const
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2(address)) {
+		return ioEnabler2;
+	} else if (isSccAddress(address)) {
 		return y8960.peekScc(uint8_t(address), time);
 	} else if (isRamRegion(address >> 13)) {
 		return ram[getRamAddress(address)];
@@ -130,7 +142,9 @@ byte Y8960Cartridge::peekMem(uint16_t address, EmuTime time) const
 
 byte Y8960Cartridge::readMem(uint16_t address, EmuTime time)
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2(address)) {
+		return ioEnabler2;
+	} else if (isSccAddress(address)) {
 		return y8960.readScc(uint8_t(address), time);
 	} else if (isRamRegion(address >> 13)) {
 		return ram[getRamAddress(address)];
@@ -141,7 +155,9 @@ byte Y8960Cartridge::readMem(uint16_t address, EmuTime time)
 
 const byte* Y8960Cartridge::getReadCacheLine(uint16_t address) const
 {
-	if (isSccAddress(address)) {
+	if (isIoEnabler2(address | CacheLine::LOW)) {
+		return nullptr;
+	} else if (isSccAddress(address)) {
 		return nullptr;
 	} else if (isRamRegion(address >> 13)) {
 		return &ram[getRamAddress(address)];
@@ -192,6 +208,7 @@ void Y8960Cartridge::writeMmio(uint16_t address, byte value, EmuTime time)
 {
 	using enum Y8960::Block;
 	switch (address) {
+	case 0x7FF2: case 0x7FF3: y8960.writeOpl2(address & 1, value, time); break;
 	case 0x7FF4: case 0x7FF5: y8960.writeOpll(address & 1, value, time); break;
 	case 0x7FF6: writeIoEnabler1(value); break;
 	case 0x7FF7: y8960.writeVolume(SSG,  value, time); break;
@@ -200,6 +217,7 @@ void Y8960Cartridge::writeMmio(uint16_t address, byte value, EmuTime time)
 	case 0x7FFA: y8960.writeVolume(SCC,  value, time); break;
 	case 0x7FFD: y8960.writeVolume(OPM,  value, time); break;
 	case 0x7FFE: y8960.writeMasterVolume(value, time); break;
+	case 0x7FFF: writeIoEnabler2(value); break;
 	default: break;
 	}
 }
@@ -217,10 +235,40 @@ void Y8960Cartridge::writeIoEnabler1(uint8_t value)
 	ioEnabler1 = value;
 }
 
+void Y8960Cartridge::writeIoEnabler2(uint8_t value)
+{
+	value &= 0x01;
+	if ((value ^ ioEnabler2) & 0x01) {
+		if (value & 0x01) {
+			getCPUInterface().register_IO_InOut_range(0xC0, 2, this);
+		} else {
+			getCPUInterface().unregister_IO_InOut_range(0xC0, 2, this);
+		}
+	}
+	ioEnabler2 = value;
+}
+
+byte Y8960Cartridge::readIO(uint16_t port, EmuTime time)
+{
+	switch (port & 0xFF) {
+	case 0xC0: case 0xC1: return y8960.readOpl2(port & 1, time);
+	default: return 0xFF;
+	}
+}
+
+byte Y8960Cartridge::peekIO(uint16_t port, EmuTime time) const
+{
+	switch (port & 0xFF) {
+	case 0xC0: case 0xC1: return y8960.peekOpl2(port & 1, time);
+	default: return 0xFF;
+	}
+}
+
 void Y8960Cartridge::writeIO(uint16_t port, byte value, EmuTime time)
 {
 	switch (port & 0xFF) {
 	case 0x7C: case 0x7D: y8960.writeOpll(port & 1, value, time); break;
+	case 0xC0: case 0xC1: y8960.writeOpl2(port & 1, value, time); break;
 	default: break;
 	}
 }
@@ -252,10 +300,15 @@ void Y8960Cartridge::serialize(Archive& ar, unsigned /*version*/)
 	             "ram",        ram,
 	             "bankReg",    bankReg,
 	             "ramEnabled", ramEnabled);
-	// through the setter, which registers the ports that are open
+	// through the setters, which register the ports that are open
 	auto enabler1 = ioEnabler1;
-	ar.serialize("ioEnabler1", enabler1);
-	if constexpr (Archive::IS_LOADER) writeIoEnabler1(enabler1);
+	auto enabler2 = ioEnabler2;
+	ar.serialize("ioEnabler1", enabler1,
+	             "ioEnabler2", enabler2);
+	if constexpr (Archive::IS_LOADER) {
+		writeIoEnabler1(enabler1);
+		writeIoEnabler2(enabler2);
+	}
 }
 INSTANTIATE_SERIALIZE_METHODS(Y8960Cartridge);
 REGISTER_MSXDEVICE(Y8960Cartridge, "Y8960Cartridge");

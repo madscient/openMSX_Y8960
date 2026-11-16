@@ -2,6 +2,8 @@
 #define Y8960_HH
 
 #include "SCC.hh"
+#include "Y8950.hh"
+#include "Y8950Periphery.hh"
 #include "YM2413.hh"
 
 #include "EmuTime.hh"
@@ -40,6 +42,11 @@ public:
 	// OPLL: port 0 address, port 1 data
 	void writeOpll(bool port, uint8_t value, EmuTime time);
 
+	// OPL2 with ADPCM: port 0 address (write) and status (read), port 1 data
+	[[nodiscard]] uint8_t readOpl2(bool port, EmuTime time);
+	[[nodiscard]] uint8_t peekOpl2(bool port, EmuTime time) const;
+	void writeOpl2(bool port, uint8_t value, EmuTime time);
+
 	// digital mixer
 	void writeVolume(Block block, uint8_t value, EmuTime time);
 	void writeMasterVolume(uint8_t value, EmuTime time);
@@ -58,6 +65,14 @@ private:
 	SCC scc;
 	YM2413 opll;
 	uint8_t opllLatch = 0;
+
+	// nothing on the OPL2's general purpose I/O
+	struct NoPeriphery final : Y8950Periphery {
+		void write(uint4_t outputs, uint4_t values, EmuTime time) override;
+		[[nodiscard]] uint4_t read(EmuTime time) override;
+	} noPeriphery;
+	Y8950 opl2;
+	uint8_t opl2Latch = 0;
 
 	// the registers of the digital mixer, laid out as in Y8960.cc
 	std::array<uint8_t, 0x2E> mixer{};

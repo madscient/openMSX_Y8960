@@ -27,6 +27,8 @@ public:
 	[[nodiscard]] const byte* getReadCacheLine(uint16_t address) const override;
 	void writeMem(uint16_t address, byte value, EmuTime time) override;
 	[[nodiscard]] byte* getWriteCacheLine(uint16_t address) override;
+	[[nodiscard]] byte readIO(uint16_t port, EmuTime time) override;
+	[[nodiscard]] byte peekIO(uint16_t port, EmuTime time) const override;
 	void writeIO(uint16_t port, byte value, EmuTime time) override;
 
 	template<typename Archive>
@@ -38,10 +40,12 @@ private:
 	[[nodiscard]] bool isSccRegion(unsigned region) const;
 	[[nodiscard]] bool isSccAddress(uint16_t address) const;
 	[[nodiscard]] bool isMmioVisible() const;
+	[[nodiscard]] bool isIoEnabler2(uint16_t address) const;
 	[[nodiscard]] unsigned getRamAddress(uint16_t address) const;
 	void setBank(unsigned region, uint8_t value);
 	void writeMmio(uint16_t address, byte value, EmuTime time);
 	void writeIoEnabler1(uint8_t value);
+	void writeIoEnabler2(uint8_t value);
 
 private:
 	Y8960 y8960;
@@ -49,6 +53,7 @@ private:
 	std::array<uint8_t, 4> bankReg = {0, 1, 2, 3};
 	bool ramEnabled = false;
 	uint8_t ioEnabler1 = 0;
+	uint8_t ioEnabler2 = 0;
 };
 
 } // namespace openmsx
