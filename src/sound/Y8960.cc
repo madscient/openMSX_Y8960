@@ -34,6 +34,11 @@ static constexpr unsigned SSG_REGS = 0x1E;
 	return (reg & 3) != 3;
 }
 
+// The NukeYKT core puts the rhythm out as HH, TOM, BD, SD, TC, after the 9
+// melodic channels. Each takes the pan of the channel it sounds on: BD 7,
+// HH and SD 8, TOM and TC 9.
+static constexpr std::array<uint8_t, 5> OPLL_RHYTHM_CHANNEL = {7, 8, 6, 7, 8};
+
 // The levels of the blocks relative to each other, measured on the cartridge
 // with all volume registers at their maximum. The config's <volume> is the
 // level of the OPM, the loudest.
@@ -72,9 +77,11 @@ struct PanGain { float left, right; };
 Y8960::Y8960(const std::string& name, const DeviceConfig& config, EmuTime time)
 	: motherBoard(config.getMotherBoard())
 	, scc(name + " SCC", config, time, SCC::Mode::Real)
+	, opll(name + " OPLL", config, YM2413::Type::Y8960)
 	, debuggable(motherBoard, name)
 {
 	scc.enableSetChannelFactors();
+	opll.enableSetChannelFactors();
 }
 
 void Y8960::powerUp(EmuTime time)
@@ -85,6 +92,8 @@ void Y8960::powerUp(EmuTime time)
 void Y8960::reset(EmuTime time)
 {
 	scc.reset(time);
+	opll.reset(time);
+	opllLatch = 0;
 	for (auto reg : xrange(VOLUME, MASTER + 1)) mixer[reg] = 0x80;
 	for (auto reg : xrange(OPLL_PAN, SSG_REGS)) mixer[reg] = 128;
 	for (auto r : xrange(0x10u)) {
@@ -111,6 +120,17 @@ void Y8960::writeScc(uint8_t address, uint8_t value, EmuTime time)
 void Y8960::writeSccPan(unsigned channel, uint8_t value, EmuTime time)
 {
 	if (channel < 5) writeMixer(SCC_PAN + channel, value, time);
+}
+
+void Y8960::writeOpll(bool port, uint8_t value, EmuTime time)
+{
+	if (!port) {
+		opllLatch = value;
+	} else if ((0x50 <= opllLatch) && (opllLatch <= 0x58)) {
+		writeMixer(OPLL_PAN + opllLatch - 0x50, value, time);
+	}
+	// the YM2413 sees the pan writes as well, and ignores them
+	opll.writePort(port, value, time);
 }
 
 void Y8960::writeVolume(Block block, uint8_t value, EmuTime time)
@@ -141,15 +161,24 @@ void Y8960::applyVolume(Block block, EmuTime time)
 	float gain = BLOCK_LEVEL[size_t(block)]
 	           * volumeGain(mixer[VOLUME + unsigned(block)]) * volumeGain(mixer[MASTER]);
 	switch (block) {
-	case Block::SCC: scc.setSoftwareVolume(gain, time); break;
+	case Block::OPLL: opll.setSoftwareVolume(gain, time); break;
+	case Block::SCC:  scc .setSoftwareVolume(gain, time); break;
 	default: break;
 	}
 }
 
 void Y8960::applyPan(unsigned reg, EmuTime time)
 {
-	if ((SCC_PAN <= reg) && (reg < SCC_PAN + 5)) {
-		auto [left, right] = panGain(mixer[reg]);
+	auto [left, right] = panGain(mixer[reg]);
+	if ((OPLL_PAN <= reg) && (reg < OPLL_PAN + 9)) {
+		auto ch = reg - OPLL_PAN;
+		opll.setChannelFactors(ch, left, right, time);
+		for (auto i : xrange(unsigned(OPLL_RHYTHM_CHANNEL.size()))) {
+			if (OPLL_RHYTHM_CHANNEL[i] == ch) {
+				opll.setChannelFactors(9 + i, left, right, time);
+			}
+		}
+	} else if ((SCC_PAN <= reg) && (reg < SCC_PAN + 5)) {
 		scc.setChannelFactors(reg - SCC_PAN, left, right, time);
 	}
 }
@@ -182,8 +211,10 @@ void Y8960::Debuggable::write(unsigned address, uint8_t value, EmuTime time)
 template<typename Archive>
 void Y8960::serialize(Archive& ar, unsigned /*version*/)
 {
-	ar.serialize("scc",   scc,
-	             "mixer", mixer);
+	ar.serialize("scc",       scc,
+	             "opll",      opll,
+	             "opllLatch", opllLatch,
+	             "mixer",     mixer);
 	if constexpr (Archive::IS_LOADER) {
 		// the sound devices don't keep their software volume and channel
 		// factors in a savestate

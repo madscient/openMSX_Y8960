@@ -21,12 +21,18 @@
 //
 // Memory mapped registers, write-only, at 0x7FE0-0x7FFF while 0x6000-0x7FFF
 // shows neither RAM nor the SCC:
+//   0x7FF4/0x7FF5 OPLL address/data
+//   0x7FF6 I/O Enabler1: bit 0 opens the OPLL ports
 //   0x7FF7 SSG volume   0x7FF8 OPLL volume   0x7FF9 OPL2 volume
 //   0x7FFA SCC volume   0x7FFD OPM volume    0x7FFE master volume
+//
+// I/O ports, all closed after reset like the FM-PAC's:
+//   0x7C/0x7D OPLL address/data (write-only)
 
 #include "Y8960Cartridge.hh"
 
 #include "CacheLine.hh"
+#include "MSXCPUInterface.hh"
 #include "serialize.hh"
 
 #include "xrange.hh"
@@ -45,6 +51,11 @@ Y8960Cartridge::Y8960Cartridge(const DeviceConfig& config, Rom&& rom_)
 	powerUp(getCurrentTime());
 }
 
+Y8960Cartridge::~Y8960Cartridge()
+{
+	writeIoEnabler1(0);
+}
+
 void Y8960Cartridge::powerUp(EmuTime time)
 {
 	y8960.powerUp(time);
@@ -53,6 +64,7 @@ void Y8960Cartridge::powerUp(EmuTime time)
 
 void Y8960Cartridge::reset(EmuTime time)
 {
+	writeIoEnabler1(0);
 	ramEnabled = false;
 	for (auto region : xrange(2u, 6u)) {
 		setBank(region, uint8_t(region - 2));
@@ -180,12 +192,35 @@ void Y8960Cartridge::writeMmio(uint16_t address, byte value, EmuTime time)
 {
 	using enum Y8960::Block;
 	switch (address) {
+	case 0x7FF4: case 0x7FF5: y8960.writeOpll(address & 1, value, time); break;
+	case 0x7FF6: writeIoEnabler1(value); break;
 	case 0x7FF7: y8960.writeVolume(SSG,  value, time); break;
 	case 0x7FF8: y8960.writeVolume(OPLL, value, time); break;
 	case 0x7FF9: y8960.writeVolume(OPL2, value, time); break;
 	case 0x7FFA: y8960.writeVolume(SCC,  value, time); break;
 	case 0x7FFD: y8960.writeVolume(OPM,  value, time); break;
 	case 0x7FFE: y8960.writeMasterVolume(value, time); break;
+	default: break;
+	}
+}
+
+void Y8960Cartridge::writeIoEnabler1(uint8_t value)
+{
+	value &= 0x01;
+	if (value != ioEnabler1) {
+		if (value) {
+			getCPUInterface().register_IO_Out_range(0x7C, 2, this);
+		} else {
+			getCPUInterface().unregister_IO_Out_range(0x7C, 2, this);
+		}
+	}
+	ioEnabler1 = value;
+}
+
+void Y8960Cartridge::writeIO(uint16_t port, byte value, EmuTime time)
+{
+	switch (port & 0xFF) {
+	case 0x7C: case 0x7D: y8960.writeOpll(port & 1, value, time); break;
 	default: break;
 	}
 }
@@ -217,6 +252,10 @@ void Y8960Cartridge::serialize(Archive& ar, unsigned /*version*/)
 	             "ram",        ram,
 	             "bankReg",    bankReg,
 	             "ramEnabled", ramEnabled);
+	// through the setter, which registers the ports that are open
+	auto enabler1 = ioEnabler1;
+	ar.serialize("ioEnabler1", enabler1);
+	if constexpr (Archive::IS_LOADER) writeIoEnabler1(enabler1);
 }
 INSTANTIATE_SERIALIZE_METHODS(Y8960Cartridge);
 REGISTER_MSXDEVICE(Y8960Cartridge, "Y8960Cartridge");

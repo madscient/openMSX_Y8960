@@ -2,6 +2,7 @@
 #define Y8960_HH
 
 #include "SCC.hh"
+#include "YM2413.hh"
 
 #include "EmuTime.hh"
 #include "SimpleDebuggable.hh"
@@ -36,6 +37,9 @@ public:
 	void writeScc(uint8_t address, uint8_t value, EmuTime time);
 	void writeSccPan(unsigned channel, uint8_t value, EmuTime time);
 
+	// OPLL: port 0 address, port 1 data
+	void writeOpll(bool port, uint8_t value, EmuTime time);
+
 	// digital mixer
 	void writeVolume(Block block, uint8_t value, EmuTime time);
 	void writeMasterVolume(uint8_t value, EmuTime time);
@@ -52,6 +56,8 @@ private:
 private:
 	MSXMotherBoard& motherBoard;
 	SCC scc;
+	YM2413 opll;
+	uint8_t opllLatch = 0;
 
 	// the registers of the digital mixer, laid out as in Y8960.cc
 	std::array<uint8_t, 0x2E> mixer{};
