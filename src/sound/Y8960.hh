@@ -5,6 +5,7 @@
 #include "SCC.hh"
 #include "Y8950.hh"
 #include "Y8950Periphery.hh"
+#include "YM2151.hh"
 #include "YM2413.hh"
 
 #include "EmuTime.hh"
@@ -53,6 +54,10 @@ public:
 	// channels.
 	void writeSsg(bool port, uint8_t value, EmuTime time);
 
+	// OPM: port 0 address, port 1 data (write) and status (read)
+	[[nodiscard]] uint8_t readOpm(bool port) const;
+	void writeOpm(bool port, uint8_t value, EmuTime time);
+
 	// digital mixer
 	void writeVolume(Block block, uint8_t value, EmuTime time);
 	void writeMasterVolume(uint8_t value, EmuTime time);
@@ -81,6 +86,8 @@ private:
 	uint8_t opl2Latch = 0;
 	std::array<AY8910, 2> ssg;
 	uint8_t ssgLatch = 0;
+	YM2151 opm;
+	uint8_t opmLatch = 0;
 
 	// the registers of the digital mixer, laid out as in Y8960.cc
 	std::array<uint8_t, 0x2E> mixer{};

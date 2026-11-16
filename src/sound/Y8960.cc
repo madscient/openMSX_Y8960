@@ -86,6 +86,7 @@ Y8960::Y8960(const std::string& name, const DeviceConfig& config, EmuTime time)
 	, opl2(name + " OPL2", config, 256 * 1024, time, noPeriphery, Y8950::Type::Y8960)
 	, ssg{AY8910(name + " SSG 0", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149),
 	      AY8910(name + " SSG 1", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149)}
+	, opm(name + " OPM", "Y8960 OPM", config, time, YM2151::Variant::YM2151)
 	, debuggable(motherBoard, name)
 {
 	scc.enableSetChannelFactors();
@@ -118,6 +119,8 @@ void Y8960::reset(EmuTime time)
 	opl2Latch = 0;
 	for (auto& s : ssg) s.reset(time);
 	ssgLatch = 0;
+	opm.reset(time);
+	opmLatch = 0;
 	for (auto reg : xrange(VOLUME, MASTER + 1)) mixer[reg] = 0x80;
 	for (auto reg : xrange(OPLL_PAN, SSG_REGS)) mixer[reg] = 128;
 	for (auto r : xrange(0x10u)) {
@@ -194,6 +197,23 @@ void Y8960::writeSsg(bool port, uint8_t value, EmuTime time)
 	}
 }
 
+// The status is on the data port only. Its busy bit stays 0: a write takes
+// effect at once here, where the cartridge queues writes and shows the queue
+// as busy.
+uint8_t Y8960::readOpm(bool port) const
+{
+	return port ? opm.readStatus() : 0xFF;
+}
+
+void Y8960::writeOpm(bool port, uint8_t value, EmuTime time)
+{
+	if (!port) {
+		opmLatch = value;
+	} else {
+		opm.writeReg(opmLatch, value, time);
+	}
+}
+
 void Y8960::writeVolume(Block block, uint8_t value, EmuTime time)
 {
 	writeMixer(VOLUME + unsigned(block), value, time);
@@ -226,6 +246,7 @@ void Y8960::applyVolume(Block block, EmuTime time)
 	case Block::OPLL: opll.setSoftwareVolume(gain, time); break;
 	case Block::OPL2: opl2.setSoftwareVolume(gain, time); break;
 	case Block::SCC:  scc .setSoftwareVolume(gain, time); break;
+	case Block::OPM:  opm .setSoftwareVolume(gain, time); break;
 	default: break;
 	}
 }
@@ -299,6 +320,8 @@ void Y8960::serialize(Archive& ar, unsigned /*version*/)
 	             "ssg0",      ssg[0],
 	             "ssg1",      ssg[1],
 	             "ssgLatch",  ssgLatch,
+	             "opm",       opm,
+	             "opmLatch",  opmLatch,
 	             "mixer",     mixer);
 	if constexpr (Archive::IS_LOADER) {
 		// the sound devices don't keep their software volume and channel

@@ -27,10 +27,13 @@
 //   0x7FF6 I/O Enabler1: bit 0 opens the OPLL ports
 //   0x7FF7 SSG volume   0x7FF8 OPLL volume   0x7FF9 OPL2 volume
 //   0x7FFA SCC volume   0x7FFD OPM volume    0x7FFE master volume
-//   0x7FFF I/O Enabler2, readable: bit 0 opens the OPL2 ports, bit 1 the SSG's
+//   0x7FFB/0x7FFC OPM address/data, in between the volumes
+//   0x7FFF I/O Enabler2, readable: bit 0 opens the OPL2 ports, bit 1 the
+//          SSG's, bit 2 the OPM's
 //
 // I/O ports, all closed after reset like the FM-PAC's:
 //   0x7C/0x7D OPLL address/data (write-only)
+//   0x7E/0x7F OPM address and data/status (the status on 0x7F only)
 //   0xA0/0xA1 SSG address/data (write-only), shared with the MSX's own PSG
 //   0xC0/0xC1 OPL2 address and status/data
 
@@ -218,6 +221,8 @@ void Y8960Cartridge::writeMmio(uint16_t address, byte value, EmuTime time)
 	case 0x7FF8: y8960.writeVolume(OPLL, value, time); break;
 	case 0x7FF9: y8960.writeVolume(OPL2, value, time); break;
 	case 0x7FFA: y8960.writeVolume(SCC,  value, time); break;
+	case 0x7FFB: y8960.writeOpm(false, value, time); break;
+	case 0x7FFC: y8960.writeOpm(true,  value, time); break;
 	case 0x7FFD: y8960.writeVolume(OPM,  value, time); break;
 	case 0x7FFE: y8960.writeMasterVolume(value, time); break;
 	case 0x7FFF: writeIoEnabler2(value); break;
@@ -240,7 +245,7 @@ void Y8960Cartridge::writeIoEnabler1(uint8_t value)
 
 void Y8960Cartridge::writeIoEnabler2(uint8_t value)
 {
-	value &= 0x03;
+	value &= 0x07;
 	auto changed = value ^ ioEnabler2;
 	auto& cpu = getCPUInterface();
 	if (changed & 0x01) {
@@ -257,12 +262,20 @@ void Y8960Cartridge::writeIoEnabler2(uint8_t value)
 			cpu.unregister_IO_Out_range(0xA0, 2, this);
 		}
 	}
+	if (changed & 0x04) {
+		if (value & 0x04) {
+			cpu.register_IO_InOut_range(0x7E, 2, this);
+		} else {
+			cpu.unregister_IO_InOut_range(0x7E, 2, this);
+		}
+	}
 	ioEnabler2 = value;
 }
 
 byte Y8960Cartridge::readIO(uint16_t port, EmuTime time)
 {
 	switch (port & 0xFF) {
+	case 0x7E: case 0x7F: return y8960.readOpm(port & 1);
 	case 0xC0: case 0xC1: return y8960.readOpl2(port & 1, time);
 	default: return 0xFF;
 	}
@@ -271,6 +284,7 @@ byte Y8960Cartridge::readIO(uint16_t port, EmuTime time)
 byte Y8960Cartridge::peekIO(uint16_t port, EmuTime time) const
 {
 	switch (port & 0xFF) {
+	case 0x7E: case 0x7F: return y8960.readOpm(port & 1);
 	case 0xC0: case 0xC1: return y8960.peekOpl2(port & 1, time);
 	default: return 0xFF;
 	}
@@ -280,6 +294,7 @@ void Y8960Cartridge::writeIO(uint16_t port, byte value, EmuTime time)
 {
 	switch (port & 0xFF) {
 	case 0x7C: case 0x7D: y8960.writeOpll(port & 1, value, time); break;
+	case 0x7E: case 0x7F: y8960.writeOpm (port & 1, value, time); break;
 	case 0xA0: case 0xA1: y8960.writeSsg (port & 1, value, time); break;
 	case 0xC0: case 0xC1: y8960.writeOpl2(port & 1, value, time); break;
 	default: break;
