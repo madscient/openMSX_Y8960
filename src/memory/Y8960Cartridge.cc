@@ -21,15 +21,17 @@
 //
 // Memory mapped registers, write-only but for 0x7FFF, at 0x7FE0-0x7FFF while
 // 0x6000-0x7FFF shows neither RAM nor the SCC:
+//   0x7FF0/0x7FF1 SSG address/data
 //   0x7FF2/0x7FF3 OPL2 address/data
 //   0x7FF4/0x7FF5 OPLL address/data
 //   0x7FF6 I/O Enabler1: bit 0 opens the OPLL ports
 //   0x7FF7 SSG volume   0x7FF8 OPLL volume   0x7FF9 OPL2 volume
 //   0x7FFA SCC volume   0x7FFD OPM volume    0x7FFE master volume
-//   0x7FFF I/O Enabler2, readable: bit 0 opens the OPL2 ports
+//   0x7FFF I/O Enabler2, readable: bit 0 opens the OPL2 ports, bit 1 the SSG's
 //
 // I/O ports, all closed after reset like the FM-PAC's:
 //   0x7C/0x7D OPLL address/data (write-only)
+//   0xA0/0xA1 SSG address/data (write-only), shared with the MSX's own PSG
 //   0xC0/0xC1 OPL2 address and status/data
 
 #include "Y8960Cartridge.hh"
@@ -208,6 +210,7 @@ void Y8960Cartridge::writeMmio(uint16_t address, byte value, EmuTime time)
 {
 	using enum Y8960::Block;
 	switch (address) {
+	case 0x7FF0: case 0x7FF1: y8960.writeSsg (address & 1, value, time); break;
 	case 0x7FF2: case 0x7FF3: y8960.writeOpl2(address & 1, value, time); break;
 	case 0x7FF4: case 0x7FF5: y8960.writeOpll(address & 1, value, time); break;
 	case 0x7FF6: writeIoEnabler1(value); break;
@@ -237,12 +240,21 @@ void Y8960Cartridge::writeIoEnabler1(uint8_t value)
 
 void Y8960Cartridge::writeIoEnabler2(uint8_t value)
 {
-	value &= 0x01;
-	if ((value ^ ioEnabler2) & 0x01) {
+	value &= 0x03;
+	auto changed = value ^ ioEnabler2;
+	auto& cpu = getCPUInterface();
+	if (changed & 0x01) {
 		if (value & 0x01) {
-			getCPUInterface().register_IO_InOut_range(0xC0, 2, this);
+			cpu.register_IO_InOut_range(0xC0, 2, this);
 		} else {
-			getCPUInterface().unregister_IO_InOut_range(0xC0, 2, this);
+			cpu.unregister_IO_InOut_range(0xC0, 2, this);
+		}
+	}
+	if (changed & 0x02) {
+		if (value & 0x02) {
+			cpu.register_IO_Out_range(0xA0, 2, this);
+		} else {
+			cpu.unregister_IO_Out_range(0xA0, 2, this);
 		}
 	}
 	ioEnabler2 = value;
@@ -268,6 +280,7 @@ void Y8960Cartridge::writeIO(uint16_t port, byte value, EmuTime time)
 {
 	switch (port & 0xFF) {
 	case 0x7C: case 0x7D: y8960.writeOpll(port & 1, value, time); break;
+	case 0xA0: case 0xA1: y8960.writeSsg (port & 1, value, time); break;
 	case 0xC0: case 0xC1: y8960.writeOpl2(port & 1, value, time); break;
 	default: break;
 	}

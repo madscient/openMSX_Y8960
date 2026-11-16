@@ -1,6 +1,7 @@
 #ifndef Y8960_HH
 #define Y8960_HH
 
+#include "AY8910.hh"
 #include "SCC.hh"
 #include "Y8950.hh"
 #include "Y8950Periphery.hh"
@@ -47,6 +48,11 @@ public:
 	[[nodiscard]] uint8_t peekOpl2(bool port, EmuTime time) const;
 	void writeOpl2(bool port, uint8_t value, EmuTime time);
 
+	// SSGS, two SSGs behind one pair of ports: port 0 address, port 1 data.
+	// 00h-0Fh is SSG 0, 10h-1Fh SSG 1, 20h-2Fh the volume and pan of their
+	// channels.
+	void writeSsg(bool port, uint8_t value, EmuTime time);
+
 	// digital mixer
 	void writeVolume(Block block, uint8_t value, EmuTime time);
 	void writeMasterVolume(uint8_t value, EmuTime time);
@@ -73,6 +79,8 @@ private:
 	} noPeriphery;
 	Y8950 opl2;
 	uint8_t opl2Latch = 0;
+	std::array<AY8910, 2> ssg;
+	uint8_t ssgLatch = 0;
 
 	// the registers of the digital mixer, laid out as in Y8960.cc
 	std::array<uint8_t, 0x2E> mixer{};

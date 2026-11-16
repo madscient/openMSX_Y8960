@@ -1,6 +1,7 @@
 #include "Y8960.hh"
 
 #include "DeviceConfig.hh"
+#include "DummyAY8910Periphery.hh"
 #include "MSXMotherBoard.hh"
 #include "serialize.hh"
 
@@ -83,11 +84,14 @@ Y8960::Y8960(const std::string& name, const DeviceConfig& config, EmuTime time)
 	, scc(name + " SCC", config, time, SCC::Mode::Real)
 	, opll(name + " OPLL", config, YM2413::Type::Y8960)
 	, opl2(name + " OPL2", config, 256 * 1024, time, noPeriphery, Y8950::Type::Y8960)
+	, ssg{AY8910(name + " SSG 0", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149),
+	      AY8910(name + " SSG 1", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149)}
 	, debuggable(motherBoard, name)
 {
 	scc.enableSetChannelFactors();
 	opll.enableSetChannelFactors();
 	opl2.enableSetChannelFactors();
+	for (auto& s : ssg) s.enableSetChannelFactors();
 }
 
 void Y8960::NoPeriphery::write(uint4_t /*outputs*/, uint4_t /*values*/, EmuTime /*time*/)
@@ -112,6 +116,8 @@ void Y8960::reset(EmuTime time)
 	opllLatch = 0;
 	opl2.reset(time);
 	opl2Latch = 0;
+	for (auto& s : ssg) s.reset(time);
+	ssgLatch = 0;
 	for (auto reg : xrange(VOLUME, MASTER + 1)) mixer[reg] = 0x80;
 	for (auto reg : xrange(OPLL_PAN, SSG_REGS)) mixer[reg] = 128;
 	for (auto r : xrange(0x10u)) {
@@ -177,6 +183,17 @@ void Y8960::writeOpl2(bool port, uint8_t value, EmuTime time)
 	opl2.writeReg(opl2Latch, value, time);
 }
 
+void Y8960::writeSsg(bool port, uint8_t value, EmuTime time)
+{
+	if (!port) {
+		ssgLatch = value & 0x3F; // 40h-FFh are 00h-3Fh again
+	} else if (ssgLatch < 0x20) {
+		ssg[ssgLatch >> 4].writeRegister(ssgLatch & 0x0F, value, time);
+	} else if (ssgLatch < 0x30) {
+		writeMixer(SSG_REGS + ssgLatch - 0x20, value, time);
+	}
+}
+
 void Y8960::writeVolume(Block block, uint8_t value, EmuTime time)
 {
 	writeMixer(VOLUME + unsigned(block), value, time);
@@ -205,6 +222,7 @@ void Y8960::applyVolume(Block block, EmuTime time)
 	float gain = BLOCK_LEVEL[size_t(block)]
 	           * volumeGain(mixer[VOLUME + unsigned(block)]) * volumeGain(mixer[MASTER]);
 	switch (block) {
+	case Block::SSG:  for (auto& s : ssg) s.setSoftwareVolume(gain, time); break;
 	case Block::OPLL: opll.setSoftwareVolume(gain, time); break;
 	case Block::OPL2: opl2.setSoftwareVolume(gain, time); break;
 	case Block::SCC:  scc .setSoftwareVolume(gain, time); break;
@@ -214,6 +232,15 @@ void Y8960::applyVolume(Block block, EmuTime time)
 
 void Y8960::applyPan(unsigned reg, EmuTime time)
 {
+	if (reg >= SSG_REGS) {
+		// 20h-27h volume, 28h-2Fh pan; bit 2 the SSG, bits 1-0 its channel
+		auto r = (reg - SSG_REGS) & 7;
+		if (!isSsgConnected(r)) return;
+		auto pan = panGain(mixer[SSG_REGS + 8 + r]);
+		float vol = volumeGain(mixer[SSG_REGS + r]);
+		ssg[r >> 2].setChannelFactors(r & 3, pan.left * vol, pan.right * vol, time);
+		return;
+	}
 	auto [left, right] = panGain(mixer[reg]);
 	if ((OPLL_PAN <= reg) && (reg < OPLL_PAN + 9)) {
 		auto ch = reg - OPLL_PAN;
@@ -269,6 +296,9 @@ void Y8960::serialize(Archive& ar, unsigned /*version*/)
 	             "opllLatch", opllLatch,
 	             "opl2",      opl2,
 	             "opl2Latch", opl2Latch,
+	             "ssg0",      ssg[0],
+	             "ssg1",      ssg[1],
+	             "ssgLatch",  ssgLatch,
 	             "mixer",     mixer);
 	if constexpr (Archive::IS_LOADER) {
 		// the sound devices don't keep their software volume and channel
