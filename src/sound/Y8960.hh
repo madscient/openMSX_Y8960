@@ -2,6 +2,7 @@
 #define Y8960_HH
 
 #include "AY8910.hh"
+#include "MSXTimer.hh"
 #include "SCC.hh"
 #include "Y8950.hh"
 #include "Y8950Periphery.hh"
@@ -58,6 +59,11 @@ public:
 	[[nodiscard]] uint8_t readOpm(bool port) const;
 	void writeOpm(bool port, uint8_t value, EmuTime time);
 
+	// MSX-TIMER, ports 0-3
+	[[nodiscard]] uint8_t readTimer(unsigned port, EmuTime time) { return timer.readPort(port, time); }
+	[[nodiscard]] uint8_t peekTimer(unsigned port, EmuTime time) const { return timer.peekPort(port, time); }
+	void writeTimer(unsigned port, uint8_t value, EmuTime time) { timer.writePort(port, value, time); }
+
 	// digital mixer
 	void writeVolume(Block block, uint8_t value, EmuTime time);
 	void writeMasterVolume(uint8_t value, EmuTime time);
@@ -88,6 +94,7 @@ private:
 	uint8_t ssgLatch = 0;
 	YM2151 opm;
 	uint8_t opmLatch = 0;
+	MSXTimer timer;
 
 	// the registers of the digital mixer, laid out as in Y8960.cc
 	std::array<uint8_t, 0x2E> mixer{};

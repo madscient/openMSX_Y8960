@@ -87,6 +87,7 @@ Y8960::Y8960(const std::string& name, const DeviceConfig& config, EmuTime time)
 	, ssg{AY8910(name + " SSG 0", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149),
 	      AY8910(name + " SSG 1", DummyAY8910Periphery::instance(), config, time, AY8910::Type::YM2149)}
 	, opm(name + " OPM", "Y8960 OPM", config, time, YM2151::Variant::YM2151)
+	, timer(motherBoard, name + " MSX-TIMER")
 	, debuggable(motherBoard, name)
 {
 	scc.enableSetChannelFactors();
@@ -121,6 +122,7 @@ void Y8960::reset(EmuTime time)
 	ssgLatch = 0;
 	opm.reset(time);
 	opmLatch = 0;
+	timer.reset(time);
 	for (auto reg : xrange(VOLUME, MASTER + 1)) mixer[reg] = 0x80;
 	for (auto reg : xrange(OPLL_PAN, SSG_REGS)) mixer[reg] = 128;
 	for (auto r : xrange(0x10u)) {
@@ -322,6 +324,7 @@ void Y8960::serialize(Archive& ar, unsigned /*version*/)
 	             "ssgLatch",  ssgLatch,
 	             "opm",       opm,
 	             "opmLatch",  opmLatch,
+	             "timer",     timer,
 	             "mixer",     mixer);
 	if constexpr (Archive::IS_LOADER) {
 		// the sound devices don't keep their software volume and channel
