@@ -1448,6 +1448,45 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-16 (18) — upstream（#2294 の取り込みの後）に追従した。push は確認待ち
+
+ユーザーの指示: 「まず上流への追従、それから#2288の作り直し」。作業したのは Win11 機。始める前に、このマシンの `main` を
+origin/main（`58a69328a`）へ早送りした（Win10 機の 77 本）。
+
+- **追従**: `main` を upstream/master の `d31212e8f` に載せ替えた（基点は `b689d5141` から、40 コミット。#2294 のマージ `0ca3bebfd` を含む）。
+  フォークのコミットは 282。触ったファイルの重なりは 7 件（`openmsx.vcxproj`、`openmsx.vcxproj.filters`、`DeviceFactory.cc`、
+  `SoundDevice.cc`、`SoundDevice.hh`、`Y8950.hh`、`Y8950Adpcm.cc`）。後ろの 4 件は、フォークが途中で触って後で戻したもの
+  （`base..main` の正味の差は空）。止まったのは 4 回で、どれも途中のコミット:
+  - `ccc4393b6`（buppu3 さんの Modify the Y8960 mixer structure）の `SoundDevice.cc`: 上流の `e0f854a89` と同じ位置に関数を足していた。
+    上流の 2 関数（`enableSetChannelFactors`、`setChannelFactors`）の後に、フォークの `setBalance(channel, left, right)` を置いた
+  - `e16fbfde6`（`Y8950Adpcm` が `Y8950Status` という口を取る）の `Y8950.hh` と `Y8950Adpcm.cc`: #2294 の PCM_BSY が `y8950.getType()` を
+    2 か所で見るようになり、口からは型が見えない。`Y8950Status` に既定で false を返す `isY8960()` を足し、`Y8950` だけが
+    `type == Type::Y8960` を返すようにした（4 行）。フォークの当時の `Y8960OPL2` は既定の値を受けるので、9 月の挙動（Y8950 の PCM_BSY）のまま。
+    上流の継承の public 化と `Type` の宣言は残し、状態ビットの定数は元のコミットどおり口へ移した。この口は `703c7649e` で消えるので、
+    今の `main` には残らない
+  - `43c6dffbe`（ミキサーのゲイン段）の `SoundDevice.cc`: 9 本目で足した関数を消して上流と同じに戻すコミット。上流の版をそのまま採った
+  - `703c7649e`（ADPCM をフォークする）の `Y8950.hh`・`Y8950Adpcm.cc`・`Y8950Adpcm.hh`: `src/sound/Y8950*` を上流と同じに戻すコミット。
+    3 本とも上流の版を採った
+  - **確認済み**: `git range-diff` で 278 コミットが `=`、手で解いた 4 つだけが `!`。`ccc4393b6` と `43c6dffbe` の差は文脈の行だけ。
+    結果のツリーは `git merge-tree --write-tree main upstream/master` の単純マージ（`a0a1463e2`、衝突なし）と一致（`git diff` が空）。
+    `src/sound/Y8950*` は上流と差が無い
+- **写しの元の変更**: 40 本のうちフォークの写しの元（`AY8910`、`SCC`、`YM2413NukeYKT`、`Y8950Adpcm`）を触ったのは `79cf4e4a8`（Clang の警告の直し。
+  Phase 5 の表に書いたもの）と #2294 の `913003062`（PCM_BSY。フォークの `Y8960Adpcm` は Y8960 の形をすでに持つ）だけ（**確認済み**: `git log`）。
+  写しには移していない。`Y8950.cc` の #2294 の変更は、`Y8960OPL2` が別に持っている（BD は `59c0bf7e8`）
+- **ビルド（確認済み）**: 上流の 3rdparty の変更は pkgconf（make で組む環境の道具）だけで、Windows のライブラリの版は変わらないので、
+  取得も 3rdparty のビルドもしていない。突き合わせのために載せ替え前の `58a69328a` も組んだ。どちらも 0 エラー（前 80 警告 4 分 34 秒、
+  後 78 警告 4 分 4 秒）、`LNK4286` は 0 件。版表示は `22.0-unknown`（`version.ii`）。手元の exe は 11-13 のビルドで、その後の
+  フォークのコードの変更を含まなかったので、相手にしなかった
+- **回帰テスト**: **確認済み**。`README.md` の「テストの回し方」の 1〜13（24 本）と `-testconfig` を、載せ替えの前後の exe で、同じ手順・同じ順に、
+  同じユーザーデータの写しから回した。判定のある 20 本は前後とも全部通る。`-testconfig` は `HRA_Y8960` / `audio` / `audio2` /
+  `Panasonic_FS-CA1` / `2nd_PSG` が 0、`Makoto` と存在しない拡張が 1（2026-11-13 の項と同じ）。出力 69 本（WAV 42 本を含む）は前後で
+  すべてバイト単位で同一。前後の exe は別物で、出力はそれぞれの回で新しく作られたことを時刻で見た。上流の 40 本は、この試験が通る経路を
+  変えていない（`SoundDevice` の追加は呼ぶ側が無く、`Y8950` は Y8960 の試験では使わない）
+- **push 前の点検**: `check-before-push.sh` は終了コード 0（5 は「OK (12 件)」）
+- **このあと（ユーザーの確認待ち）**: `origin/main` への `git push --force-with-lease origin main`。push すると Win10 機の `main` は
+  載せ替え前の履歴のまま残る。そちらでは `git pull` をせず、`git fetch origin` の後に `git reset --keep origin/main` で合わせる
+  （2026-11-14 (4) のとおり）
+
 ### 2026-11-16 (17) — `mse_fm_filter.py` も MIT に含めた。main の追従と `MSXY8960` の PR は別のセッション
 
 ユーザーの返事: 「1 ok / 2 含めてよい / 3 別セッションでやろうか。今日はもう寝る」。1 は (16) のコミットの push、2 は `mse_fm_filter.py` を
