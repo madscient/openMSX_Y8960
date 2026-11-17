@@ -1455,6 +1455,60 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-18 (45) — #2288 の作り直しの 8 本を枝 `y8960-v3` にコミットした。各段で旧の同じ段と出力がバイト単位で一致
+
+worktree `derived/pr` の新しい枝 `y8960-v3`（upstream/master `50a31832e` から、ローカルのみ）。
+
+| # | コミット | 中身 |
+|---|---|---|
+| 1 | `6936efda7` | `YM2413` の `Type::Y8960`。旧 1 本目の取り込みに、savestate の版 1 を読むときの 3 行（レビューの 5）を外した |
+| 2 | `f5d087499` | `Y8960Cartridge`（マッパー、SCC、ミキサー）。ビルド定義は `Y8960Cartridge` の行だけ |
+| 3〜6 | `95c13c54d`・`83752ce02`・`6d85f0746`・`11ff4d2ae` | OPLL、OPL2 と ADPCM、SSG 2 個、OPM。どれも `Y8960Cartridge.{hh,cc}` だけを触る |
+| 7 | `e795401c8` | MSX-TIMER。入れ子のクラス `Y8960Cartridge::Timer`。カウンタ 4 本は `std::array` のまま 1 回で serialize（レビューの 9）。`Co-authored-by: buppu3` |
+| 8 | `167a1745c` | System Controller。`Y8960Cartridge` が `MSXSwitchedDevice` を直接継承（レビューの 6） |
+
+- 形: (43) の決定どおり。`src/sound/Y8960.{cc,hh}` と `src/sound/MSXTimer.{cc,hh}` は無い。音源の名前、デバッガブル `Y8960 mixer`、
+  プローブ `Y8960 MSX-TIMER.IRQ` は旧と同じ。`getWriteCacheLine()` は `writeMem()` の直後（レビューの 7）
+- SonarCloud の 4 件: `NoPeriphery::write` に理由のコメント（S1186）、SSG のミキサーのリセットを三項演算子の入れ子から 2 行に（S3923・S3358）、
+  `MixerDebuggable` に `using SimpleDebuggable::read/write`（S1242 の 2 件）。**未検証**: SonarCloud は push の後にしか回らない
+- コミット文: 2〜6 本目から「copy-based version」「first round of this PR」の文を消した（レビューの 1・2）。2 本目の「音源部分は別の
+  クラス」の段を消し、ミキサーの並びの置き場所を `Y8960Cartridge.cc` に直した。8 本目の 2 段目を「カートリッジ自身が switched I/O の
+  デバイスなので System Controller は常にある。2 本目は同じ id で読み込めずエラーになる」に書き換え、確認に 2 本差しを足した
+- 段の作り方: 最終形の各行に「何本目から在るか」の印を付けた原本を 1 本書き、そこから 2〜8 段目を生成した（8 段目は最終形と一致。
+  差は意図した 2 か所だけ）
+- **確認済み**（道具は `derived/v3` に置いた。コミットしていない）
+  - 旧 `y8960-v2` の 2〜8 本目を組み、同じ試験 36 本（フォークの試験 20 本、PR の試験 5 本、savestate の往復 10 回、2 本差し）と
+    `-testconfig` 7 構成を、新旧の各段で回した。2〜8 段とも、出力の全ファイル（162〜172 個、うち WAV 61〜71 本）がバイト単位で一致。
+    違いは 0
+  - 比べ方の判別力: 新 2 段と新 3 段の出力は 23 ファイルが違い、`check_opll.py` は新 2 段で落ちて新 3 段で通る
+  - 8 段目: PR に当てはまる判定はすべて通る（RESULT 11 本が ALL PASS、判定スクリプト 8 本が 0、savestate の往復で開いたポートと
+    カウンタが戻る）。2 本差しは `Already have a switched device with id 128` のエラーで止まり、1 本目は動き続ける。`-testconfig` は
+    `HRA_Y8960`・`audio`・`audio2`・`Panasonic_FS-CA1`・`2nd_PSG`・`fmpac`・`scc` が 0
+  - フォークの `mixer-output.tcl`・`mixer-remove.tcl` の判定は、新旧とも 1。フォーク独自の設定 `y8960-mixer_output` を見る試験で、PR の
+    実装には当てはまらない
+  - 1 本目: upstream の exe（`50a31832e`）で FM-PAC の savestate（YM2413 の版 1）を書き、新 1 本目で読んだ録音が、upstream の exe で
+    読んだ録音と 14 チャンネルともバイト単位で一致
+  - ビルド: 各段 0 エラー。警告は upstream の基準のビルドにもある 4 種（`freetype_utils.hh` の C4267、`ImGuiSettings.cc` の C4459、
+    `one_of.hh` の C4389、`YM2413NukeYKT.cc` の C4805）だけで、`Y8960Cartridge` からは出ない
+  - 出す前の点検（worktree で回した）: 著者、trailer、ローカル固有の文字列、作業ツリー、annotated タグは OK。5（上流のファイルの一覧）と
+    6（文書の整合）はフォークの `main` 用で、`doc/fork/` の無い PR の枝には当てはまらない
+- 試験の組み方でつまずいたこと（どれも実装ではなく試験の側）
+  - 新しいプローブ名 `Y8960 MSX-TIMER.IRQ` は空白を含む。フォークの `timer-irq.tcl` の旧名を置き換えた写しで波括弧に包まず、Tcl が
+    引数を 2 つに割って `after` の中でエラーになり、openMSX が終わらなかった。新しい SSG のデバッガブルは 1 台 16 番地なので、
+    `ssgs-gpio.tcl` の 1Eh・1Fh は `Y8960 SSG 1 regs` の 0Eh・0Fh に置き換えた。各回に打ち切り（`timeout`）を付けた
+  - まだ無いブロックの試験は、段によっては同じ形で終わらない。新旧とも同じ試験が打ち切られることを見た（終了コード 124 の組が一致）
+  - 旧段のビルドの最後に worktree を `y8960-v3` に戻したとき、まだ 2 本目の無い 1 本目だったため `HRA_Y8960.xml` が消え、並べて回していた
+    旧段の試験のうち 23:33:13〜23:33:24 に始まったものが拡張を読めずに終わった。終了コード 1 のものだけを回し直した
+- **このあと（ユーザーの確認待ち）**: `y8960-v3` を origin に出し、#2288 の枝 `y8960` を force-push で差し替える。説明文の差し替えと
+  返事の投稿（下書きは `derived/v3/body-v4.md`・`reply-v4.md`）
+
+### 2026-11-18 (44) — #2288 にメンテナの 3 回目の返事。拡張は今の形でよい
+
+m9710797 の返事（2026-11-17 16:18Z、issuecomment-6953848792）。(42) の拡張の形の問いを引用し、「機器に詳しくないので質問した。説明に
+感謝する。今のやり方でよいと思う」。**確認済み**: `gh api` で取り出して読んだ。行コメントと新しいレビューは無し。
+
+- 拡張は今の形（ROM の無い `HRA_Y8960.xml` 1 つと、ROM 種別 `Y8960Cartridge`）のままにする。(42) の問いはこれで閉じた
+
 ### 2026-11-17 (43) — 1 クラスへのまとめの形を決めた。`Y8960Cartridge` に平らにまとめ、タイマーは入れ子。作り直しに入る
 
 ユーザーの言葉（言葉どおり）:「2 Carnivoreはどういう形になってるんだろうか。カートリッジの構造としてはY8960Cartridgeによく似ているはず」、
