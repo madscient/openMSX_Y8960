@@ -1480,6 +1480,9 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
    Y8960Cartridge` だと ROM を先頭 16 バンクに読み、`-ext HRA_Y8960` だと ROM を読まない。それが意図か。実物にはどう ROM を入れるのか
    - ユーザーの答え（言葉どおり）:「バンクROMの機能はY8960Cartridge特有のもので、音源機能とは必ずしも一体である必要が無い。実物には
      MSX Sound Suite Extension ROMがバンドルされるが、ライセンス上openMSXにはバンドルできない。」
+   - ライセンスの中身は MSSE（madscient/MsxSoundSuiteExtension、公開）の `README.md` と `NOTICE.md` にある（`b692975` で読んだ）。
+     ROM の像は個人利用に限って許諾されていて、再配布（他のソフトウェアへの同梱を含む）には MSX ライセンシングコーポレーションの許諾が
+     別に要る。このフォークの文書には、この話は書かれていなかった
    - 見たこと（**確認済み(読解)**）: `HRA_Y8960.xml` は同じ `mappertype` の `Y8960Cartridge` で、`<rom/>` が空。2 つの起動の仕方は同じ
      デバイスを、ROM の像の有無だけ変えて作る。ROM は 8kB × 16 バンク = 128kB（`Y8960Cartridge.cc` の `ROM_BANKS`）
 4. `Y8960Cartridge` と `Y8960` を 1 クラスにまとめては。2 つに分けるのは `YM2413` のように別の場所で使い回すときで、`Y8960` はそうならない
