@@ -612,8 +612,8 @@ sh $T/commits.sh a b c d e
 
 ## Y8960 の PR を確かめる
 
-#2288 の作り直し（`YM2413` の `Type::Y8960`、部品の `Y8960`、`Y8960Cartridge`）は、upstream/master から切った worktree の枝
-`y8960-v2` で、コミットごとに組んで確かめる。経緯と結果は `implementation-plan.md` の §8 の 2026-11-16 (20) 以降。道具は
+#2288 の作り直し（`YM2413` の `Type::Y8960` と `Y8960Cartridge`）は、upstream/master から切った worktree の枝
+`y8960-v3` で、コミットごとに組んで確かめる。経緯と結果は `implementation-plan.md` の §8 の 2026-11-16 (20) 以降。道具は
 `tests/y8960-pr/` にあり、`tests/y8950-pr/` の `build.sh`・`run.sh`・`chrec.tcl`・`cmpdir.py`・`cmpshift.py` も使う。環境変数は
 「`Y8950` の PR を確かめる」と同じ。
 
@@ -633,6 +633,10 @@ Y8960_TEST_OUT="$WORK/out/mixer" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -scr
 # 新旧の最終ミックスの差: py $T/cmpmix.py <新の出力先> <旧の出力先>
 # 開いた I/O ポートがセーブステートをまたぐか: cart_state.tcl を T_MODE=save / load、T_WHICH=opll / opl2 で
 # 動いている MSX-TIMER のカウンタがセーブステートをまたぐか: timer_state.tcl を T_MODE=save / load で（両方の state.txt が一致すること）
+# 一揃い（フォークの試験、ここの試験、セーブステートの往復、2 本差し、-testconfig）を exe ごとに回し、判定をまとめ、2 つの出力を比べる
+sh $T/runall.sh <exe> <出力先> <名前>          # ONLY=<正規表現> で試験を絞れる
+sh $T/summarize.sh <出力先>
+py $T/cmpout.py <旧の出力先> <新の出力先>       # ファイルごとにバイトで比べる。違えば終了コード 1
 # SSG の極性とミキサーの段差を実機と比べる。実機は tones-mga.ps1 に -Sequence で同じ音列を渡し、回ごとに -OutDir を分けて 3 回録る
 L=doc/fork/y8960/level
 Y8960_TEST_OUT=<新の出力先> Y8960_TONES="$(pwd)/$L/ssg-polarity.txt" <exe> -machine C-BIOS_MSX2+ -ext HRA_Y8960 -script "$(pwd)/$L/tones.tcl"
@@ -646,6 +650,12 @@ py $L/ssg-polarity.py <新の出力先>/tones-openmsx.wav <旧の出力先>/tone
 - `check_scc.py` は各録音の後半だけで判定する。最終ミックスは、前の録音の音を直流除去とリサンプラが引きずる
 - 最終ミックスで見る試験は、ほかの音源の音が混ざらないように組む。OPLL と SSG はトンネル（7FF4h/7FF5h、7FF0h/7FF1h）で書く
   （C-BIOS_MSX2+ は 7Ch/7Dh に MSX-MUSIC を持ち、A0h/A1h は本体の PSG と共有）。離鍵は RR を上げてから行い、リズムの前は余韻が消えるまで待つ
+- `runall.sh` は回している間 `$PR/share` を読む。回している間に worktree の枝を切り替えると、拡張が読めずに終了コード 1 で終わる。
+  機種の定義は `$WORK/user/machines`（`$PR/Contrib/cbios` から写す）、システム ROM は `$WORK/user/systemroms` に置く。無いと
+  `-testconfig` の `Panasonic_FS-CA1`・`fmpac` が 1 になる
+- `runall.sh` は 1 回を 60 秒で打ち切る。Tcl の `after` の中でエラーになると openMSX が終わらないため。コミットの途中の段では、
+  まだ無いブロックの試験がこの形で打ち切られ、`rc.txt` が 124 になる。新旧で同じ試験が 124 になることを見る
+- フォークの `mixer-output.tcl`・`mixer-remove.tcl` はフォーク独自の設定 `y8960-mixer_output` を見る試験で、PR の実装では判定が 1 になる
 
 ## 取り込み元
 
