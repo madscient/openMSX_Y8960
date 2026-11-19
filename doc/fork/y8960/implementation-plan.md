@@ -1461,6 +1461,27 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-19 (52) — ルートの `README` を書き換え、`CLAUDE.md` §2 を「持つなら帰属表示が要る」にした。報告先はこのフォークでも受け付ける
+
+ユーザーの返事（言葉どおり）:「1 ok / 2 b / 3 ok」。1 は README の文案、2 は報告先（a: openMSX に報告してもらう、b: このフォークでも
+受け付ける）、3 は `CLAUDE.md` §2・§3 の帰属表示の書き換え。
+
+- **決定（ユーザー判断）**: README は文案どおり。Y8960 は openMSX に入ったので openMSX を使うよう書き、このフォークはコードを足さず、
+  Y8960 の変更を openMSX に出す前に用意して確かめる場所だと書いた。デバイスの一覧、設定、既知の制限、CC BY-SA の表示を外した
+- **決定（ユーザー判断）**: 報告先は案 b。README に「Problems with the Y8960 emulation can be reported to openMSX or to this fork.」の
+  1 文を足した
+- **決定（ユーザー判断）**: `CLAUDE.md` §2 を「帰属表示が要るデータ」にし、今の `main` は持たないこと、タグ `21.0-y8960.1`〜`.5` が
+  持っていて表示もあること、戻すなら表示を戻すことを書いた。§3 の帰属表示の項に「表示が要るデータを持つときだけ」を足し、
+  `upstream-touched.txt` の README の理由から帰属表示を外した。**確認済み**: 5 本のタグとも `YM2413NukeYKTBanked.cc` を持ち、
+  README に David Viens の名を含む行が 2 行ある（`git ls-tree`、`git show`）
+  - 前提: 音色表を upstream と同じ Nuked-OPLL のものにしている限り成立する（(50) の決定）
+- 訂正: 文案を見せたときに「Credits / License は今の文のまま」と書いたが、文案のファイルでは buppu3 さんの段を短くしていた
+  （「rebased onto current openMSX」以降の 2 文を落としていた）。書き換えた後に読み返して気づき、元の文に戻した。**確認済み**: Credits と
+  License 以降が書き換え前の README とバイト単位で一致（python で比べた）。upstream との差は冒頭に足した 41 行だけ（`git diff --stat`）
+- 残したもの: `doc/fork/tools/package-release.py` の説明の「README に CC BY-SA の帰属表示があるので」は、今の `main` には当てはまらない。
+  README を zip に足す理由（フォークである旨）は残るので、道具は変えていない。リリースを続けるかは決めていない
+- **このあと**: `main` を `follow-upstream` に早送りし、点検を通して push する（ユーザーの了承済み）
+
 ### 2026-11-19 (51) — `main` を upstream にマージで追従させた（枝 `follow-upstream`）。追従はマージで行うことにした。試験の一揃いは通った
 
 ユーザーの返事（言葉どおり）:「「追従はリベースで行う」は外しても構わない。その場合2と3のコストの違いはどうなる？」、比べた結果を

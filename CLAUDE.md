@@ -17,12 +17,13 @@ openMSX は **GPL-2.0-only**（`meson.build` の `license` 宣言）。
 `doc/fork/y8960/hardware-notes.md` は**読解した事実の記述**であって、コードや文章の
 複製ではない。仕様を参照するのは構わないが、この線を越えない。
 
-## 2. 落としてはいけない帰属表示
+## 2. 帰属表示が要るデータ
 
-`src/sound/YM2413NukeYKTBanked.cc` の OPLL-X / OPLL-P / VRC7 音色データは
-"Copyright free OPLL(x) ROM patches" (David Viens / Hubert Lamontagne) 由来で、
-**CC BY-SA なので帰属表示が要る**（出所は 2026-09-09 に確認済み）。
-表示はルートの `README` にある。このファイルを整理するときも消さない。
+"Copyright free OPLL(x) ROM patches" (David Viens / Hubert Lamontagne) の
+OPLL-X / OPLL-P / VRC7 音色データは、**CC BY-SA なので、持つなら帰属表示が要る**
+（出所は 2026-09-09 に確認済み）。今の `main` は持たない（OPLL の音色表は upstream と同じ
+Nuked-OPLL のもの）。リリースのタグ `21.0-y8960.1`〜`.5` は持っていて、表示もそれぞれの
+ルートの `README` にある。このデータを `main` に戻すなら、`README` に表示を戻す。
 
 ## 3. 文書をどこに置くか
 
@@ -41,7 +42,7 @@ upstream を取り込むときに衝突せず、どれがフォークの成果�
 
 - **フォークである旨** — upstream ではないこと、何が足してあるか、報告先。
   無いと利用者が upstream と取り違える
-- **帰属表示**（§2）。目に触れない場所に置いても意味がない
+- **帰属表示**（§2）。表示が要るデータを持つときだけ。目に触れない場所に置いても意味がない
 
 `doc/authors.txt` は upstream のクレジット一覧なので**触らない**。
 フォーク側のクレジットは `README` に集める。

@@ -2,56 +2,22 @@
 This is an unofficial fork of openMSX
 ----------------------------------------------------------------------------
 
-It adds emulation of the Y8960 Cartridge, a sound cartridge for the MSX
-designed by HRA! (hra1129). The hardware itself is still work in progress,
-so the emulation follows a moving target and is expected to change.
+The emulation of the Y8960 Cartridge, a sound cartridge for the MSX
+designed by HRA! (hra1129), is part of openMSX. Use openMSX:
 
-Upstream openMSX does not contain any of this. Report problems to this fork,
-not to the openMSX developers.
+    https://github.com/openMSX/openMSX
+
+The code of this fork follows that of openMSX and adds nothing to it. The
+fork is where changes to the Y8960 emulation are prepared and checked
+before they are offered to openMSX. Its notes and test tools are under
+doc/fork/ in the repository. They are written in Japanese and are aimed at
+developers, not at end users.
+
+Problems with the Y8960 emulation can be reported to openMSX or to this
+fork.
 
     this fork: https://github.com/madscient/openMSX_Y8960
     upstream:  https://github.com/openMSX/openMSX
-
-What is added
--------------
-
-The cartridge is the extension HRA_Y8960 (share/extensions/HRA_Y8960.xml):
-
-    openmsx -machine <machine> -ext HRA_Y8960
-
-It is built from these devices:
-
-    Y8960-OPLL       YM2413 with a preset tone bank and a pan per channel
-    Y8960-OPL2       YM3812 with waveform select, a pan per channel and an
-                     ADPCM-B with its own pan
-    Y8960-ADPCM-RAM  the 256KB ADPCM sample memory
-    Y8960-SSGS       two YM2149-compatible SSGs with a volume and a pan
-                     per channel
-    Y8960-OPM        YM2151
-    MSX-TIMER        the cartridge's timer
-    Y8960-MIXER      the cartridge's digital mixer (a volume per sound
-                     block and a master volume) and output switch
-    Y8960-SYSTEM-CONTROLLER
-                     answers the cartridge's identification on I/O 40h-42h
-    Y8960 ROM type   SCC with a pan per channel, the cartridge's mapper, its
-                     I/O enablers and the memory-mapped access to the sound
-                     chips
-
-The cartridge does not feed its sound back into the MSX, so by default only
-the Y8960's own output is heard. The setting y8960-mixer_output selects
-y8960, msx or mix.
-
-Known limitations:
-
-    - There is no real hardware to compare with. The behaviour follows the
-      specification and the FPGA sources as they were read.
-    - The second SSG's registers cannot be read back through port A2h,
-      which the cartridge allows.
-    - The System Controller only identifies the cartridge. Its access to
-      the configuration ROM (I/O 43h-47h) is not emulated.
-
-Notes for this fork are under doc/fork/ in the repository. They are written
-in Japanese and are aimed at developers, not at end users.
 
 Credits
 -------
@@ -66,19 +32,6 @@ https://github.com/hra1129/Y8960_Cartridge . Nothing from that repository is
 copied into this one: its license forbids commercial use, which is not
 compatible with the GPL that openMSX is released under. The emulation was
 written from reading the specification.
-
-src/sound/YM2413NukeYKTBanked.cc carries preset tone data for the OPLL-X,
-OPLL-P and VRC7 tone banks in addition to the YM2413 ones. That data comes
-from "Copyright free OPLL(x) ROM patches" by David Viens and Hubert
-Lamontagne:
-
-    https://github.com/plgDavid/misc/wiki/Copyright-free-OPLL(x)-ROM-patches
-
-    Copyright free OPLL(x) ROM patches
-    (C) David Viens, Hubert Lamontagne
-    Licensed under CC BY-SA.
-
-Redistribution has to keep that attribution.
 
 License
 -------
