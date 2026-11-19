@@ -1,7 +1,7 @@
 # Y8960 エミュレーション実装 — 文書の役割
 
 Y8960 カートリッジのエミュレーションを openMSX に追加する作業のための文書。
-Y8960 対応は upstream には存在しない独自機能である。
+実装は upstream に入っていて、このフォークのコードは upstream と同じ。ここに残すのは調査、試験、計画である。
 
 実装状況の一覧と外部リポジトリとの関係は `doc/fork/README.md`、
 作業時の規則はルートの `CLAUDE.md` にある。
@@ -33,12 +33,8 @@ Y8960 対応は upstream には存在しない独自機能である。
 | `tests/adpcm-play.tcl` | ADPCM-B の発音の回帰テスト。WAV を書き出す |
 | `tests/check-adpcm-play.py` | 上記 WAV の判定。ピークと基本周波数を見る |
 | `tests/adpcm-rommode.tcl` | ADPCM の ROM ビット (08h の b0) が SRAM を外すことの回帰テスト。CPU に読ませる |
-| `tests/mixer-output.tcl` | Y8960 と本体の出力の切り替えの回帰テスト。WAV を書き出す |
-| `tests/check-mixer-output.py` | 上記 WAV の判定 |
 | `tests/mixer-volume.tcl` | ミキサーの音量レジスタ (7FF7h-7FFAh) とマスター音量 (7FFEh) の回帰テスト。WAV を書き出す |
 | `tests/check-mixer-volume.py` | 上記 WAV の判定 |
-| `tests/mixer-remove.tcl` | カートリッジを抜いたら本体の音が戻ることの回帰テスト。WAV を書き出す |
-| `tests/check-mixer-remove.py` | 上記 WAV の判定 |
 | `tests/mapper-windows.tcl` | SCC 音源レジスタの窓と MMIO 窓の出現条件の回帰テスト |
 | `tests/scc-panpot.tcl` | SCC のチャンネルごとの定位 (9900h-9904h) と、その周りの番地が SCC のミラーのままであることの回帰テスト。WAV を書き出す |
 | `tests/check-scc-panpot.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
@@ -86,6 +82,11 @@ Y8960 対応は upstream には存在しない独自機能である。
 セッションをまたぐ引き継ぎ情報・見送った判断・訂正はすべてここに書く。
 
 ## テストの回し方
+
+**この節のコマンドは、フォーク独自の実装（`doc/fork/README.md` の「Y8960 の実装」）の名前で書いてある。**
+今の `main`（upstream の実装）では、「Y8960 の PR を確かめる」の `tests/y8960-pr/runall.sh` で回す。
+デバッガブルやプローブの名前が違う 5 本は名前を置き換えた写しで回し、定位の 4 本（`*-panpot.tcl`）は
+外して `tests/y8960-pr/` の試験で代える。
 
 すべて手で回す。ビルド手順は `doc/fork/build/README.md`。
 `openmsx.exe` はコンソールに何も出さないので、結果はファイルに出る。
@@ -139,12 +140,8 @@ Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(p
 tail -1 "$OUT/adpcm-rommode.txt"
 
 # 7. ミキサー。判定は終了コードで分かる
-Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-output.tcl"
-py $T/check-mixer-output.py "$OUT"
 Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-volume.tcl"
 py $T/check-mixer-volume.py "$OUT"
-Y8960_TEST_OUT="$OUT" $EXE -machine C-BIOS_MSX2+ -ext HRA_Y8960     -script "$(pwd)/$T/mixer-remove.tcl"
-py $T/check-mixer-remove.py "$OUT"
 
 # 8. バンクメモリ。判定は出力ファイルの最終行の RESULT を見る
 #    （openmsx は Tcl の exit の値を終了コードにしない）
@@ -655,7 +652,7 @@ py $L/ssg-polarity.py <新の出力先>/tones-openmsx.wav <旧の出力先>/tone
   `-testconfig` の `Panasonic_FS-CA1`・`fmpac` が 1 になる
 - `runall.sh` は 1 回を 60 秒で打ち切る。Tcl の `after` の中でエラーになると openMSX が終わらないため。コミットの途中の段では、
   まだ無いブロックの試験がこの形で打ち切られ、`rc.txt` が 124 になる。新旧で同じ試験が 124 になることを見る
-- フォークの `mixer-output.tcl`・`mixer-remove.tcl` はフォーク独自の設定 `y8960-mixer_output` を見る試験で、PR の実装では判定が 1 になる
+- `PR=` には、今の `main` の作業ツリーの根も渡せる。コードが upstream と同じなので、PR の枝と同じ試験が当てはまる
 
 ## 取り込み元
 

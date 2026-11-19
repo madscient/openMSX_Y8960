@@ -11,13 +11,3 @@
 
 .gitattributes                      CLAUDE.md と doc/fork をソースアーカイブから外す export-ignore。git archive が読むのはこのファイルだけ
 README                              フォークである旨と帰属表示。GitHub のフロントページなので他に置き場が無い
-build/msvc/openmsx.vcxproj          ソース一覧。ファイルを足したら書く
-build/msvc/openmsx.vcxproj.filters  同上
-src/DeviceFactory.cc                デバイス型の登録。openMSX は if-else 連鎖で作る
-src/imgui/ImGuiSCCViewer.cc         Y8960 の SCC（Y8960SCC）も表示する。ビューアは SCC の型でデバイスを探すので、型の違うフォークは分岐を足さないと出ない
-src/memory/RomFactory.cc            マッパー種別 Y8960 の登録
-src/memory/RomInfo.cc               同上
-src/memory/RomTypes.hh              同上
-src/meson.build                     ソース一覧
-src/sound/MSXMixer.cc               デバイスごとのゲインの枠。既定 1.0 なので他の構成の挙動は変わらない
-src/sound/MSXMixer.hh               同上

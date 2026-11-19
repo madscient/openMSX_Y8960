@@ -13,7 +13,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 
 | パス | 内容 |
 |---|---|
-| `y8960/` | Y8960 カートリッジのエミュレーション実装 |
+| `y8960/` | Y8960 カートリッジの調査、試験、計画。実装は upstream のもの（下の「Y8960 の実装」） |
 | `y8960/hardware-notes.md` | Y8960 のハードウェア仕様の調査結果。出典と確度つき |
 | `y8960/implementation-plan.md` | 実装計画・決定・実行経緯 |
 | `y8960/tests/` | 手で回す検証スクリプト |
@@ -21,7 +21,7 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `build/README.md` | ビルド環境。マシンごとの詰まりどころと手順 |
 | `release/README.md` | GitHub Releases に出すときの決まりと手順 |
 | `retrospective.md` | 振り返り。失敗の原因と、入れた対策 |
-| `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト。Y8960 の upstream PR（openMSX/openMSX#2288）のブランチを `main` から組み直すスクリプト（`y8960-pr-*`） |
+| `tools/` | push 前点検、文書整合の検査、リリース用 zip の作成スクリプト。`y8960-pr-*` は、フォーク独自の実装を最初の PR の段に分けて組んだスクリプトで、その実装が在る `main`（下の「Y8960 の実装」のマージより前）でだけ動く |
 | `upstream-touched.txt` | 変更してよい upstream のファイルの一覧と理由。点検器が突き合わせる |
 | `LICENSE` | 道具（スクリプトと、それが読む音列）のライセンス。MIT。例外と対象外の文書は冒頭に書いてある |
 
@@ -34,59 +34,38 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | `origin/master` | 分岐の起点の記録。追従には使わない |
 | ライセンス | GPL-2.0-only（upstream と同じ） |
 
-upstream の文書で変更しているのはルートの `README` だけ。
-それ以外の変更はコードとビルド定義、およびルートの `.gitattributes`
-（本ディレクトリと `CLAUDE.md` をソースアーカイブから外す）に限られる。
-一覧は `upstream-touched.txt`。
+upstream のファイルで変更しているのは、ルートの `README` と `.gitattributes`
+（本ディレクトリと `CLAUDE.md` をソースアーカイブから外す）だけ。
+コードとビルド定義は upstream と同じ。一覧は `upstream-touched.txt`。
 
-### 追従はリベースで行う
+### 追従はマージで行う
 
-`main` は upstream のある一点の直系の子孫として保ち、マージコミットを作らない。
-`main` が今どこに載っているかは `git merge-base main upstream/master` で取れるので、
-この文書には書かない。
+`main` には upstream の `master` をマージで取り込む。`main` の履歴は書き換えないので、
+`origin/main` へは通常の push で進み、記録に書いた SHA は `main` から辿れ続ける。
 
-リベースを選ぶ理由は、**衝突する面を先に機械で判定できる**こと。upstream と
-フォークがそれぞれ触ったファイルの集合を比べ、重なりが空ならリベースは黙って通る。
-重なったときはリベースが衝突で止まるので、気づかないまま壊れる余地がない。
+理由は、フォークの変更が upstream のコードに無いこと。重なりうるのはルートの `README` と
+`.gitattributes` だけで、取り込みはほとんどの回で衝突しない。リベースにすると、
+そのたびに force-push と、ほかのマシンの手元の合わせ直しが要る。
 
-**前提**: フォークの変更が upstream の変更と別のファイルに収まる限り、この判定が
-効く。同じファイルに入るようになったら、止まった衝突を手で解くことになる。
-
-フォーク側の集合は**差分の総和ではなく、各コミットが触ったファイルの和**で取る。
-リベースはコミットを 1 つずつ当てるので、途中で触って後で戻したファイル
-（`MSXPSG.cc` など）も、改行コードだけを書き換えて後で戻したファイルも衝突する。
-差分の総和ではどちらも見えない。
+**前提**: フォークが upstream のコードを変えない限り成立する。変えるようになったら、
+衝突の解き方とあわせて見直す。
 
 ```sh
 git fetch upstream master
-base=$(git merge-base main upstream/master)
 
-# 触ったファイルの重なりを見る。出力が空なら衝突しない
-comm -12 <(git diff --name-only $base upstream/master | sort) \
-         <(git log --format= --name-only $base..main | sort -u)
+# 取り込む前に衝突を見る。1 行目はマージ結果のツリー。衝突があれば 2 行目から
+# そのファイル名が出て、終了コードが 1 になる
+git merge-tree --write-tree --name-only main upstream/master
 
-# 載せ替えの正解を先に作っておく（衝突が無ければ tree が 1 行出るだけ）
-expect=$(git merge-tree --write-tree main upstream/master | head -1)
+git merge upstream/master
 
-git rebase --onto upstream/master $base main
-
-# フォークのコミットが載ったか。衝突を解かなかったコミットは "=" になる。
-# "!" は手で解いたコミットだけであること
-git range-diff $base..ORIG_HEAD upstream/master..main
-
-# 中身が単純マージと同じか。出力が空であること
-git diff $expect main
+# フォークの差が想定どおりか。doc/fork/ を除いて CLAUDE.md・README・.gitattributes の 3 つだけが出ること
+git diff --name-only upstream/master main | grep -v '^doc/fork/'
 ```
 
-最後の比較は、衝突の解き方を誤ったときの網になる。`patch` や手作業で解くと
-行が少しずれた位置に入ることがあり、ビルドは通っても upstream との差分が
-広がる。
-
-載せ替えると `main` の履歴が変わるので、`origin/main` へは
-`git push --force-with-lease origin main` で進める。
 push の前に `doc/fork/tools/check-before-push.sh` を通すこと。
 
-**載せ替えたらビルドし直す。** upstream が触ったファイルによっては再ビルドの範囲が
+**取り込んだらビルドし直す。** upstream が触ったファイルによっては再ビルドの範囲が
 広い。手順は `doc/fork/build/README.md`。
 
 ### upstream のタグは取り込まない
@@ -115,29 +94,26 @@ upstream の `RELEASE_xx_x` は annotated タグで、ローカルに在ると `
 | リポジトリ | 役割 | 扱い |
 |---|---|---|
 | [hra1129/Y8960_Cartridge](https://github.com/hra1129/Y8960_Cartridge) | Y8960 の**一次仕様**（FPGA RTL + docx/xlsx）。WIP | 仕様の参照元。**コードもデータも取り込まない**（非商用ライセンスで GPL と非互換） |
-| [buppu3/openMSX](https://github.com/buppu3/openMSX) | `y8960` ブランチに Y8960 実装。GPL | Y8960 分の 15 コミットを cherry-pick 済み（履歴に残っているのは 14 件。1 件は取り消した変更で、追従のときに空になった）。V9968 は取り込んでいない |
+| [buppu3/openMSX](https://github.com/buppu3/openMSX) | `y8960` ブランチに Y8960 実装。GPL | Y8960 分の 15 コミットを cherry-pick し、フォーク独自の実装の土台にした（履歴に残っているのは 14 件。1 件は取り消した変更で、追従のときに空になった）。今の `main` のコードには残っていない。MSX-TIMER は upstream の `Y8960Cartridge` に `Co-authored-by` 付きで入った。V9968 は取り込んでいない |
 | [madscient/Y8960emu](https://github.com/madscient/Y8960emu) | OPLLEX / OPL2EX の別実装（ymfm ベース）。MIT | 設計の参照と挙動の突き合わせ用。コアは移植しない |
 | [madscient/EPSGemuEngine](https://github.com/madscient/EPSGemuEngine) | SSG/EPSG の別実装。MIT + BSD-3 | 参照のみ |
 
-## Y8960 の実装状況
+## Y8960 の実装
 
-| ブロック | 状態 |
-|---|---|
-| SSGS ×1 | 実装済み。内部に YM2149 相当の SSG が 2 系統（計 6ch）+ チャンネルごとの音量と定位（20h-2Eh）。ライトオンリー（ハードウェアは 2 系統目を A2h で読めるが、意図して応じない） |
-| OPLL ×1 | 実装済み（チャンネル別音色バンクと定位付き YM2413） |
-| SCC + マッパー | 実装済み（ROM 種別 `Y8960`。SCC はチャンネルごとの定位 9900h-9904h 付き）。バンクメモリは RTL と差があり**保留中** |
-| MSX-TIMER | 実装済み（B0h-B3h。hra1129 さん確定）。割り込みが CPU に届くことを実測済み |
-| デジタルミキサー | 実装済み。音源ごとの音量（7FF7h-7FFAh、OPM は 7FFDh）とマスター音量（7FFEh）。メモリマップド I/O のみ。ADPCM は OPL2 の音量に従う |
-| 出力の切り替え | 実装済み。`y8960-mixer_output` で y8960 / msx / mix |
-| OPL2 + ADPCM-B ×1 | 実装済み（OPL2 波形選択、チャンネルごとの定位 F6h-FEh、ADPCM の定位 FFh）。ADPCM の発音を実測済み |
-| OPM ×1 | 実装済み（YM2151。7Eh-7Fh、7Fh の読み出しでステータス、割り込みあり）。上流の `YM2151` を使う。RTL の書き込みキューと busy は持たない |
-| I/O Enabler (7FF6h) | 実装済み（OPLL 用の b0） |
-| I/O Enabler2 (7FFFh) | 実装済み（OPL2 b0、SSGS b1、OPM b2、タイマー b7）。読み出しもできる（使っていないビットは 0。ハードウェアの v0.9.4 も同じ） |
-| メモリマップド I/O のトンネル | 実装済み（SSGS 7FF0h、OPL2 7FF2h、OPLL 7FF4h、OPM 7FFBh）。窓はバンク1 が ROM のときだけ出る。ハードウェアの v0.9.3 も同じ条件 |
-| System Controller | 識別だけ実装済み（I/O 40h-42h。40h に 80h、41h に 02h、42h に 01h）。Config ROM の読み書き（43h-47h）は持たない |
+実装は upstream のもの。ROM 種別 `Y8960Cartridge`（`src/memory/Y8960Cartridge.{hh,cc}`）が
+マッパー、SCC、ミキサー、各音源、MSX-TIMER、System Controller を持ち、OPLL は `YM2413` の
+`Type::Y8960`（`src/sound/YM2413NukeYKT.*`）を使う。拡張は `share/extensions/HRA_Y8960.xml`。
+
+フォーク独自の実装（音源ごとのデバイスと ROM 種別 `Y8960`）は、upstream を取り込んだ
+マージ `ff829bc46` の 1 番目の親 `5b23a057b` までの `main` にある。外から見える違い:
+
+- OPLL のバンク 1〜3（OPLL-X・OPLL-P・VRC7）の音色表は Nuked-OPLL のもの。ハードウェアの音色の
+  出典は plgDavid の表（`y8960/hardware-notes.md` §6.2）なので、ハードウェアとは違う音になる
+- 出力の切り替え（設定 `y8960-mixer_output`）が無い。本体の音は消さずに混ぜる
+- デバイスは `Y8960Cartridge` の 1 つで、デバッガブルとプローブの名前が違う。試験が使う名前の
+  対応は `y8960/tests/y8960-pr/runall.sh` の冒頭の置き換えにある
 
 DCSG と、OPLL / OPL2 の 2 番目の回路は、2026-10-16 の仕様変更で無くなった。
 本体内蔵版は別のハードウェアになるので、このフォークはカートリッジ版だけを扱う。
-窓の番地と Enabler のビット位置は `RomY8960.cc` の先頭に集めてある。
 
 詳細と残作業は `y8960/implementation-plan.md`。

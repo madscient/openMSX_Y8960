@@ -8,7 +8,7 @@
 # $WORK/user/systemroms.
 # Fork tests that use names of the old implementation run from copies (in $WORK/copies) with the
 # new names. The fork's panpot tests rely on stereo channel recordings and are left out (the tests
-# here cover them); mixer-output and mixer-remove test a setting the fork alone has.
+# here cover them).
 # Each run is cut off after 60 s: a Tcl error inside an 'after' callback leaves openMSX waiting,
 # which is what the tests of a block that a commit doesn't have yet do. Their rc.txt reads 124.
 EXE="$1"; OUT="$2"; TAG="$3"
@@ -40,7 +40,7 @@ run() { # <dir> <script> [env...]
 }
 
 # fork tests, output to a directory
-for t in adpcm-play enabler2-read mapper-cpu-read mapper-windows mixer-output mixer-remove mixer-volume \
+for t in adpcm-play enabler2-read mapper-cpu-read mapper-windows mixer-volume \
          opl2-read opl2-waveform opll-regs-mirror opm sysctrl timer-regs timer-resolution; do
 	run "f-$t" "$T/$t.tcl" Y8960_TEST_OUT="$OUT/f-$t"
 done

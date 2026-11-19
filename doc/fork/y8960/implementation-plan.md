@@ -62,6 +62,9 @@ Y8960 カートリッジ（hra1129/Y8960_Cartridge）を openMSX の拡張機器
 
 ## 3. 土台: buppu3 の Y8960 実装を最新 master に載せ替えたもの
 
+**§3 と §4 は、フォーク独自の実装の設計と値である。** その実装は、upstream を取り込んだマージ `ff829bc46` の
+1 番目の親 `5b23a057b` までの `main` にあり、今の `main` のコードは upstream の `Y8960Cartridge` である（§8 の 2026-11-19 (51)）。
+
 ### 3.0 ブランチの作り方
 
 `buppu3/y8960` は openMSX/master に対して 61 ahead / 417 behind。
@@ -379,7 +382,7 @@ periphery の受け口も残してあるが、Y8960 は何も渡さない（§3.
 
 **定位と音量**: 定位の分配則は等パワー（`y8960::panGain()`。L = cos θ、R = sin θ、
 θ = (値 − 1) / 254 × π/2、128 は中央、0 は 1 と同じ左端）。音量は `y8960::volumeGain()`
-（0 = ミュート、1-127 = 値 / 128、bit7 = 1.0）。どちらも `src/sound/Y8960Pan.hh` にあり、
+（0 = ミュート、1-127 = 値 / 128、bit7 = 1.0）。どちらも `Y8960Pan.hh` にあり、
 OPLL / OPL2 / ミキサーと共用。コアの出力が片極性なので、**定位を掛ける前に
 無音時レベルを差し引いている**。省くと直流が定位に漏れる。
 
@@ -571,7 +574,7 @@ RTL のモデル (`bankreg[4:0]`) ではバンク 1Fh になる。§3.8 の #2 �
 `sccEnabled` の bool 1 個を region ごとの判定に置き換えるのが本体。
 `peekMem` / `readMem` / `getReadCacheLine` / `writeMem` / `getWriteCacheLine` の
 各経路と `invalidateDeviceRWCache` の呼び出しが region 単位になる。
-変更は `src/memory/RomY8960.cc` 1 本に収まるが行数は出る。
+変更は `RomY8960.cc` 1 本に収まるが行数は出る。
 
 セーブステートに `sccEnabled` が入っていたので、版を 2 に上げ、版 1 の
 セーブステートでは値を読み捨てる。`bankReg` から導出できるので情報は足りている。
@@ -896,6 +899,9 @@ xlsx とずれている。RTL も同じくずれており、RTL の `history.md`
 回帰テストは `tests/sysctrl.tcl`。
 
 ## 4. 外に出る値
+
+フォーク独自の実装の値（§3 の冒頭の注記）。そのうち試験が使う名前と upstream の `Y8960Cartridge` の名前の対応は、
+`tests/y8960-pr/runall.sh` の冒頭の置き換えにある。
 
 ### 4.1 既存実装が既に決めている値（追従する）
 
@@ -1454,6 +1460,47 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   消し忘れると古い決定が残ること、規則を置く文書に作業の状態が混ざること（§8 の 2026-11-17 (39)）
 
 ## 8. 実行経緯
+
+### 2026-11-19 (51) — `main` を upstream にマージで追従させた（枝 `follow-upstream`）。追従はマージで行うことにした。試験の一揃いは通った
+
+ユーザーの返事（言葉どおり）:「「追従はリベースで行う」は外しても構わない。その場合2と3のコストの違いはどうなる？」、比べた結果を
+返した後に「3 で進めて」。
+
+- **決定（ユーザー判断）**: 追従はマージで行う（(50) の案 3）。`doc/fork/README.md` の「追従はリベースで行う」を「追従はマージで行う」に
+  書き換えた。理由と前提はその節に書いた（フォークの変更が upstream のコードに無い限り成立する）
+- 比べたこと（ユーザーに返した要点）: 今回の手間はほぼ同じ。案 2 は force-push、旧 `main` を別名の枝で残すこと、ほかのマシンの手元の
+  合わせ直しが要り、リベースを続ける限り毎回そうなる。案 3 は手順の節の書き直しが要るが、以後は通常の push で、記録の SHA が `main` から
+  辿れ続ける。`check-before-push.sh` は、第 5 節が分岐点からの正味の差、第 1〜3 節が origin に無く upstream にも無いコミットを見るので、
+  どちらの形でも動く（**確認済み(読解)**。マージの形での実走は push の前に行う）。重なりを調べる旧い手順のコマンドはコミットごとの和を
+  取るので、マージの後は旧い 321 本を数えてしまう
+- 見送り: 案 2（`main` の作り直し）。決まりを外してよいなら、以後の追従が安い案 3 を選んだ（ユーザー判断）
+- マージ `ff829bc46`（親は `5b23a057b` と upstream の `b34dbbde4`）: `git merge --no-ff --no-commit upstream/master` の後、フォークの
+  実装 33 本を `git rm` し、`git checkout upstream/master -- .` でコードを upstream にそろえ、`README`・`.gitattributes` を `main` から
+  戻した。衝突は `HRA_Y8960.xml` の 1 件。**確認済み**: `git diff --name-only upstream/master ff829bc46` は `doc/fork/` のほかに
+  `CLAUDE.md`・`README`・`.gitattributes` の 3 つだけ。フォーク固有の 4 つは `main` と同じ（`git diff --cached main` が 0 行）
+  - マージのコミット文に upstream の PR を `owner/repo#番号` の形で書き、push すると upstream の PR のタイムラインに参照が載るので、
+    push の前に文から外した（amend）
+- 取り込む前の衝突の判定に `git merge-tree --write-tree --name-only` を使う。**確認済み**: マージ前の `main` では `HRA_Y8960.xml` が
+  出て終了コード 1、マージ後の枝ではツリーの 1 行だけで終了コード 0
+- ビルド: 0 エラー、233 秒。警告は C4267・C4389・C4459・C4805 の 4 種で、(45) で upstream の基準のビルドにもあったものだけ
+- 試験の一揃い（`runall.sh`、`PR=` に作業ツリーの根）: **確認済み**: 34 本の終了コードがすべて 0、RESULT 11 本が ALL PASS、判定スクリプト
+  8 本が 0、セーブステートの往復で開いたポートとタイマーのカウンタが戻る、2 本差しは `Already have a switched device with id 128` で
+  止まり 1 本目は動き続ける、`-testconfig` 7 構成が 0。(45) の 8 段目と同じ顔ぶれ。新しい名前に置き換えた写し（`Y8960 SSG 1 regs`、
+  `Y8960 MSX-TIMER.IRQ`）が通るので、旧い形の exe や `share/` で回ったのではない。出力を (45) とバイトで比べてはいない（(45) の出力は
+  別のマシンにある）
+- 外した試験: `mixer-output.tcl`・`check-mixer-output.py`・`mixer-remove.tcl`・`check-mixer-remove.py`。フォーク独自の設定
+  `y8960-mixer_output` と、カートリッジが本体の音を消す既定の経路を見る試験で、upstream の形には無い（**確認済み(読解)**:
+  upstream の `Y8960Cartridge.cc` に設定も本体の音を消す処理も無い）。`runall.sh`・`summarize.sh` からも抜いた
+- 直した文書: `doc/fork/README.md`（文書一覧、upstream との関係、追従の手順、「Y8960 の実装」の節。旧い実装状況の表は外し、外から
+  見える違いを 3 つ書いた）、`upstream-touched.txt`（`.gitattributes` と `README` の 2 行）、`y8960/README.md`（冒頭、テストの回し方の
+  注記、索引から 4 本）、この文書の §3・§4 の冒頭に注記
+  - 文書の検査（`check-docs.py`）が、消えたファイルへの完全なパスの参照を 3 件挙げた。この文書の §3 の 2 か所と §8 の 1 か所で、
+    `Y8960Pan.hh` と `RomY8960.cc` の参照を、完全なパスからファイル名だけにした。中身は変えていない。残る 1 件は `CLAUDE.md` §2 で、
+    帰属表示の判断（(49) の B）と一緒に直す
+  - 過去の記録（ビルド・リリースの記録、振り返り、リズムの調査）にある旧い名前は、当時の事実なので残した
+  - `doc/fork/tools/y8960-pr-*` は、フォーク独自の実装が在る `main` でだけ動く。消さずに、文書一覧にそう書いた
+- **このあと（ユーザーの確認待ち）**: ルートの `README` の文案、`CLAUDE.md` §2・§3 の文案、報告先。その後 `main` を `follow-upstream` に
+  早送りし、点検を通して push する
 
 ### 2026-11-19 (50) — `main` の追従の形。マージを始めて、決まり（リベース）に反すると気づいて取り消した。3 案をユーザーに聞く
 
@@ -6069,7 +6116,7 @@ emu2212 のフォークは madscient/DSAemuEngine で実施済みなので参考
     **上流と同一に戻し、`upstream-touched.txt` から外した**。XML の `<ym2413-core>` も消えた
 - **SSGS**: 系統の選択を bit5 から bit4 に、`sub` を 4bit に。定位を 4bit → 8bit にし、
   音量 (0-128、リニア) を足した。デバッガブルは 0x30 バイト
-  - 定位と音量のゲインは `src/sound/Y8960Pan.hh` の 2 関数（OPLL と共用）。中央は
+  - 定位と音量のゲインは `Y8960Pan.hh` の 2 関数（OPLL と共用）。中央は
     両側 1/√2。左端・右端は sin / cos がちょうど 0 / 1 になる
   - **音量に 129-255 を書いたときは 128 と同じに扱う**（仕様に無い。こちらの判断、要確認）
   - **未決**: xlsx の `ssg` シートは 1Eh/1Fh を「SSG2: GPIO A / GPIO B（下位 4bit は LED）」と
