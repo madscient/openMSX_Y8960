@@ -1461,6 +1461,31 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-20 (53) — #2288 のマージ後に GCC の `-Wshadow` 警告の報告。調べて、直し方の候補と謝辞をコメントで返した。PR は相手が望めば出す
+
+- 報告: Manuel Bilderbeek（`MBilderbeek`）が #2288 に、マージ後の GCC で `Y8960Cartridge.cc:728` に `-Wshadow` の警告が出ると
+  書いた（2026-11-19 22:51 UTC）。`Timer::Counter` のコンストラクタの引数 `scheduler` が、基底の `Schedulable` のメンバ `scheduler` を隠す
+- 調べ方: WSL の Ubuntu-26.04 の GCC 15.2 で `-fsyntax-only`。警告フラグは upstream の `meson.build` のもの（`warning_level=3` の
+  `-Wall -Wextra`、`add_project_arguments` の 7 つと `-Wno-invalid-offsetof`・`-Wno-unused-const-variable`）。生成ヘッダは MSVC ビルドの
+  `derived/x64-VC-Release/config`、Tcl と SDL3 のヘッダは `derived/3rdparty/src` のものを使った。対象は upstream にある自分のコミット
+  15 本（`git log --author`）が触った `.cc` 9 本（Y8960Cartridge、RomFactory、RomInfo、YM2413、YM2413NukeYKT、MSXAudio、Y8950、
+  Y8950Adpcm、YM2608）
+  - **確認済み**: 修正前は 728 行の 1 件だけ（Manuel のログと同じ行・桁）、修正後は 0 件。どちらも 9 本とも終了コード 0
+  - 範囲: `-fsyntax-only` なので、最適化の段で出る警告（`-Wmaybe-uninitialized` など）は見えない。コメントでは「ほかに警告は無い」と
+    書かず `-Wshadow` に絞った。MSVC ではビルドしていない（引数名だけの変更）
+  - 訂正: 最初は対象を #2288・#2294 のマージの差分から取り、YM2608 のコミット（`c596782ad`）の `YM2608.cc` が漏れていた。
+    自分のコミットを `--author` で数え直して足した
+  - 調べた道具（WSL で g++ を回すシェルスクリプト）はセッションの一時置き場にあり、コミットしていない
+- **決定（ユーザー判断）**: いきなり PR にせず、調査結果・修正候補・謝辞をコメントで書き、必要なら PR を出すと添える。ユーザーの言葉:
+  「いきなりPRにしないで、調査結果・修正候補とManuelへの謝辞をコメントで書く。結果的に2行しか無いならこっちの方が早いかもしれない。」
+  「コメントには、必要ならPRを出す、という提案も入れて」
+- 見送り: すぐ PR を出す案（こちらの推奨だった）。2 行の直しなら、メンテナが自分で入れる方が早いことがある（ユーザー判断）
+- 投稿: #2288 のコメント `7030977950`（2026-11-20 05:05 UTC）。**確認済み**: 投稿された本文を取り直し、文案とバイト単位で一致
+- 修正候補はローカルの枝 `fix-y8960-wshadow`（`b34dbbde4` の上のコミット `665becab2`、trailer なし、作業場所 `derived/fsh`）。
+  push していない。コミット文と枝名はユーザーの了承済み（「1 ok」「3 ok」）
+- **このあと**: Manuel の返事待ち。PR を頼まれたら `git fetch upstream master` で先端を見て、出す前の点検（PR の枝なので 1〜4・7）を
+  通し、push して PR を作る
+
 ### 2026-11-19 (52) — ルートの `README` を書き換え、`CLAUDE.md` §2 を「持つなら帰属表示が要る」にした。報告先はこのフォークでも受け付ける
 
 ユーザーの返事（言葉どおり）:「1 ok / 2 b / 3 ok」。1 は README の文案、2 は報告先（a: openMSX に報告してもらう、b: このフォークでも
