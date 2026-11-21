@@ -7,6 +7,8 @@
 #       a capture device name> -OutDir <dir>
 #   powershell -ExecutionPolicy Bypass -File tones-mga.ps1 -Device <...> -OutDir <dir> -RecordOnly 3
 #       records 3 seconds without touching MGA, to check the capture side
+#   powershell -ExecutionPolicy Bypass -File tones-mga.ps1 -Port COMn -Device <...> -OutDir <dir> -SlotReset
+#       Y8960 only: once the cartridge is up, resets it with SRST and waits for it to come up again
 #
 # Writes <OutDir>/tones-mga.wav (16bit stereo 48kHz) and tones-mga.txt (the times of the marks).
 #
@@ -31,9 +33,11 @@ param(
     [ValidateSet('Y8960', 'FMPAC', 'MSXAUDIO', 'MSE')]
     [string]$Target = 'Y8960',
     [switch]$ListDevices,
-    [int]$RecordOnly = 0
+    [int]$RecordOnly = 0,
+    [switch]$SlotReset
 )
 $ErrorActionPreference = 'Stop'
+if ($SlotReset -and $Target -ne 'Y8960') { throw '-SlotReset is for -Target Y8960: the other targets get SRST anyway' }
 
 # Add-Type's compiler turns "invalid search path in LIB" into an error. Drop the missing
 # directories for this process only.
@@ -305,6 +309,20 @@ function MemRd([int]$a) {
     if (-not $m.Success) { throw "SMRD $a unexpected: $($r -join ' | ')" }
     return [Convert]::ToInt32($m.Groups[1].Value, 16)
 }
+# The Y8960 copies the BIOS from the Flash to the SerialSRAM after power on. MGA does not
+# see /WAIT, so wait until bank 0 at 4000h steadily shows the ROM header "AB".
+function WaitRomHeader([string]$after) {
+    $t = [System.Diagnostics.Stopwatch]::StartNew()
+    $run = 0
+    while ($run -lt 10) {
+        $v = MemRd 0x4000
+        if ($v -eq 0x41) { $run++ } else { $run = 0 }
+        if ($t.ElapsedMilliseconds -gt 10000) { throw "4000h did not settle to 41h (last $v)" }
+        Start-Sleep -Milliseconds 20
+    }
+    if ((MemRd 0x4001) -ne 0x42) { throw '4001h is not 42h' }
+    Log ('ROM header seen {0} ms after {1}' -f $t.ElapsedMilliseconds, $after)
+}
 function Send($c) {
     if ($c[0] -eq 'mem') { $r = Cmd ('SMWR,{0:X4},{1:X2},1' -f $c[1], $c[2]) }
     else { $r = Cmd ('IOWR,{0:X2},{1:X2}' -f $c[1], $c[2]) }
@@ -334,21 +352,18 @@ try {
         Start-Sleep -Milliseconds 100
     }
 
-    # The Y8960 copies the BIOS from the Flash to the SerialSRAM after power on. MGA does not
-    # see /WAIT, so wait until bank 0 at 4000h steadily shows the ROM header "AB".
     # Other cartridges are ready at once, and some (NMS-1205) have no ROM to look at.
     Log "target $Target, $skipped lines for other targets skipped"
     if ($Target -eq 'Y8960') {
-        $t = [System.Diagnostics.Stopwatch]::StartNew()
-        $run = 0
-        while ($run -lt 10) {
-            $v = MemRd 0x4000
-            if ($v -eq 0x41) { $run++ } else { $run = 0 }
-            if ($t.ElapsedMilliseconds -gt 10000) { throw "4000h did not settle to 41h (last $v)" }
-            Start-Sleep -Milliseconds 20
+        WaitRomHeader 'SPON'
+        if ($SlotReset) {
+            # Only once the ROM header shows has the FPGA configured itself; a reset before
+            # that has no logic to reach.
+            $r = Cmd 'SRST'
+            if ($r[-1] -ne 'OK') { throw "SRST failed: $($r -join ' | ')" }
+            Log 'SRST'
+            WaitRomHeader 'SRST'
         }
-        if ((MemRd 0x4001) -ne 0x42) { throw '4001h is not 42h' }
-        Log ('ROM header seen {0} ms after SPON' -f $t.ElapsedMilliseconds)
     }
     Start-Sleep -Milliseconds 500
 

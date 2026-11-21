@@ -1,0 +1,12 @@
+mem 7FFF 01
+wait 1500
+mark quiet
+wait 1000
+io C0 BD
+io C1 20
+mark bd20
+wait 3000
+io C0 BD
+io C1 00
+mark bd00
+wait 1000
