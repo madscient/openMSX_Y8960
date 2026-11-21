@@ -1515,6 +1515,19 @@ MSSE のクロコから SendMessage で依頼が来た（同日）。上流に Y
   番号を 16 で割った余りを答える。こちらでも読んだ（**確認済み(読解)**: `Y8960Cartridge.cc` の 60 行の `ROM_BANKS = 16` と、238〜239 行の
   `setRom(region, value % ROM_BANKS)`。romblocks が `setRom` に渡したブロック番号を答えることは、基底の `RomBlocks` を今回は読んでいない）。
   走らせていない。直すべきものかは見ていない（RAM を出すほかのマッパーで romblocks が何を答えるかと比べていない）
+  - 実害（ユーザーの問い「今の作りだとどんな実害がある？」への答え、同日。**確認済み(読解)**）: エミュレーションには無い。`RomBlocks.cc` の
+    90 行は romblocks のためだけに番号を持ち、CPU の読みは `Y8960Cartridge::getReadCacheLine` が RAM と SCC を返す。デバッグでは、
+    `pc_in_slot` のセグメント条件（`share/scripts/_slot.tcl` の 169 行）、ImGui の逆アセンブルでクリックして置くブレークポイントの条件
+    （`ImGuiDisassembly.cc` の 174 行）、Slots 窓の表示、セグメント付きのシンボルの選択（同 441 行）で、RAM バンクを ROM の #0〜#15 と
+    取り違える。兄弟の踏み跡は 2 件あり、どちらも回避済み（MsxMusicBasicExtension の `doc/plan.md` の「踏んだもの」、Y8960BasicExtension の
+    `doc/plan.md` の 2026-09-10 の追跡）
+  - 出所（ユーザーの問い「ベースにしたSCCバンクからの混入かしらね」への答え、同日。**確認済み**: 各版のソースと git の履歴を読んだ）:
+    上流の `RomKonamiSCC::bankSwitch` は書かれた値をそのまま `setRom` に渡す。Konami SCC には RAM が無く、SCC を出す 3Fh でも 9800h より下は
+    ROM のままなので、それで合う。buppu3 のフォークの実装 `RomY8960` は、最初の版（`b6fe153cb`、2026-01-25）でこの関数をコメントごと写した。
+    RAM を足した `6c365ead0`（01-27）は romblocks の番号を変えず、`3c45a7ea2`（02-01、説明なし）が `block %= 16` を足した。#2288 の
+    `Y8960Cartridge`（`f5d087499`）は書き直したが、16 の剰余を `setRom` に渡す形は引き継いだ。SCC の #63 が 15 と出るのは Konami SCC の形の
+    名残で、今の作りでは #63 の窓の下 6kB が実際に ROM の #15 を返す（`Y8960Cartridge.cc` の 250〜261 行）ので、中身とは合っている。
+    RAM バンクの取り違えは SCC 由来ではなく、ROM しか出ない前提の形に RAM を足したときに番号を直さなかったもの
 
 ### 2026-11-21 (56) — ROM 入りの拡張は MSSE のリリースに XML を添える形にする。上流に sha1 の一覧を出すかは保留し、メンテナに意見を聞く
 
