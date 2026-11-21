@@ -1481,6 +1481,14 @@ MsxSoundSuiteExtension（MSSE）のクロコから、ユーザーの指示で、
 - **このあと**: MSSE の XML 付きのリリースを待つ。出たら文案を見直してユーザーに見せる（出す場所は未決。こちらの推奨は #2288 への
   コメント）。文案の要点: MSSE がリリースごとに XML を出すこと、上流の `HRA_Y8960.xml` は ROM の無い形のままであること、`Carnivore2.xml`
   のような `<sha1>` の一覧を持つ拡張を上流にも置きたいか。PR を出せるとは書かない（保留中なので）
+- MSSE のクロコの報告（同日）: 拡張は `HRA_Y8960_MSSX.xml`（ROM の id は `Y8960` のまま）。MSSE のコミット `38f3ffb`・`c1d1f49`、push と
+  リリースはまだで、版も未定。このリポジトリの `derived/x64-VC-Release/install/openmsx.exe`（`22.0-unknown`）を読むだけで使い、C-BIOS_MSX2+ で
+  4 通りを試した。XML の隣に置く、名前を変えて systemroms に置く、の 2 つで読めて sha1 も一致。`<sha1>` を 1 文字変えると
+  `Couldn't find ROM file`。古い ROM を XML の隣に置くと、その ROM を読んだ。写しの追従は §9.6 に書いた
+  - 訂正: 上で「sha1 が合わなくても警告だけで読み込む」と書き、MSSE にもそう伝えた。読み込むことは MSSE の試験と合う。警告は、MSSE の試験では
+    標準エラーにも出力のファイルにも出なかった。読解では `StdioMessages` が標準エラーに書く（`src/events/StdioMessages.cc`、`CommandLineParser.cc`
+    の 179 行）。見えなかった理由は確かめていない（未確認の候補: exe は Windows サブシステムで（`openmsx.vcxproj` の `SubSystem`）、Git Bash から
+    起動すると標準出力にも標準エラーにも何も出ない。ルートの `CLAUDE.md` §5 の `-testconfig` の観測と同じ形）
 
 ### 2026-11-21 (55) — upstream の `ab07a757f` を `main` にマージで取り込んだ。手元の直しの枝は消すことにした
 
@@ -7200,3 +7208,14 @@ Y8960 の RTL との突き合わせも DSAemuEngine に移す（2026-11-16、ユ
   「Archiving repositories」）。1 つのアカウントが同じ upstream の fork を 2 つ持てるかは、読んだ文書には書いていない
 - **決定（ユーザー判断）**: リポジトリは消さないので、出し方はそのときに決める。出す内容によって、一時的にアーカイブを解除して PR にするか、
   PR にせず issue だけにするかを選ぶ
+
+### 9.6 MSSE のリリースに添える拡張の写し
+
+MSSE（madscient/MsxSoundSuiteExtension）は、リリースに `HRA_Y8960_MSSX.xml`（`ext HRA_Y8960_MSSX`）を添える（2026-11-21、§8 の (56)）。
+中身は upstream の `share/extensions/HRA_Y8960.xml`（`f5d087499`）の写しで、違うのは `<info>` と、その回の ROM の `<sha1>` と `<filename>` だけ。
+写しは MSSE の `tools/openmsx/` にある。
+
+- **upstream の `HRA_Y8960.xml` を変える PR を出したら、MSSE の写しも合わせる。** 写しなので、ずれても何も止まらない。MSSE の
+  `doc/plan.md` の「openMSX の拡張定義をリリースに加える（2026-11-21）」の節に、こちらの変更を書いて知らせる
+- 写しは ROM 種別 `Y8960Cartridge` を使うので、Y8960 が入った upstream（2026-11-19 以降）でしか読めない。MSSE は 11-04 のフォークの
+  ビルドで `Unknown mappertype: Y8960Cartridge` になるのを確かめている（MSSE のクロコの報告）
