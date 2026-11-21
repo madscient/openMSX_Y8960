@@ -1518,7 +1518,12 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
     「余裕を見て数百クロック」としている。OPM・OPLL の値は推測のまま
 - DSAemuEngine のセッションの返事（同日）: 自分の `plan.md` §10.3 の表の電源投入の行を「リセットが届けば一致。リセットの届かない
   状態は写さない」に直した（未コミット、ボスの返事待ち）。OPL2EX のリセットは 18 スロットとも消音で始まる作りで、コードは変えない。
-  JTOPL の注記の件は DSAemuEngine 側の未決として記録し、上流に出す予定は無い。FitomHwIF のセッションの返事はまだ無い
+  JTOPL の注記の件は DSAemuEngine 側の未決として記録し、上流に出す予定は無い
+- FitomHwIF のセッションの返事（同日）: `MSXGCAController::start()` を直して push した（FitomHwIF `afe7f9c`。ボスの指示による）。
+  `power_on_wait_ms` が 0 でない定義（Y8960・MSE+Y8960。どちらも 1000）では SPON → 1000ms → SRST → 1000ms → init。0 の定義は今の形の
+  まま。ROM ヘッダを読んで待つ形（こちらの `-SlotReset`）は、カタログに新しいキーが要るので見送った。偽の MGA の試験で、SPON から
+  最初の SRST までが待ち以上あることを確かめた（直す前のコードでは落ちる）。実機では確かめていない。記録は FitomHwIF の
+  `dev/plan.md` の「MSXGCA 対応」の決めたことの 23
 
 ### 2026-11-22 (59) — Y8960 の電源投入の直後に EG が鳴る位置に残る件は、JTOPL の作りより、OPL2 へのリセットの渡し方から来る候補がある
 
