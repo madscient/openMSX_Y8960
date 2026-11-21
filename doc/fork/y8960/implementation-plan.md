@@ -1500,7 +1500,21 @@ MSSE のクロコから SendMessage で依頼が来た（同日）。上流に Y
   - MakotoBasicExtension のクロコの返事（同日）: その回帰がこれまで比べていたのは、退避した 11-04 のビルドではなく、別の場所の 09-22 の
     Makoto 入りのビルド。退避が無くなっても、MakotoBasicExtension の切り分けはできる
 - `f201aac8d` を push した（`check-before-push.sh` は通った）
-- **このあと**: MSSE のまとめが届いたら `derived/dp1121/old` を消す。このセッションが閉じていたら、ユーザーの合図で次のクロコが消す
+- 兄弟 6 本の回帰の結果（MSSE のまとめ、同日。各リポジトリのクロコが走らせた。6 本とも、走らせた exe の sha1 が上の値であることを
+  確かめている）: 6 本とも落ちは 0。入れ替えが原因と見られる落ち方は無い
+  - MsxMusicBasicExtension: `--y8960` の 3 本は全行 OK。通しは単体版 107 本・MSSE 版 52 本で 0 失敗
+  - MsxAudioBasicExtensionLite: 296 実行で NG 0。入れ替え前との差は、テンポの測定値 2 本の ±1〜3 だけ
+  - SFGBasicExtension: 624 件で NG 0（SKIP 36）。10-31 のフォークのビルドでの通しと数が同じ
+  - MidiPlayBasicExtension: 124 本すべて通過。`--y8960` の 3 本は上流の形の `HRA_Y8960` で通った
+  - MakotoBasicExtension: 116 回で NG 0。09-22 の Makoto 入りのビルドとの出力の差は 58 本中 10 本で、判定の無い表示（ADPCM RAM の
+    未書き込みの番地が FF から 00）と ±1 jiffy のずれ
+  - Y8960BasicExtension: 74 本すべて通過。試験の読み方を上流の形（ROM の id `Y8960`、デバッガブル `Y8960 mixer`・`Y8960 SSG 0/1 regs`・
+    `Y8960 OPL2 RAM`・`Y8960 RAM`）に移して通った
+- 退避 `derived/dp1121/old`（807 ファイル）を消した。デプロイ先の exe の sha1 は消した後も上の値
+- 材料（Y8960BasicExtension のクロコの指摘、同日、読解）: 上流の `Y8960 romblocks` は、RAM バンク #16〜#31 と SCC の #63 でも、バンク
+  番号を 16 で割った余りを答える。こちらでも読んだ（**確認済み(読解)**: `Y8960Cartridge.cc` の 60 行の `ROM_BANKS = 16` と、238〜239 行の
+  `setRom(region, value % ROM_BANKS)`。romblocks が `setRom` に渡したブロック番号を答えることは、基底の `RomBlocks` を今回は読んでいない）。
+  走らせていない。直すべきものかは見ていない（RAM を出すほかのマッパーで romblocks が何を答えるかと比べていない）
 
 ### 2026-11-21 (56) — ROM 入りの拡張は MSSE のリリースに XML を添える形にする。上流に sha1 の一覧を出すかは保留し、メンテナに意見を聞く
 
