@@ -1461,6 +1461,22 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-21 (55) — upstream の `ab07a757f` を `main` にマージで取り込んだ。手元の直しの枝は消すことにした
+
+ユーザーの返事（言葉どおり）:「1 ok / 2 ok」。1 は `ab07a757f` を `main` にマージで取り込み、ビルドと点検を通して push すること、2 は別の
+マシンの枝 `fix-y8960-wshadow` を消すこと。
+
+- マージ `5618c6d6a`（親は `b5d30ade0` と upstream の `ab07a757f`）。衝突なし。**確認済み**: `git diff --name-only upstream/master HEAD`
+  は `doc/fork/` のほかに `CLAUDE.md`・`README`・`.gitattributes` の 3 つだけ
+- ビルド（このマシン、VS18 の MSBuild、v145、Release）: **確認済み**: 3rdparty と本体のどちらも終了コード 0、0 エラー、959 秒。この
+  マシンの前の本体のビルドは 2026-11-16 で、(51) のマージで入れ替わったファイルも組み直したので長くかかった。`Y8960Cartridge.cc` の警告は 0
+  - 警告は C4267・C4389・C4459・C4805 と C4146。C4146 は upstream の `src/network/GR8NETTimer.cc` の 27 行の 2 件で、(51) の記録には
+    無い。GR8NET のコミット（`e546b94eb`）は (51) のマージ `ff829bc46` に既に入っている。記録に無い理由は見ていない（未確認の候補:
+    (51) のビルドは増分で `GR8NETTimer.cc` を組み直さなかった、マシンごとの MSVC の版の違い。こちらは 14.51.36231）
+- 試験の一揃いは回していない。取り込んだのは引数名の変更 1 つだけで、ユーザーに示したうえで了承を得た
+- **決定（ユーザー判断）**: 別のマシンの `derived/fsh` の枝 `fix-y8960-wshadow`（`665becab2`）は消す。そのマシンで作業するクロコが消す。
+  worktree なので、`git worktree remove` で外してから枝を消す
+
 ### 2026-11-21 (54) — `-Wshadow` の直しは Manuel が自分で upstream に入れた。こちらの PR は要らなくなった
 
 - upstream の `ab07a757f`（Manuel Bilderbeek、2026-11-20 19:50 UTC、"Fix warning in Y8960Cartridge.cc on GCC."）が、(53) のコメントで
