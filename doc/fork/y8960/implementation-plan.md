@@ -1492,6 +1492,25 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 - 実機の MSX で電源を入れたときに同じになるかは、/RESET が上がる時刻と FPGA の構成が終わる時刻の前後で決まり、測っていない。
   立ち上がった後に本体のリセットを掛ければ消える（**推測**: SRST がスロットの /RESET を下げるものとして、B から）
 - 録音は `derived/rst1122/`
+- ユーザーの返事（言葉どおり）:「1 置く / 2 ok / 3 伝える / 4 伝える。相手はfitomhwifとdsaemuengine」。1 は判定器と音列をリポジトリに
+  置くこと、2 はこの項の記録と道具の push、3 は hra1129 さんに伝えること、4 は FitomHwIF と DSAemuEngine に伝えること
+  - 1: `level/rhythm-ws/anarst.py`・`rstnoise.txt` を置き、`tones-mga.ps1` の `-SlotReset` と合わせて `cbebc3ac3` でコミットした。
+    `README.md` の電源投入の節に、リセットの届いていない状態だったことと 3 組目の道具を足した
+  - 3: Discord に出す文面を作ってユーザーに渡した（投稿はユーザー）。測定、RTL の読み、必要なリセットの長さ（下）、直し方の候補を
+    分けて書いた
+  - 4: SendMessage で 2 つのセッションに送った（同日）。FitomHwIF には、`MSXGCAController::start()` の SPON 直後の SRST が Y8960 に
+    効かないこと、ROM ヘッダの後に送れば効くこと。DSAemuEngine には、電源投入の雑音はリセットの届いていない状態で、エミュレータに
+    写すものではないこと、JTOPL の注記の「6 clk&cen cycles」がシフトレジスタの段数と合わないこと（上流に出すかはユーザーが決める）
+- ユーザーの問い（言葉どおり）:「Y8960のconfigが終わってから必要なリセット期間は具体的に出せる？」
+  - OPL2（**確認済み(読解)**、`c72420d`）: リセットの間、cenop が 18 回来る必要がある（EG の減衰・EG の状態・オペレータのレジスタ・
+    位相のシフトレジスタがどれも 18 段で、`jtopl_sh_rst.v` は cen ごとに 1 段ずつ押し込む）。cenop は cen 4 回に 1 回（`jtopl_div.v`）、
+    リセットの間 cen は毎クロック（`opl2_patch/opl2.v` の 101 行）なので、clk_42m で 72 クロック、約 1.68µs。/RESET の同期の FF と
+    cenop の位相を足すと 77 クロックほど、約 1.8µs
+  - OPM・OPLL（**推測**: 実チップの 1 サンプルの周期から。IKA のコアの輪の長さは読んでいない）: 減衰を最大にする段がスロットの輪の
+    中にある（`IKAOPM_eg.v` の 645 行）。1 サンプル分として OPM 64、OPLL 72 クロック（リセットの間 phiM は毎クロック。`opm.v` の
+    161 行、`opll.v` の 124 行）、約 1.5µs と 1.7µs
+  - SCC・SSG・MSX-TIMER・ミキサー・ADPCM は見ていない
+  - JTOPL の注記（`jtopl.v`・`jtopl2.v`・`jtopl_noise.v` の「rst should be at least 6 clk&cen cycles long」）は、この 72 と合わない
 
 ### 2026-11-22 (59) — Y8960 の電源投入の直後に EG が鳴る位置に残る件は、JTOPL の作りより、OPL2 へのリセットの渡し方から来る候補がある
 
