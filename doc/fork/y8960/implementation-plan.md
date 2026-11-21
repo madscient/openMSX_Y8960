@@ -1461,6 +1461,34 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-21 (57) — `main` のビルドを、兄弟の試験が使うデプロイ先（`OPENMSX_DIR`）に入れ替えた
+
+MSSE のクロコから SendMessage で依頼が来た（同日）。上流に Y8960 と Makoto が入ったので、兄弟 6 本の試験はフォークとオリジナルに分けず、
+`OPENMSX_DIR` の 1 本で回すことになった（MSSE の `doc/verification.md`、`849de1f`）。それまでのデプロイ先は 11-04 のフォークのビルドで、
+上流の形の `HRA_Y8960.xml` を読めない（`Unknown mappertype: Y8960Cartridge`。MSSE が走らせて確かめた）。MSSE が伝えたユーザーの言葉
+（言葉どおり）:「さっきopenMSXは上流のマージ版をビルドしたので、それを作業ツリーの外(OPENMSX_DIR)に置いてもらうようにすればいいかな。」
+「2はopenMSXのクロコを起こしたので直接指示して」。2 は MSSE の推奨「デプロイ先のフォルダを退避してから中身を入れ替える」。別のフォルダに
+置いて `setx` で向け直すと、動いている兄弟のセッションには届かない（`setx` は新しく起動したプロセスにしか効かない）。
+
+- 置いたもの: `5618c6d6a` の 11-21 17:03 のビルド（(55) の増分ビルド。`-t:Rebuild` ではない）から `package-release.py` で作った zip
+  （785 ファイル）の中身。コードは upstream の `ab07a757f` と同じ（(55)）。exe の sha1 は `66be8b377129021dcc3586250580bb6a831a3e88`、
+  版の文字列は `openMSX 22.0-unknown`（**確認済み**: デプロイ先の exe に `openmsx_info version` をファイルへ書き出させた）
+- 比べ方は 11-04（§8 の「2026-11-04 — 暴走したソフトで落ちる件は…」の項）と同じ。zip とデプロイ先をファイルごとの sha1 で比べ、
+  上書き 88 本・追加 30 本・削除 0 本。デプロイ先にしか無い 52 本（Catapult の 47 本と `share/systemroms/mpbe-test/` の 5 本）は zip に
+  無いので触らない。`share/settings.xml` と `share/extensions/Makoto.xml` は新旧で同一
+- 退避: 書く直前に openMSX と Catapult のプロセスが無いことを見て、デプロイ先の全体（807 ファイル）を `derived/dp1121/old` に写し、
+  sha1 で一致を見てから 118 本だけを書いた（**確認済み**: 書いた後に退避とデプロイ先を比べ、違うのは書いた 118 本だけ。zip とデプロイ先の
+  差は 0 本）
+- 確かめたこと（**確認済み**: デプロイ先の exe、使い捨ての `OPENMSX_USER_DATA`、`OPENMSX_SYSTEM_DATA` なし、窓のハンドルは 0 のまま）:
+  `-testconfig -machine C-BIOS_MSX2+ -ext HRA_Y8960` が 0、存在しない拡張は 1、通常の起動で `ext HRA_Y8960` が成功
+  - `-ext Makoto` は 1。理由は ROM の `ym2608_adpcm_rom.bin` が見つからないこと（通常の起動で `ext` の失敗をファイルに書き出させた）。
+    使い捨てのユーザーデータにも、デプロイ先の `share/systemroms` にも無い。退避した旧い exe でも 1 で、入れ替えで変わったことではない
+- MSSE と兄弟 6 本に SendMessage で知らせた（版の文字列、exe の sha1、commit、確かめたこと）
+- exe が commit を名乗らない件。MSSE から「タグを取ってから組み直して commit を名乗らせるか、sha1 と commit を記録するかはユーザーに
+  聞いて」と来た。`doc/fork/release/README.md` §1 の決定（版表示は触らない、upstream のタグは取り込まない）に沿って、sha1 と commit を
+  記録する形にした。決定を変えるかはユーザーに聞いている
+- **このあと**: ユーザーの返事が 2 つ要る。版の件と、退避（`derived/dp1121/old`）を消す時期
+
 ### 2026-11-21 (56) — ROM 入りの拡張は MSSE のリリースに XML を添える形にする。上流に sha1 の一覧を出すかは保留し、メンテナに意見を聞く
 
 MsxSoundSuiteExtension（MSSE）のクロコから、ユーザーの指示で、MSSE のリリースに openMSX 向けの ROM 定義を加える件の問いが来た。
