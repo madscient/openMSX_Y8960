@@ -1461,6 +1461,22 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-21 (54) — `-Wshadow` の直しは Manuel が自分で upstream に入れた。こちらの PR は要らなくなった
+
+- upstream の `ab07a757f`（Manuel Bilderbeek、2026-11-20 19:50 UTC、"Fix warning in Y8960Cartridge.cc on GCC."）が、(53) のコメントで
+  示した直しをそのまま入れた。**確認済み**: コメント `7030977950` の差分の `+`・`-` の 4 行と、コミットの差分の `+`・`-` の 4 行が一致
+  （python で行どうしを比べた）。#2288 に Manuel の返事のコメントは無い（2026-11-21 に取り直した。最後はこちらの `7030977950`）
+- 手元の枝 `fix-y8960-wshadow`（`665becab2`、別のマシンの `derived/fsh`）は役目を終えた。消すかはユーザーに聞く
+- `main` に無い upstream のコミットはこの 1 本だけ（`git log main..upstream/master`）。**確認済み**: `git merge-tree --write-tree --name-only
+  main upstream/master` は衝突なしで終了コード 0
+- ほかの動き: openMSX/openMSX でユーザーが関わる issue・PR のうち 2026-11-19 以降に更新されたのは #2288・#2294 だけで、どちらも既知の
+  動き（検索 API `involves:madscient`）。ユーザーが出した open な issue・PR 12 件（全リポジトリ、検索 API `author:madscient is:open`）にも
+  2026-11-19 以降の更新は無い
+  - `gh search issues --involves madscient --updated ">=2026-11-19"` は 0 件を返した。検索 API を直接引くと 2 件だった。CLI の方の
+    原因は調べていない
+- **このあと（ユーザーの確認待ち）**: `ab07a757f` を `main` にマージで取り込むか（(51) の決定どおりの形）。取り込むなら、ビルドと
+  push の前の点検を通してから push する
+
 ### 2026-11-20 (53) — #2288 のマージ後に GCC の `-Wshadow` 警告の報告。調べて、直し方の候補と謝辞をコメントで返した。PR は相手が望めば出す
 
 - 報告: Manuel Bilderbeek（`MBilderbeek`）が #2288 に、マージ後の GCC で `Y8960Cartridge.cc:728` に `-Wshadow` の警告が出ると
