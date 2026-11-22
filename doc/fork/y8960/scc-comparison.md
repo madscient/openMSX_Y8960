@@ -131,17 +131,15 @@ Yamanooto の音量の経緯（コミットから読めること）: PSG の 3 �
 
 ## 7. 読んでいて気づいたこと（比較の外）
 
-1. **`-romtype Y8960Cartridge` で挿すと、0000-3FFF と C000-FFFF の読みでバンクレジスタの配列の外を引く**（**未検証**。読解だけで、
-   走らせていない）
+1. **`-romtype Y8960Cartridge` で挿すと、0000-3FFF と C000-FFFF の読みでバンクレジスタの配列の外を引く**
    - `-carta` で挿した ROM は 0000-FFFF に置かれる（`HardwareConfig.cc:117-118`）
    - `peekMem`・`readMem`・`getReadCacheLine` は、番地の範囲を確かめずに `isRamRegion(address >> 13)` を呼ぶ（`Y8960Cartridge.cc:256, 269, 282`）。
      その先の `getBank(region)` は `bankReg[region - 2]`（`Y8960Cartridge.hh:61`）。region 0・1 では `unsigned` の引き算が折り返して
      約 4G 先を、region 6・7 では配列の 1〜2 バイト先を読む。書き込みの側は範囲を確かめている
    - `HRA_Y8960.xml` は 4000-BFFF にしか置かないので、拡張として使う限りこの経路は通らない
-   - 0000-3FFF が読まれるのは、ソフトが page 0 をこのスロットに切り替えたとき。ディスクの ROM が起動時に各スロットの page 0 を
-     探るかは確かめていない（**未確認**）
-   - 確かめ方: `-carta <128kB の任意のファイル> -romtype Y8960Cartridge` で起動し、slotted memory の debuggable でそのスロットの
-     page 0 を読む。落ちると見込まれ、Windows のエラー報告の窓が出るかもしれない
+   - **確認済み**（2026-11-22、このコミットと読みの経路が同じ 11-19 のビルド）: `-machine C-BIOS_MSX2+ -carta <128kB の任意のファイル>
+     -romtype Y8960Cartridge` で起動するだけで、エミュレーションの 0.1 秒の前に Segmentation fault で落ちた。デバッガは使っていない。
+     直したあとの経過は `implementation-plan.md` §8 の (62)
 2. **Yamanooto のデバッガからの読みは、FFFC-FFFF にもレジスタを見せる**（**未検証**）。`peekMem` はミラーしてからレジスタの番地を
    判定し（`Yamanooto.cc:144-147`）、`readMem` と `getReadCacheLine` はミラーする前に判定する（同 `:171, 186`）。CPU はそこで
    フラッシュを読む。`9a62047c7`（"config regs are NOT mirrored"）が直したのは `readMem` と `writeMem` で、`peekMem` は変えていない

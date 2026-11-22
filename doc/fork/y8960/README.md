@@ -40,6 +40,7 @@ Y8960 カートリッジのエミュレーションを openMSX に追加する�
 | `tests/scc-panpot.tcl` | SCC のチャンネルごとの定位 (9900h-9904h) と、その周りの番地が SCC のミラーのままであることの回帰テスト。WAV を書き出す |
 | `tests/check-scc-panpot.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
+| `tests/mapper-mirror.tcl` | `-romtype Y8960Cartridge` で挿したときの 0000-3FFF と C000-FFFF の読み（RAM と ROM のミラー、SCC の無いこと、CPU の読みキャッシュ）の回帰テスト。`-ext` は付けない |
 | `tests/opm.tcl` | OPM の直接 I/O (7Eh/7Fh)、トンネル (7FFBh/7FFCh)、I/O Enabler2 の b2、ステータスと割り込み、ミキサーの OPM の音量 (7FFDh) の回帰テスト。WAV を書き出す |
 | `tests/check-opm.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/opl2-read.tcl` | OPL2 のデータポート (C1h) が 0Fh 以外を FFh で読むことと、ADPCM の PCM_BSY の回帰テスト |

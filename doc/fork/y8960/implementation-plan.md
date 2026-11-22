@@ -1478,6 +1478,30 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   コミット、2 は `-romtype` の件を §9.7 に入れ、直して試験を足すこと
 - **決定（ユーザー判断）**: `scc-comparison.md` は情報リソース。比べた時点のコミット（`e0194dd22`）を文書の頭に書いた
 - **決定（ユーザー判断）**: `-romtype Y8960Cartridge` の件は、次の上流への PR に相乗りさせる（§9.7）
+- 再現（**確認済み**）: 直す前の exe（11-19 のビルド。配列の外を引く 2 つの形は `f5d087499` から変わっていない）は、
+  `-machine C-BIOS_MSX2+ -carta <128kB の任意のファイル> -romtype Y8960Cartridge` で起動するだけで、エミュレーションの 0.1 秒の前に
+  Segmentation fault で落ちる（終了コード 139）。デバッガは使っていない。Tcl の `carta` で挿しても同じ。エラー報告の窓は出なかった
+- 直し方（`Y8960Cartridge.cc`）: 読みの 3 経路と `getRamAddress()` は、番地を `bankRegion()` で「その番地が見せるバンクの region」に
+  引き直す（0000-3FFF は region 4・5、C000-FFFF は region 2・3）。`setBank()` はミラーの region の読みキャッシュも捨てる。ミラーには
+  ROM バンクに加えて RAM バンクも出る。SCC は出さず、ミラーへの書き込みは今までどおり捨てる。冒頭のコメントにもそう書いた
+  - ミラーに RAM も出すのは、冒頭のコメントの「ミラー」と、RTL が A14/A13 だけで region を選ぶこと（§3.8 の「一致していたもの」）に
+    合わせた形。SCC の判定は RTL で A15 を見る（`hardware-notes.md` §4）ので、ミラーに出さない
+- 試験 `tests/mapper-mirror.tcl`（新規、12 項目）: ROM の像を自分で書き出して `carta` で挿す。4 つの region の RAM バンクがミラーから
+  読めること、ミラーの ROM、ミラーに SCC が無く書き込みが捨てられること、CPU が page 0 から読めること、page 0 を見せたままバンクを
+  替えたあとの CPU の読み。`runall.sh` にも `-ext` なしで足した
+- 確かめたこと（**確認済み**）
+  - 直したあとの exe: 挿すだけの実行は 2 秒まで動く。`mapper-mirror.tcl` は ALL PASS
+  - 直す前の exe は、挿した時点で落ちるので `mapper-mirror.tcl` を回せない。page 0 の読みを外した写しでも落ちた
+  - 改変 1（`bankRegion()` のミラーの対応を `region ^ 2` に誤らせる）: 10 項目が落ちる。改変 2（`setBank()` のミラーの
+    キャッシュを捨てる行を外す）: CPU の読みの 2 項目だけが落ち、デバッガの読みは通る。どちらも退避から戻して組み直し、ALL PASS を見た
+  - 改変 2 では、page 0 を切り替えた直後の最初の読みも古い ROM を返した。見えていないスロットの読みキャッシュも、`setRom()` が
+    埋めたまま残ると読める（**推測**: この観測からの推測で、`MSXCPUInterface` は読んでいない）
+  - `runall.sh`（直したあとの exe）: 35 本の終了コードがすべて 0、RESULT 12 本が ALL PASS、判定スクリプト 8 本が 0、
+    セーブステートの往復、2 本差しは `Already have a switched device with id 128` で止まり 1 本目は動き続ける、`-testconfig` 7 構成が 0。
+    `mapper-mirror` を除けば、(45) の 8 段目と同じ顔ぶれ
+- 組んだ exe は作業ツリーの `derived/x64-VC-Release/install`。兄弟が使うデプロイ先（`OPENMSX_DIR`）は触っていない
+- ユーザーの返事（言葉どおり）:「ok / pushまでして終わる」。コード・試験・文書を `main` に 1 コミットにして push した
+- **このあと**: 上流への PR は (61) のとおり今夜、PCM_BSY の直しと romblocks と一緒に
 
 ### 2026-11-22 (61) — Y8960 の v0.9.17 は、FPGA の中でリセットを延ばすようになった。PCM_BSY が Y8950 と同じ形になり、エミュレーションとずれた
 
@@ -7465,4 +7489,5 @@ MSSE（madscient/MsxSoundSuiteExtension）は、リリースに `HRA_Y8960_MSSX.
   （今の作りでは #63 の窓の下 6kB は ROM の #15 を返すので、15 は中身と合っている）。確かめること: `blockNr` が状態の保存と復元
   （`RomBlocks::serialize`）に使われていないか（読んでいない）
 - **`-romtype Y8960Cartridge` で挿すと、0000-3FFF と C000-FFFF の読みで `bankReg` の外を引く**（2026-11-22、§8 の (62)）。`-carta` の
-  ROM は 0000-FFFF に置かれ、読みの 3 経路が `getBank(address >> 13)` を範囲の確認なしに引く。`HRA_Y8960.xml` の使い方では通らない
+  ROM は 0000-FFFF に置かれ、読みの 3 経路が `getBank(address >> 13)` を範囲の確認なしに引く。`HRA_Y8960.xml` の使い方では通らない。
+  挿すだけで落ちる。直し方と試験 `tests/mapper-mirror.tcl` は (62)
