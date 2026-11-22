@@ -11,3 +11,4 @@
 
 .gitattributes                      CLAUDE.md と doc/fork をソースアーカイブから外す export-ignore。git archive が読むのはこのファイルだけ
 README                              フォークである旨。GitHub のフロントページなので他に置き場が無い
+src/memory/Y8960Cartridge.cc        上流への PR に出す直し（-romtype で挿すと起動直後に落ちる件。implementation-plan.md の (62)）を先に持つ。上流に入れば差が消えるので、そのときこの行を外す
