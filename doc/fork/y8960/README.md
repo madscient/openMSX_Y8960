@@ -14,6 +14,7 @@ Y8960 カートリッジのエミュレーションを openMSX に追加する�
 | `hardware-notes.md` | Y8960 ハードウェア仕様の調査結果。一次情報の出典と確度つき |
 | `implementation-plan.md` | 実装計画・決定事項・実行経緯 |
 | `rhythm-in-emulators.md` | ほかの OPL / OPLL 系エミュレータでのリズム音の大きさ。情報リソース |
+| `scc-comparison.md` | Konami SCC・Yamanooto・Y8960 の SCC の実装の比較（マッパー、窓、モード、音量と定位）。情報リソース。比べた時点のコミットの記述 |
 | `tests/opll-enabler.tcl` | OPLL I/O Enabler (7FF6h) の回帰テスト |
 | `tests/opll-regs-mirror.tcl` | OPLL のレジスタの写しが BANK レジスタ (40h-48h) で壊れないことの回帰テスト |
 | `tests/opll-panpot.tcl` | OPLL のチャンネルごとの定位 (50h-58h)、リズム音の定位と大きさの回帰テスト。WAV を書き出す |
