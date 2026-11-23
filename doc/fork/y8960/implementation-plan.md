@@ -1586,6 +1586,25 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   Hesoten さんの `992c031d`（2026-11-15）が v0.9.16 の `>>> 2` に合わせて ADPCM を 2 倍にしていて、v0.9.17 に合わせるなら外すことになる。
   ミラーと romblocks は当たらない。直す場所と上流に出すかはユーザーに聞いて止めている。向こうの指摘: v0.9.17 の実機の ADPCM と FM の比は
   誰も測っていない（こちらの (61) の「直すところは無い」も `opl2.v` のコメントの読解で、実機では測っていない）
+- ユーザーの返事（言葉どおり）:「測って / push ok」。v0.9.17 の実機で ADPCM と OPL2 の比を測った
+- **ADPCM と OPL2 の比**（**確認済み**: 実機 3 回、openMSX 1 回）: `adpcm-tones.py` の音列（ADPCM は最大振幅の正弦波と矩形波、約 518Hz）を
+  `tones-mga.ps1`（`-SlotReset` なし）と `tones.tcl`（`main` の今日のビルド）で流し、`tone-levels.py --ref opl2-center` で比べた。
+  判定は録る前に決めた: 実機と openMSX の adpcm-sine − opl2-center の差が ±1.5dB 以内なら「openMSX の比と合う」、+4.5dB 以上なら
+  「v0.9.16 の形（ADPCM が 2 倍）に近い」。2 つの形の差は 6dB
+
+  | 基本波の差（dB） | openMSX | 実機（3 回とも） | 実機 − openMSX |
+  |---|---|---|---|
+  | ssg-center − opl2-center | +2.12 | +2.12 | -0.00 |
+  | opm-center − opl2-center | +3.00 | +3.00 | +0.00 |
+  | adpcm-sine − opl2-center | -0.39 | -0.15 | +0.24 |
+  | adpcm-square − opl2-center | +1.62 | +1.85 | +0.23 |
+
+  - 判定: openMSX の比と合う。openMSX の Y8950 の比で鳴らす今の形のままでよく、(61) の「直すところは無い」を測定で確かめた。
+    v0.9.16 で ADPCM が 2 倍だったことは `opl2.v` の読解だけで、v0.9.16 の実機では測っていない（書き換えた後に測ったため）
+  - 3 回の録音は長さが 58.0〜62.1 秒で別のファイル。差が 0.01dB まで揃うのは、録音の経路を含めて利得が一定だったため
+  - 残る +0.24dB の出所（518Hz と 1kHz での録音の経路の特性か、復号の丸めか）は分けていない
+  - 録音は `derived/adpcm1123/`
+- 結果を blueMSX-plus のセッションに送った（同日）。向こうの 2 倍を外すと、向こうの記録では openMSX と 0.01dB 以内の値に戻る
 - **このあと**: メンテナの返事と CI を待つ。取り込まれたら `upstream-touched.txt` の `Y8960Cartridge.cc`・`Y8950Adpcm.cc` の行を外し、
   `doc/fork/README.md` の「先に持つ」の記述を戻す。hra1129 さんへの投稿はユーザー（文面の最後の行を #2320 の URL にした）
 
