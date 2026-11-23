@@ -42,6 +42,7 @@ Y8960 カートリッジのエミュレーションを openMSX に追加する�
 | `tests/check-scc-panpot.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/mapper-cpu-read.tcl` | CPU の読みがデバッガの読みと一致することの回帰テスト |
 | `tests/mapper-mirror.tcl` | `-romtype Y8960Cartridge` で挿したときの 0000-3FFF と C000-FFFF の読み（RAM と ROM のミラー、SCC の無いこと、CPU の読みキャッシュ）の回帰テスト。`-ext` は付けない |
+| `tests/mapper-romblocks.tcl` | romblocks デバッガブルが答えるバンクの番号（ROM は 0〜15、RAM は 16〜31、SCC は 15）の回帰テスト。`-romtype Y8960Cartridge` で挿し、`-ext` は付けない |
 | `tests/opm.tcl` | OPM の直接 I/O (7Eh/7Fh)、トンネル (7FFBh/7FFCh)、I/O Enabler2 の b2、ステータスと割り込み、ミキサーの OPM の音量 (7FFDh) の回帰テスト。WAV を書き出す |
 | `tests/check-opm.py` | 上記 WAV と、テストが書き出すレジスタの検査の結果の判定 |
 | `tests/opl2-read.tcl` | OPL2 のデータポート (C1h) が 0Fh 以外を FFh で読むことと、ADPCM の PCM_BSY の回帰テスト |
@@ -674,7 +675,7 @@ py $L/ssg-polarity.py <新の出力先>/tones-openmsx.wav <旧の出力先>/tone
   まだ無いブロックの試験がこの形で打ち切られ、`rc.txt` が 124 になる。新旧で同じ試験が 124 になることを見る
 - `PR=` には、今の `main` の作業ツリーの根も渡せる。`main` のコードは upstream と同じか、上流に出す直しを先に持つだけなので、
   PR の枝と同じ試験が当てはまる。その直しを持たない枝では、直しの試験が落ちる（`mapper-mirror.tcl` は直す前の exe だと起動の直後に
-  落ち、`rc.txt` が 0 でなくなる。`opl2-read.tcl` は PCM_BSY の 4 項目が落ちる）
+  落ち、`rc.txt` が 0 でなくなる。`opl2-read.tcl` は PCM_BSY の 4 項目が、`mapper-romblocks.tcl` は RAM のバンクの 10 項目が落ちる）
 
 ## 取り込み元
 

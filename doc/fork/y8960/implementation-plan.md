@@ -1545,10 +1545,36 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   書かれた値（16〜31）で答え、SCC の #63 は 15 のまま。B は書かれた値をそのまま（SCC も 63）。C は今回の PR から外す。こちらの推奨は A
   （SRAM を持つ上流のマッパーと同じ答え方で、#63 は `RomKonamiSCC` とも窓の中身とも合う）。3 は hra1129 さんの残件に当たる 2 つを伝えるか
 - ユーザーの返事（言葉どおり）:「1 ok / 2 A / 3 伝える」
-- **決定（ユーザー判断）**: romblocks は A。RAM のバンク（書かれた値が 16〜31）は書かれた値で答え、それ以外は今までどおり ROM の
-  ブロック数の剰余で答える。前提: romblocks が表示とデバッガの条件にだけ使われ、セーブステートに入らない限り成立する
-- **このあと**: romblocks を直して試験を足す。上流への PR は upstream/master から枝を作り、PCM_BSY・mirror・romblocks を載せる。説明文の
-  下書きを見せてから push する。hra1129 さんへの文面を作ってユーザーに渡す（投稿はユーザー）
+- **決定（ユーザー判断）**: romblocks は A。RAM のバンク n は 16 + n（16〜31）で答え、ROM と SCC は今までどおり ROM のブロック数の
+  剰余で答える（SCC は 15）。前提: romblocks が表示とデバッガの条件にだけ使われ、セーブステートに入らない限り成立する
+  - 選択肢では「書かれた値（16〜31）」と書いたが、バンク番号は下位 6 ビットだけが効き、32〜62 は 0〜30 と同じ（`Y8960Cartridge.cc` の
+    冒頭のコメントと `isRamRegion()`）。48〜62 や 80h 以上も RAM を選ぶので、書かれた値そのものでなく、そのバンクを 0〜31 で選ぶ番号で
+    答える形にした。0〜31 を書いたときは書かれた値と同じ。**判断（クロコ、報告済み）**: A の「RAM は 16〜31」をそのまま当てた形
+  - `main` へのコミット（PCM_BSY の直し・試験・文書・探針）と push は `e2e065197`。push の前の点検は全項目 OK
+- **romblocks の直し**: `Y8960Cartridge::setBank()` で、ポインタと読みキャッシュは今までどおり `setRom()` に任せ、RAM のバンクのときだけ
+  `blockNr`（基底の protected の配列。romblocks のためだけにある）を 16 + n に書き換える（その region とミラーの両方）。`setBank()` で
+  RAM を指させないのは、`-carta` の ROM が 128kB より小さいと ROM のポインタが範囲の外になるのと、RAM を `setExtraMemory()` で基底に
+  見せるとセーブステートのバンクの値が変わるため
+  - セーブステートを読んだ後の romblocks は直していない。基底の `blockNr` の保存がコメントアウトされていて（`RomBlocks.cc` の 173〜181 行）、
+    上流の `RomBlocks` を使うマッパーに共通の形。読み込み後に何を答えるかは確かめていない
+  - 試験 `tests/mapper-romblocks.tcl`（新規、21 項目）: 期待値は番号の規則から 1 つずつ書いた（ROM 0・5・15、RAM 0・10・15、32・48・62 の
+    別名、SCC、下位 6 ビット、ミラー 4 つ、RAM モードのレジスタ）。`runall.sh` に `-ext` なしで足した（mapper-mirror と同じ回し方にまとめた）
+  - 最初の版は `-ext HRA_Y8960` で回し、ROM のバンクまで 21 項目が 255 で落ちた。拡張の ROM は像が無い（`<rom/>`）ので、`setRom()` が
+    割り当てなしにする。実装ではなく試験の誤りで、mapper-mirror と同じく 128kB の像を書き出して `carta` で挿す形に直した
+  - **確認済み**: 直す前の exe（PCM_BSY だけを直したビルド）では RAM を選んだ 10 項目が 16 小さく出て落ち、ROM と SCC の 11 項目は通る
+    （ヘッダに書いた判別力どおり）。直した exe では ALL PASS
+- `runall.sh`（romblocks も直した exe）: 36 本の終了コードがすべて 0、RESULT 13 本が ALL PASS。ほかは上と同じ
+- **上流への PR の枝**: worktree `derived/pr` で、upstream/master（`6bef9c9af`）から手元の枝 `pr-fixes` を作り、3 本を載せた（trailer なし）。
+  1 本目 mirror（`c37c64b3c` の `Y8960Cartridge.cc` の差分。上流のこのファイルは `c37c64b3c^` と同じだった）、2 本目 romblocks、
+  3 本目 PCM_BSY（`913003062` の revert）。枝の `Y8960Cartridge.cc`・`Y8950Adpcm.cc` は `main` の作業ツリーと同じ（**確認済み**: `git diff`）
+  - **確認済み**: 枝を `derived/pr` で組み（エラー 0）、その exe で `runall.sh`（`PR=derived/pr`）: 36 本の終了コードがすべて 0、RESULT 13 本が
+    ALL PASS、判定スクリプト 8 本が 0、セーブステートの往復、2 本差し、`-testconfig` 7 構成が 0。`mapper-romblocks` と `opl2-read` が
+    通るので、この exe に直しが入っていることも見えている
+- 説明文と hra1129 さんへの文面の下書きはユーザーに見せた（scratchpad）。示した確認は、1 が romblocks の `main` へのコミットと push、
+  2 が PR の枝の名前 `y8960-fixes`、3 が origin への push と PR の作成
+- ユーザーの返事（言葉どおり）:「1 ok / 2 ok / 3 ok」
+- **決定（ユーザー判断）**: PR の枝の名前は `y8960-fixes`
+- **このあと**: romblocks を `main` にコミットして push し、PR の枝を origin に push して PR を作る。hra1129 さんへの投稿はユーザー
 
 ### 2026-11-22 (62) — Konami SCC・Yamanooto・Y8960 の SCC の実装を読み比べた
 

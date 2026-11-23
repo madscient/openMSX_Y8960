@@ -45,13 +45,14 @@ for t in adpcm-play enabler2-read mapper-cpu-read mapper-windows mixer-volume \
 	run "f-$t" "$T/$t.tcl" Y8960_TEST_OUT="$OUT/f-$t"
 done
 run f-adpcm-rommode "$C/adpcm-rommode.tcl" Y8960_TEST_OUT="$OUT/f-adpcm-rommode"
-# inserts the cartridge itself with -romtype, so without -ext HRA_Y8960
-if want f-mapper-mirror; then
-	d="$OUT/f-mapper-mirror"
+# insert the cartridge themselves with -romtype, so without -ext HRA_Y8960
+for t in mapper-mirror mapper-romblocks; do
+	want "f-$t" || continue
+	d="$OUT/f-$t"
 	rm -rf "$d"; mkdir -p "$d"
-	Y8960_TEST_OUT="$d" timeout 60 "$EXE" -machine C-BIOS_MSX2+ -script "$T/mapper-mirror.tcl" > "$d/stdout.txt" 2>&1
+	Y8960_TEST_OUT="$d" timeout 60 "$EXE" -machine C-BIOS_MSX2+ -script "$T/$t.tcl" > "$d/stdout.txt" 2>&1
 	echo $? > "$d/rc.txt"
-fi
+done
 # fork tests, output to a file
 run f-opll-enabler "$T/opll-enabler.tcl" Y8960_TEST_OUT="$OUT/f-opll-enabler/out.txt"
 for t in timer-irq enabler2 ssgs-write-only ssgs-gpio; do
