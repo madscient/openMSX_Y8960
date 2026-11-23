@@ -1580,6 +1580,7 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 - ユーザーの言葉（言葉どおり）:「隣にblueMSX+のクロコを起こしてあるので、同様の修正が必要であることを伝えて」。blueMSX-plus のセッションに
   SendMessage で送った（同日）。v0.9.17 の 3 つの変更（PCM_BSY、ADPCM の音量、内部リセット）、実測の表、openMSX でしたこと（ADPCM の音量は
   変えていない理由を含む）、#2320 の URL。mirror と romblocks は openMSX の作りに固有なので参考として渡し、当たるかは向こうが判断する
+- ユーザーが hra1129 さんに伝えた（ユーザーの言葉どおり:「HRAさんにも伝えてある」）。こちらは投稿を見ていないので、下書きのままの文面かは分からない
 - **このあと**: メンテナの返事と CI を待つ。取り込まれたら `upstream-touched.txt` の `Y8960Cartridge.cc`・`Y8950Adpcm.cc` の行を外し、
   `doc/fork/README.md` の「先に持つ」の記述を戻す。hra1129 さんへの投稿はユーザー（文面の最後の行を #2320 の URL にした）
 
