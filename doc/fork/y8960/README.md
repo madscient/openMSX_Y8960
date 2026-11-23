@@ -80,6 +80,7 @@ Y8960 カートリッジのエミュレーションを openMSX に追加する�
 | `level/rhythm-ws/synthleak.py`・`synthslots.py` | 上記の 2 つの判定器の判別力を見るための合成の録音を作る |
 | `level/rhythm-ws/rstnoise.txt` | `tones-mga.ps1` に流す音列。I/O を開けてから BDh = 20h を書く（`-SlotReset` の有無で比べる） |
 | `level/rhythm-ws/anarst.py` | 上記の録音を測り、BDh = 20h で鳴ったかを録る前に決めた基準で判定する。`--synth` で判別力を見るための合成の録音を作る |
+| `level/probe-y8960-pcmbsy.ps1` | 実機のカートリッジで、R#07 への書き込みと一回再生の終わりのあとの PCM_BSY を MGA から読む。音は使わない |
 | `tests/y8960-pr/` | upstream に出す Y8960 本体（#2288 の作り直し）を、コミットごとに確かめる道具。使い方は「Y8960 の PR を確かめる」 |
 | `tests/y8950-pr/` | upstream に出す `Y8950` の拡張（`Type::Y8960`、リズム音、波形選択、PCM_BSY）を、段ごとに組んで確かめる道具。使い方は「`Y8950` の PR を確かめる」 |
 
@@ -673,7 +674,7 @@ py $L/ssg-polarity.py <新の出力先>/tones-openmsx.wav <旧の出力先>/tone
   まだ無いブロックの試験がこの形で打ち切られ、`rc.txt` が 124 になる。新旧で同じ試験が 124 になることを見る
 - `PR=` には、今の `main` の作業ツリーの根も渡せる。`main` のコードは upstream と同じか、上流に出す直しを先に持つだけなので、
   PR の枝と同じ試験が当てはまる。その直しを持たない枝では、直しの試験が落ちる（`mapper-mirror.tcl` は直す前の exe だと起動の直後に
-  落ち、`rc.txt` が 0 でなくなる）
+  落ち、`rc.txt` が 0 でなくなる。`opl2-read.tcl` は PCM_BSY の 4 項目が落ちる）
 
 ## 取り込み元
 

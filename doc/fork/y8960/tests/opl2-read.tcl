@@ -9,13 +9,16 @@
 # - C1h で読み戻せるのは ADPCM データ (0Fh) だけで、他のレジスタは FFh。
 #   デバッガの I/O の読み (peekIO) と CPU の IN の両方を見る。レジスタの
 #   デバッガブルは書いた値のままであること
-# - PCM_BSY (ステータスの b0) は START に従う。一回再生が終わると START と
-#   一緒に 0 に戻る。R#07 に 81h（START と RESET）を書くと 0 のまま
+# - PCM_BSY (ステータスの b0) は R#07 に書いた値の b7 (START) をそのまま取る。
+#   RESET を同時に書いても 1。一回再生が終わっても、04h = 80h でフラグを消しても
+#   残り、次に R#07 を書くまで消えない
 #
-# どちらもカートリッジの v0.9.5 以降の RTL とマニュアル 6.2.1 / 6.3 による。
+# C1h はカートリッジの v0.9.5 以降の RTL とマニュアル 6.2.1 / 6.3 による。
+# PCM_BSY の期待値は、v0.9.17 の実機を MGA から読んだ値（計画文書の (63)）。
 #
-# **判別力**: Y8950 と同じ実装では、C1h が書いた値を返し、PCM_BSY は
-# 再生の終わりと 81h の後も 1 のまま残る。
+# **判別力**: Y8950 と同じ実装では C1h が書いた値を返す。v0.9.16 までの
+# Y8960 の PCM_BSY（RESET の後の START を取り、一回再生の終わりで 0）では、
+# 81h、A1h、再生の終わり、その後の 04h = 80h の 4 項目が 0 になって落ちる。
 
 # 人間の並行作業とキー入力が衝突しないよう、ウィンドウを出さずに走らせる。
 # この 2 行は必ず先頭に置くこと（設定が効く前にウィンドウが作られてしまう）。
@@ -77,7 +80,13 @@ proc run_test {} {
 
 	# PCM_BSY: START と RESET を同時に書く
 	r 0x07 0x81
-	check "PCM_BSY after writing 81h to R#07"        [pcm_bsy] 0
+	check "PCM_BSY after writing 81h to R#07"        [pcm_bsy] 1
+	r 0x07 0x00
+	check "PCM_BSY after writing 00h to R#07"        [pcm_bsy] 0
+	r 0x07 0xA1
+	check "PCM_BSY after writing A1h to R#07"        [pcm_bsy] 1
+	r 0x07 0x01
+	check "PCM_BSY after writing 01h to R#07"        [pcm_bsy] 0
 	# PCM_BSY: 4 バイト (8 ニブル) を最速で一回再生する
 	r 0x08 0x00
 	r 0x09 0x00 ; r 0x0A 0x00
@@ -90,7 +99,11 @@ proc run_test {} {
 
 proc run_cpu {} {
 	global stub
-	check "PCM_BSY after a one-shot sample ended"    [pcm_bsy] 0
+	check "PCM_BSY after a one-shot sample ended"    [pcm_bsy] 1
+	r 0x04 0x80
+	check "PCM_BSY after 80h to 04h (flags cleared)" [pcm_bsy] 1
+	r 0x07 0x00
+	check "PCM_BSY after writing 00h to R#07 again"  [pcm_bsy] 0
 
 	set i 0xC000
 	foreach b $stub { debug write memory $i $b ; incr i }
