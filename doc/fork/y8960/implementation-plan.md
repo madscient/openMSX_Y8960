@@ -1577,6 +1577,9 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 - romblocks を `main` に `161e718bc` でコミットして push した（点検は全項目 OK）。PR の枝は名前を `y8960-fixes` に変え、点検の 1〜4・7 が
   OK（5・6 は `doc/fork/` の無い枝なので当てはまらない）。origin に push し、**openMSX/openMSX#2320** を作った。本文は見せた下書きと同じ
   （**確認済み**: `gh pr view` の本文と下書きを比べた）。コミットは `29c6b8e0e`・`dbfb71505`・`749125099`
+- ユーザーの言葉（言葉どおり）:「隣にblueMSX+のクロコを起こしてあるので、同様の修正が必要であることを伝えて」。blueMSX-plus のセッションに
+  SendMessage で送った（同日）。v0.9.17 の 3 つの変更（PCM_BSY、ADPCM の音量、内部リセット）、実測の表、openMSX でしたこと（ADPCM の音量は
+  変えていない理由を含む）、#2320 の URL。mirror と romblocks は openMSX の作りに固有なので参考として渡し、当たるかは向こうが判断する
 - **このあと**: メンテナの返事と CI を待つ。取り込まれたら `upstream-touched.txt` の `Y8960Cartridge.cc`・`Y8950Adpcm.cc` の行を外し、
   `doc/fork/README.md` の「先に持つ」の記述を戻す。hra1129 さんへの投稿はユーザー（文面の最後の行を #2320 の URL にした）
 
