@@ -1574,7 +1574,11 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
   2 が PR の枝の名前 `y8960-fixes`、3 が origin への push と PR の作成
 - ユーザーの返事（言葉どおり）:「1 ok / 2 ok / 3 ok」
 - **決定（ユーザー判断）**: PR の枝の名前は `y8960-fixes`
-- **このあと**: romblocks を `main` にコミットして push し、PR の枝を origin に push して PR を作る。hra1129 さんへの投稿はユーザー
+- romblocks を `main` に `161e718bc` でコミットして push した（点検は全項目 OK）。PR の枝は名前を `y8960-fixes` に変え、点検の 1〜4・7 が
+  OK（5・6 は `doc/fork/` の無い枝なので当てはまらない）。origin に push し、**openMSX/openMSX#2320** を作った。本文は見せた下書きと同じ
+  （**確認済み**: `gh pr view` の本文と下書きを比べた）。コミットは `29c6b8e0e`・`dbfb71505`・`749125099`
+- **このあと**: メンテナの返事と CI を待つ。取り込まれたら `upstream-touched.txt` の `Y8960Cartridge.cc`・`Y8950Adpcm.cc` の行を外し、
+  `doc/fork/README.md` の「先に持つ」の記述を戻す。hra1129 さんへの投稿はユーザー（文面の最後の行を #2320 の URL にした）
 
 ### 2026-11-22 (62) — Konami SCC・Yamanooto・Y8960 の SCC の実装を読み比べた
 
@@ -7608,6 +7612,8 @@ MSSE（madscient/MsxSoundSuiteExtension）は、リリースに `HRA_Y8960_MSSX.
   セグメント条件と ImGui のデバッガで取り違える。直す前に決めること: RAM バンクを 16〜31 と見せるか、SCC の #63 を 15 のままにするか
   （今の作りでは #63 の窓の下 6kB は ROM の #15 を返すので、15 は中身と合っている）。確かめること: `blockNr` が状態の保存と復元
   （`RomBlocks::serialize`）に使われていないか（読んでいない）
+  - **#2320 に入れた**（2026-11-23、§8 の (63)）。RAM のバンク n は 16 + n、SCC は 15 のまま（ユーザー判断）。`blockNr` は保存されない
 - **`-romtype Y8960Cartridge` で挿すと、0000-3FFF と C000-FFFF の読みで `bankReg` の外を引く**（2026-11-22、§8 の (62)）。`-carta` の
   ROM は 0000-FFFF に置かれ、読みの 3 経路が `getBank(address >> 13)` を範囲の確認なしに引く。`HRA_Y8960.xml` の使い方では通らない。
   挿すだけで落ちる。直し方と試験 `tests/mapper-mirror.tcl` は (62)
+  - **#2320 に入れた**（2026-11-23、§8 の (63)）。PCM_BSY の直しと同じ PR
