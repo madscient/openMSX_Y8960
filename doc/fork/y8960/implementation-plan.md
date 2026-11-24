@@ -1466,6 +1466,46 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
 
 ## 8. 実行経緯
 
+### 2026-11-24 (64) — #2320 がマージされた。upstream の `fcf77ffcf` を `main` にマージで取り込み、先に持っていた直しの差が消えた
+
+ユーザーの言葉（言葉どおり）:「PRがマージされたので確認して上流を取り込み」
+
+- **#2320 はマージされた**（**確認済み**: `gh pr view` の state が MERGED、2026-11-24 01:05 JST、マージコミット `fcf77ffcf`）。出した 3 本
+  （`29c6b8e0e`・`dbfb71505`・`749125099`）がそのまま入った（**確認済み**: `fcf77ffcf` の 2 番目の親が `749125099`）。付いたコメントは
+  マージした Wouter の「Thanks.」の 1 件で、レビューの指摘は無い。CI は 11 件とも SUCCESS
+- upstream/master は `fcf77ffcf`。`main`（`74e238d3f`）に無かったのは 9 コミット: #2320 の 3 本とそのマージ、C-BIOS 0.32（`6bef9c9af`）、
+  YMF262 のリセット（`1c2eeaf8d`）、MSXMixer のバランス 2 件（`436f41aba`・`f5c695409`）、SCC のデバッガからの波形 5 の書き込み（`e79e6a8b9`）
+- 取り込む前（**確認済み**）: `Y8960Cartridge.cc`・`Y8950Adpcm.cc` は `main` と upstream/master で同じ（`git diff --quiet` が 0。同じ見方で、
+  上流だけが変えた `YMF262.cc` は 1 を返す）。`git merge-tree` は衝突なし
+- マージ `1fb85f4d5`（親は `74e238d3f` と `fcf77ffcf`）。ツリーは `merge-tree` の予行と同じ `caf4f5f26`。**確認済み**:
+  `git diff --name-only upstream/master HEAD` は `doc/fork/` のほかに `CLAUDE.md`・`README`・`.gitattributes` の 3 つだけ
+- 文書: `upstream-touched.txt` から `Y8960Cartridge.cc`・`Y8950Adpcm.cc` の 2 行を外し、`doc/fork/README.md` の「先に持つ」を「コードと
+  ビルド定義は upstream と同じ」に戻した。`doc/fork/y8960/README.md` の「先に持つことがある」は、どちらの状態でも成り立つ書き方なので
+  残した。§9.7 の 2 件にマージ済みと書いた
+- ビルド（このマシン、VS18 の MSBuild、v145、Release、本体だけ）: **確認済み**: 終了コード 0、0 エラー、93 秒。組み直されたのは
+  `MSXMixer.cc`・`SCC.cc`・`Y8950Adpcm.cc`・`Y8960Cartridge.cc`・`YMF262.cc` の 5 本。このマシンの前のビルドは 11-22 の (62) のもので、
+  (63) の直しもここで初めて組んだ。警告は MSB8065 だけで、コンパイラの警告は 0。版表示は `22.0-unknown`。3rdparty は組み直していない
+  （取り込みで `build/` は変わっていない。**確認済み**: `git diff --name-only 74e238d3f HEAD -- build/` が 0 行）
+- 上流の音まわりの 3 件が Y8960 の試験に効くかを、回す前に読んだ（**確認済み(読解)**）: MSXMixer の 2 件は、ステレオの装置で左右の
+  増幅率が違い、バランスを振ったときだけ結果が変わる。`Y8960Cartridge` は各ブロックに左右で同じ値を `setSoftwareVolume` で渡し、試験は
+  バランスを振らない。YMF262 は Y8960 が使わない。SCC の件は SCC のデバッガブルへの書き込みだけで、試験は読むだけ（`grep -a` で書き込みは
+  0 件。バイナリと判定された `.tcl` は無い）。回す前の予想: 新旧の exe で、(63) の直しの試験 2 本のほかは出力が変わらない
+- `runall.sh`（**確認済み**）: マージ後のビルドと、このマシンの前の exe（11-22 のビルド。mirror の直しまでを持ち、(63) の PCM_BSY と
+  romblocks を持たない）を、同じ作業ディレクトリ・同じ C-BIOS で順に回した
+  - マージ後の exe: 36 本の終了コードがすべて 0、RESULT 13 本が ALL PASS、判定スクリプト 8 本が 0、セーブステートの往復、2 本差しは
+    `Already have a switched device with id 128` で止まり 1 本目は動き続ける、`-testconfig` 7 構成が 0。(63) と同じ顔ぶれ
+  - 前の exe: `f-opl2-read` が FAILED 4、`f-mapper-romblocks` が FAILED 10。ほかの判定はマージ後の exe と同じ。落ちた数は、2 本の試験の
+    ヘッダに書いた判別力どおり
+  - `cmpout.py`: 違うのはその 2 本の結果のファイルだけで、167 ファイル（録音 64 本を含む）はバイトで一致。予想どおり
+  - 機種定義は取り込み後の `Contrib/cbios`（C-BIOS 0.32。`cbios_main_msx2+.rom` の sha1 が (62) の作業ディレクトリのものと違うことを見た）。
+    新旧とも 0.32 で回したので、C-BIOS を替えたことの影響はこの比較では分けていない。判定の顔ぶれは、前の C-BIOS で回した (63) と同じ
+- 作業ディレクトリは `derived/rt1124/`（システム ROM は `derived/rm1122/user/systemroms` から写した）。ビルドのログは
+  `derived/build-20261124-merge.log`
+- このマシンのデプロイ先（`OPENMSX_DIR`）は触っていない。そこの exe は 2026-11-04 のもの（**確認済み**: ファイルの日付と大きさ）で、
+  (57) の入れ替えは別のマシンでのこと。このマシンでも入れ替えるかはユーザーに聞く
+- **このあと**: push はユーザーの確認待ち。片付けの候補 2 つもユーザーに聞く: origin の枝 `y8960-fixes`（`749125099`。upstream に入った）と、
+  このマシンの worktree `derived/fsh` の枝 `fix-y8960-wshadow`（`665becab2`。(55) で消すと決まっている。作業ツリーに未コミットの変更は無い）
+
 ### 2026-11-23 (63) — Y8960 を v0.9.17 に書き換えて測った。SRST を送らなくても電源投入の雑音は出ず、PCM_BSY は Y8950 の形になった
 
 ユーザーの言葉（言葉どおり）:「Y8960カートリッジの更新確認の続きをやろう」
@@ -7641,7 +7681,9 @@ MSSE（madscient/MsxSoundSuiteExtension）は、リリースに `HRA_Y8960_MSSX.
   （今の作りでは #63 の窓の下 6kB は ROM の #15 を返すので、15 は中身と合っている）。確かめること: `blockNr` が状態の保存と復元
   （`RomBlocks::serialize`）に使われていないか（読んでいない）
   - **#2320 に入れた**（2026-11-23、§8 の (63)）。RAM のバンク n は 16 + n、SCC は 15 のまま（ユーザー判断）。`blockNr` は保存されない
+  - **upstream に入った**（2026-11-24、`fcf77ffcf`、§8 の (64)）
 - **`-romtype Y8960Cartridge` で挿すと、0000-3FFF と C000-FFFF の読みで `bankReg` の外を引く**（2026-11-22、§8 の (62)）。`-carta` の
   ROM は 0000-FFFF に置かれ、読みの 3 経路が `getBank(address >> 13)` を範囲の確認なしに引く。`HRA_Y8960.xml` の使い方では通らない。
   挿すだけで落ちる。直し方と試験 `tests/mapper-mirror.tcl` は (62)
   - **#2320 に入れた**（2026-11-23、§8 の (63)）。PCM_BSY の直しと同じ PR
+  - **upstream に入った**（2026-11-24、`fcf77ffcf`、§8 の (64)）

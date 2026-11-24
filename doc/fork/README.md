@@ -35,9 +35,8 @@ unofficial fork である。ここには upstream に存在しない、このフ
 | ライセンス | GPL-2.0-only（upstream と同じ） |
 
 upstream のファイルで変更しているのは、ルートの `README` と `.gitattributes`
-（本ディレクトリと `CLAUDE.md` をソースアーカイブから外す）、それに上流への PR に出す直しを
-先に持つ `src/memory/Y8960Cartridge.cc` と `src/sound/Y8950Adpcm.cc`。ほかのコードとビルド定義は upstream と同じ。
-一覧は `upstream-touched.txt`。
+（本ディレクトリと `CLAUDE.md` をソースアーカイブから外す）だけ。
+コードとビルド定義は upstream と同じ。一覧は `upstream-touched.txt`。
 
 ### 追従はマージで行う
 
