@@ -1501,10 +1501,36 @@ FitomHwIF の既存の試験パッチ `opl2.json` / `opl2ex.json` は 01h を 00
     新旧とも 0.32 で回したので、C-BIOS を替えたことの影響はこの比較では分けていない。判定の顔ぶれは、前の C-BIOS で回した (63) と同じ
 - 作業ディレクトリは `derived/rt1124/`（システム ROM は `derived/rm1122/user/systemroms` から写した）。ビルドのログは
   `derived/build-20261124-merge.log`
-- このマシンのデプロイ先（`OPENMSX_DIR`）は触っていない。そこの exe は 2026-11-04 のもの（**確認済み**: ファイルの日付と大きさ）で、
-  (57) の入れ替えは別のマシンでのこと。このマシンでも入れ替えるかはユーザーに聞く
-- **このあと**: push はユーザーの確認待ち。片付けの候補 2 つもユーザーに聞く: origin の枝 `y8960-fixes`（`749125099`。upstream に入った）と、
-  このマシンの worktree `derived/fsh` の枝 `fix-y8960-wshadow`（`665becab2`。(55) で消すと決まっている。作業ツリーに未コミットの変更は無い）
+- ビルドと試験の間、このマシンのデプロイ先（`OPENMSX_DIR`）は触っていない。そこの exe は 2026-11-04 のもの（**確認済み**: ファイルの
+  日付と大きさ）で、(57) の入れ替えは別のマシンでのこと。このマシンでも入れ替えるかはユーザーに聞いた（下の 4）
+- 文書の 3 ファイルは `957102470` でコミットした。`upstream-touched.txt` と `doc/fork/README.md` の直しは記録だけの変更ではないが、
+  取り込みの手順の一部と読んで確認を取らずにコミットし、ユーザーに報告した（**判断（クロコ、報告済み）**）。点検は全項目 OK
+- 示した確認は 4 つ: 1 は `main` の push、2 は origin の枝 `y8960-fixes`（`749125099`。upstream に入った）を消すこと、3 はこのマシンの
+  worktree `derived/fsh` と枝 `fix-y8960-wshadow`（`665becab2`。(55) で消すと決まっている）を消すこと、4 はこのマシンのデプロイ先の入れ替え
+- ユーザーの返事（言葉どおり）:「ぜんぶok / go」
+- origin の枝 `y8960-fixes` を消した（**確認済み**: 消す前の頭は `749125099` で upstream/master の祖先。消した後の
+  `git ls-remote --heads origin` は `main`・`master`・`y8960-v2`）。(63) を書いたマシンの worktree `derived/pr` にある手元の枝は、
+  こちらからは見えない。残っていれば、そのマシンで作業するクロコがユーザーに聞いて片付ける
+- このマシンの worktree `derived/fsh` を `git worktree remove` で外し、枝 `fix-y8960-wshadow`（`665becab2`）を消した。(55) の決定の実行。
+  外す前に見たこと（**確認済み**）: `git status --short --ignored` が 0 行、リパースポイントが 0 個
+- **このマシンのデプロイ先（`OPENMSX_DIR`）を入れ替えた**。手順は (57) と同じ
+  - 置いたもの: マージ `1fb85f4d5` を組んだ今日のビルド（増分。`-t:Rebuild` ではない）から `package-release.py` で作った zip（785 ファイル）の
+    中身。コードは upstream の `fcf77ffcf` と同じ。exe の sha1 は `14249a13b87e9985f9ae295fb78f77fefec50be4`（上の `runall.sh` を回した exe と
+    同じ）、版の文字列は `openMSX 22.0-unknown`（**確認済み**: デプロイ先の exe に `openmsx_info version` をファイルへ書き出させた）
+  - 入れ替える前の exe は sha1 が `f280a23c1dd08a13118c2e04de76d0be6e3a9e0d`、日付は 2026-11-04
+  - zip とデプロイ先をファイルごとの sha1 で比べ、上書き 88 本・追加 30 本・削除 0 本。デプロイ先にしか無い 45 本（Catapult）は zip に
+    無いので触らない。上書きと追加の数が (57) と同じなので内訳を見た: 上書きは exe、`README.txt`、`HRA_Y8960.xml`、機種定義 56 本
+    （うち C-BIOS が 28 本）、スクリプト 10 本、マニュアル 7 本、unicodemaps 8 本など。追加は `share/systemroms/cbios-old/` の 15 本、
+    機種定義 5 本、拡張 4 本、unicodemaps 6 本。(57) は内訳を記録していないので、同じ顔ぶれかは突き合わせていない
+  - 退避: 書く直前に openMSX と Catapult のプロセスが無いことを見て、デプロイ先の全体（800 ファイル）を `derived/dp1124/old` に写し、
+    sha1 で一致を見てから 118 本だけを書いた（**確認済み**: 書いた後に退避とデプロイ先を比べ、違うのは書いた 118 本だけ。zip と
+    デプロイ先の差は 0 本。Catapult の 45 本は退避と同じ）
+  - 確かめたこと（**確認済み**: デプロイ先の exe、使い捨ての `OPENMSX_USER_DATA`、`OPENMSX_SYSTEM_DATA` なし、窓のハンドルは 6 回とも 0）:
+    `-testconfig -machine C-BIOS_MSX2+ -ext HRA_Y8960` が 0、存在しない拡張は 1、通常の起動で `ext HRA_Y8960` が成功し、
+    `openmsx_info romtype` に `Y8960Cartridge` がある
+  - このマシンではほかのセッションが動いていなかった（**確認済み**: ListAgents）ので、兄弟のセッションには知らせていない
+  - 退避 `derived/dp1124/old` は残してある。消す時期はユーザーに聞く
+- この項を足したコミットまでを、点検を通してから origin に push する（ユーザーの返事の 1）
 
 ### 2026-11-23 (63) — Y8960 を v0.9.17 に書き換えて測った。SRST を送らなくても電源投入の雑音は出ず、PCM_BSY は Y8950 の形になった
 
